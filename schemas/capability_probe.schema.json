@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "required": ["name", "status", "summary", "preferred_outcome", "fallback", "details"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "status": { "type": "string", "enum": ["ready", "fallback", "blocked"] },
+    "summary": { "type": "string" },
+    "preferred_outcome": { "type": "string" },
+    "fallback": { "type": "string" },
+    "details": { "type": "object" }
+  }
+}

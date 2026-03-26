@@ -1,0 +1,53 @@
+{
+  "verdict": "FLAWS_FOUND",
+  "tier1": {
+    "checks": [
+      {
+        "check": "logical_consistency",
+        "status": "fail",
+        "detail": "The candidate asserts the target logical error rate without deriving enough supporting evidence."
+      },
+      {
+        "check": "citation_validity",
+        "status": "uncertain",
+        "detail": "The cited threshold literature is relevant, but the candidate does not tie it tightly to the exact task configuration."
+      }
+    ],
+    "overall": "FLAWS_FOUND",
+    "flaws": [
+      "The quantitative claim is underspecified.",
+      "The evidence does not justify the exact target value."
+    ],
+    "caveats": []
+  },
+  "tier2": {
+    "simulation_requested": true,
+    "reason": "The candidate makes a quantitative claim about logical error rate.",
+    "simulation_spec": {
+      "simulator": "stim",
+      "task": {
+        "code": "surface_code",
+        "task_type": "rotated_memory_z",
+        "distance": [3, 5, 7],
+        "rounds_per_distance": "2d",
+        "noise_model": "depolarizing",
+        "error_rates": [0.003, 0.005, 0.007],
+        "decoder": "pymatching",
+        "shots_per_point": 10000
+      },
+      "resources": {
+        "timeout_seconds": 900,
+        "max_parallel": 2
+      }
+    },
+    "results": null,
+    "interpretation": null
+  },
+  "tier3": [],
+  "flaws": [
+    "The quantitative claim is underspecified.",
+    "The evidence does not justify the exact target value."
+  ],
+  "caveats": [],
+  "cannot_verify_reason": null
+}

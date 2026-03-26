@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "required": ["sessions"],
+  "additionalProperties": false,
+  "properties": {
+    "sessions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "problem",
+          "domain",
+          "started",
+          "last_updated",
+          "status",
+          "iterations",
+          "final_verdict",
+          "result_summary",
+          "evidence_file"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "problem": { "type": "string" },
+          "domain": { "type": "string" },
+          "started": { "type": "string" },
+          "last_updated": { "type": "string" },
+          "status": { "type": "string" },
+          "iterations": { "type": "integer" },
+          "final_verdict": { "type": "string" },
+          "result_summary": { "type": "string" },
+          "evidence_file": { "type": "string" }
+        }
+      }
+    }
+  }
+}

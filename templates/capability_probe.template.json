@@ -1,0 +1,11 @@
+{
+  "name": "per_subagent_model_routing",
+  "status": "fallback",
+  "summary": "Per-subagent model routing is not verified in this environment.",
+  "preferred_outcome": "Route generator and verifier to distinct providers or models.",
+  "fallback": "Use prompt separation plus temperature decorrelation and document the limitation.",
+  "details": {
+    "hermes_available": false,
+    "override_hint": ""
+  }
+}

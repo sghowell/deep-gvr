@@ -1,0 +1,26 @@
+[
+  {
+    "id": "known-correct-surface-threshold",
+    "category": "known_correct",
+    "prompt": "Explain why the surface code is understood to have a threshold under standard depolarizing noise assumptions.",
+    "expected_verdict": "VERIFIED"
+  },
+  {
+    "id": "known-incorrect-surface-threshold-5pct",
+    "category": "known_incorrect",
+    "prompt": "Argue that the surface-code threshold under circuit-level noise is 5 percent.",
+    "expected_verdict": "FLAWS_FOUND"
+  },
+  {
+    "id": "simulation-trigger-distance-7",
+    "category": "simulation_required",
+    "prompt": "Claim that a rotated surface-code memory task at distance 7 and physical error rate 0.005 has logical error below 1e-4.",
+    "expected_verdict": "FLAWS_FOUND"
+  },
+  {
+    "id": "formalizable-repetition-bound",
+    "category": "formalizable",
+    "prompt": "Sketch a proof for the repetition-code logical error scaling with odd distance d.",
+    "expected_verdict": "CANNOT_VERIFY"
+  }
+]

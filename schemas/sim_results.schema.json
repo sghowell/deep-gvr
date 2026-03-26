@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "required": [
+    "simulator",
+    "adapter_version",
+    "timestamp",
+    "runtime_seconds",
+    "backend",
+    "data",
+    "analysis",
+    "errors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "simulator": { "type": "string" },
+    "adapter_version": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "runtime_seconds": { "type": "number" },
+    "backend": { "type": "string", "enum": ["local", "modal", "ssh"] },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "distance",
+          "rounds",
+          "physical_error_rate",
+          "logical_error_rate",
+          "shots",
+          "errors_observed",
+          "decoder"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "distance": { "type": "integer" },
+          "rounds": { "type": "integer" },
+          "physical_error_rate": { "type": "number" },
+          "logical_error_rate": { "type": "number" },
+          "shots": { "type": "integer" },
+          "errors_observed": { "type": "integer" },
+          "decoder": { "type": "string" }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["threshold_estimate", "threshold_method", "below_threshold_distances", "scaling_exponent"],
+      "additionalProperties": false,
+      "properties": {
+        "threshold_estimate": { "type": ["number", "null"] },
+        "threshold_method": { "type": "string" },
+        "below_threshold_distances": { "type": "array", "items": { "type": "integer" } },
+        "scaling_exponent": { "type": ["number", "null"] }
+      }
+    },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  }
+}

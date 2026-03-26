@@ -1,0 +1,115 @@
+{
+  "type": "object",
+  "required": ["loop", "verification", "models", "evidence", "domain"],
+  "additionalProperties": false,
+  "properties": {
+    "loop": {
+      "type": "object",
+      "required": ["max_iterations", "alternative_approach", "max_alternatives"],
+      "additionalProperties": false,
+      "properties": {
+        "max_iterations": { "type": "integer" },
+        "alternative_approach": { "type": "boolean" },
+        "max_alternatives": { "type": "integer" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["tier1", "tier2", "tier3"],
+      "additionalProperties": false,
+      "properties": {
+        "tier1": {
+          "type": "object",
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "tier2": {
+          "type": "object",
+          "required": ["enabled", "default_simulator", "default_backend", "timeout_seconds", "ssh"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "default_simulator": { "type": "string" },
+            "default_backend": { "type": "string", "enum": ["local", "modal", "ssh"] },
+            "timeout_seconds": { "type": "integer" },
+            "ssh": {
+              "type": "object",
+              "required": ["host", "user", "key_path"],
+              "additionalProperties": false,
+              "properties": {
+                "host": { "type": "string" },
+                "user": { "type": "string" },
+                "key_path": { "type": "string" }
+              }
+            }
+          }
+        },
+        "tier3": {
+          "type": "object",
+          "required": ["enabled", "backend", "timeout_seconds"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "backend": { "type": "string" },
+            "timeout_seconds": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "required": ["generator", "verifier", "reviser"],
+      "additionalProperties": false,
+      "properties": {
+        "generator": {
+          "type": "object",
+          "required": ["provider", "model"],
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        },
+        "verifier": {
+          "type": "object",
+          "required": ["provider", "model"],
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        },
+        "reviser": {
+          "type": "object",
+          "required": ["provider", "model"],
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["directory", "persist_to_memory"],
+      "additionalProperties": false,
+      "properties": {
+        "directory": { "type": "string" },
+        "persist_to_memory": { "type": "boolean" }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": ["default", "context_file"],
+      "additionalProperties": false,
+      "properties": {
+        "default": { "type": "string" },
+        "context_file": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "iteration": 1,
+  "timestamp": "2026-03-26T10:30:00Z",
+  "phase": "verify",
+  "input_summary": "Candidate solution grounded in surface-code threshold literature.",
+  "output_summary": "Verifier requested simulation before accepting the quantitative claim.",
+  "verdict": "FLAWS_FOUND",
+  "tiers_applied": [1, 2],
+  "flaws": [
+    "The quantitative claim is underspecified."
+  ],
+  "simulation_results": null,
+  "formal_verification_results": null,
+  "model_used": "deepseek-r1",
+  "provider": "openrouter",
+  "tokens_in": 4500,
+  "tokens_out": 3200,
+  "duration_seconds": 42.5,
+  "artifacts": [
+    "sessions/session_abc123/artifacts/spec.json"
+  ]
+}

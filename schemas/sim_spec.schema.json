@@ -1,0 +1,41 @@
+{
+  "type": "object",
+  "required": ["simulator", "task", "resources"],
+  "additionalProperties": false,
+  "properties": {
+    "simulator": { "type": "string" },
+    "task": {
+      "type": "object",
+      "required": [
+        "code",
+        "task_type",
+        "distance",
+        "rounds_per_distance",
+        "noise_model",
+        "error_rates",
+        "decoder",
+        "shots_per_point"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" },
+        "task_type": { "type": "string" },
+        "distance": { "type": "array", "minItems": 1, "items": { "type": "integer" } },
+        "rounds_per_distance": { "type": "string" },
+        "noise_model": { "type": "string" },
+        "error_rates": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+        "decoder": { "type": "string" },
+        "shots_per_point": { "type": "integer" }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": ["timeout_seconds", "max_parallel"],
+      "additionalProperties": false,
+      "properties": {
+        "timeout_seconds": { "type": "integer" },
+        "max_parallel": { "type": "integer" }
+      }
+    }
+  }
+}

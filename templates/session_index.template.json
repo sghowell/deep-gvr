@@ -1,0 +1,15 @@
+{
+  "sessions": {
+    "session_abc123": {
+      "problem": "Estimate the threshold behavior of a rotated surface-code memory experiment under depolarizing noise.",
+      "domain": "qec",
+      "started": "2026-03-26T10:00:00Z",
+      "last_updated": "2026-03-26T10:45:00Z",
+      "status": "in_progress",
+      "iterations": 1,
+      "final_verdict": "FLAWS_FOUND",
+      "result_summary": "Initial candidate requires empirical verification.",
+      "evidence_file": "sessions/session_abc123.jsonl"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "hypothesis": "A rotated surface-code memory experiment with distance 7 can achieve a logical error rate below 1e-4 at physical depolarizing error rate 0.005 under the stated assumptions.",
+  "approach": "Ground the candidate in known surface-code threshold results and propose a Stim-based verification loop for a rotated memory experiment.",
+  "technical_details": [
+    "Use a rotated surface-code memory task with distances 3, 5, and 7 to establish the trend.",
+    "Assume circuit-level depolarizing noise and minimum-weight perfect matching decoding.",
+    "Compare observed logical error rates against the hypothesized target at distance 7."
+  ],
+  "expected_results": [
+    "Logical error should decrease with increasing distance below threshold.",
+    "Distance-7 logical error rate should remain below the 1e-4 target at p=0.005 if the hypothesis is sound."
+  ],
+  "assumptions": [
+    "Noise is well-approximated by an independent depolarizing model.",
+    "Decoder implementation matches the circuit assumptions."
+  ],
+  "limitations": [
+    "The candidate does not address biased noise or photon-loss models.",
+    "The result is specific to the stated decoder and task."
+  ],
+  "references": [
+    "Fowler et al. 2012",
+    "Dennis et al. 2002"
+  ],
+  "revision_notes": []
+}

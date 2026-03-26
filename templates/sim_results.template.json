@@ -1,0 +1,17 @@
+{
+  "simulator": "stim",
+  "adapter_version": "0.1.0",
+  "timestamp": "2026-03-26T10:30:00Z",
+  "runtime_seconds": 0.0,
+  "backend": "local",
+  "data": [],
+  "analysis": {
+    "threshold_estimate": null,
+    "threshold_method": "not_computed",
+    "below_threshold_distances": [],
+    "scaling_exponent": null
+  },
+  "errors": [
+    "Stim adapter scaffold is present but not implemented."
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "required": [
+    "iteration",
+    "timestamp",
+    "phase",
+    "input_summary",
+    "output_summary",
+    "verdict",
+    "tiers_applied",
+    "flaws",
+    "simulation_results",
+    "formal_verification_results",
+    "model_used",
+    "provider",
+    "tokens_in",
+    "tokens_out",
+    "duration_seconds",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "iteration": { "type": "integer" },
+    "timestamp": { "type": "string" },
+    "phase": { "type": "string" },
+    "input_summary": { "type": "string" },
+    "output_summary": { "type": "string" },
+    "verdict": { "type": ["string", "null"], "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY", null] },
+    "tiers_applied": { "type": "array", "items": { "type": "integer" } },
+    "flaws": { "type": "array", "items": { "type": "string" } },
+    "simulation_results": { "type": ["object", "null"] },
+    "formal_verification_results": { "type": ["array", "null"], "items": { "type": "object" } },
+    "model_used": { "type": "string" },
+    "provider": { "type": "string" },
+    "tokens_in": { "type": "integer" },
+    "tokens_out": { "type": "integer" },
+    "duration_seconds": { "type": "number" },
+    "artifacts": { "type": "array", "items": { "type": "string" } }
+  }
+}
