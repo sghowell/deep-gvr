@@ -16,11 +16,16 @@ Start from the integration branch and work on `codex/eval-release`. Merge back l
 
 ## Progress
 
-- [ ] Release preparation has not started.
+- [x] Expanded the benchmark corpus across Tier 1, Tier 2, and Tier 3 cases.
+- [x] Added a deterministic evaluation runner plus committed baseline results.
+- [x] Replaced the install and MCP setup placeholders with usable release helpers.
+- [x] Added benchmark validation to CI and repo checks.
+- [ ] Run full branch validation, merge locally, push, confirm CI, and clean up.
 
 ## Surprises & Discoveries
 
-- None yet.
+- The release benchmark needed to use deterministic fixture agents instead of live Hermes calls so the baseline remains repeatable in CI and on contributor machines.
+- Recording the benchmark baseline as a committed artifact required schema validation and a stable, repo-relative suite path to avoid machine-specific drift.
 
 ## Decision Log
 
@@ -30,7 +35,7 @@ Start from the integration branch and work on `codex/eval-release`. Merge back l
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+Implementation is complete; merge and release confirmation steps remain.
 
 ## Context and Orientation
 
@@ -42,9 +47,10 @@ Build out the evaluation harness, record benchmark results, finalize installatio
 
 ## Concrete Steps
 
-1. Expand `eval/known_problems.json`.
-2. Add benchmark-running support and result recording.
-3. Finalize installation and release documentation.
+1. Expand `eval/known_problems.json` to cover analytical, simulation-mediated, and formal-mediation cases.
+2. Add a deterministic benchmark runner and commit the generated baseline report under `eval/results/`.
+3. Finalize `README.md`, `eval/README.md`, `scripts/install.sh`, and `scripts/setup_mcp.sh`.
+4. Add release checks for benchmark smoke, artifact validation, and executable release helpers.
 
 ## Validation and Acceptance
 
@@ -64,4 +70,4 @@ Benchmark runs should be repeatable and the release docs should remain valid aft
 
 ## Interfaces and Dependencies
 
-Primary paths: `eval/`, `README.md`, install scripts, CI, and any release notes or example outputs.
+Primary paths: `eval/`, `src/deep_gvr/evaluation.py`, benchmark/result schemas and templates, `README.md`, install/setup scripts, CI, and release validation checks.

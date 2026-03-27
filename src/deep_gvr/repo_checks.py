@@ -76,6 +76,7 @@ def run_all_checks() -> list[str]:
     messages.extend(check_workflow_docs(root))
     messages.extend(check_prompt_files(root))
     messages.extend(check_schemas_and_templates(root))
+    messages.extend(check_release_surfaces(root))
     messages.extend(check_architecture_boundaries(root))
     return messages
 
@@ -137,7 +138,9 @@ def check_schemas_and_templates(root: Path) -> list[str]:
     template_dir = root / "templates"
     schema_map = {
         "config.template.json": "config.schema.json",
+        "benchmark_suite.template.json": "benchmark_suite.schema.json",
         "candidate_solution.template.json": "candidate_solution.schema.json",
+        "eval_results.template.json": "eval_results.schema.json",
         "verification_report.template.json": "verification_report.schema.json",
         "sim_spec.template.json": "sim_spec.schema.json",
         "sim_results.template.json": "sim_results.schema.json",
@@ -153,6 +156,22 @@ def check_schemas_and_templates(root: Path) -> list[str]:
             validate(instance, schema)
         except SchemaValidationError as exc:
             errors.append(f"{template_name}: schema validation failed: {exc}")
+
+    direct_artifacts = {
+        "eval/known_problems.json": "benchmark_suite.schema.json",
+        "eval/results/baseline_results.json": "eval_results.schema.json",
+    }
+    for artifact_name, schema_name in direct_artifacts.items():
+        artifact_path = root / artifact_name
+        if not artifact_path.exists():
+            errors.append(f"{artifact_name}: required artifact is missing")
+            continue
+        schema = json.loads((schema_dir / schema_name).read_text(encoding="utf-8"))
+        instance = json.loads(artifact_path.read_text(encoding="utf-8"))
+        try:
+            validate(instance, schema)
+        except SchemaValidationError as exc:
+            errors.append(f"{artifact_name}: schema validation failed: {exc}")
     return errors
 
 
@@ -162,4 +181,20 @@ def check_architecture_boundaries(root: Path) -> list[str]:
         text = path.read_text(encoding="utf-8")
         if re.search(r"^\s*(from|import)\s+hermes\b", text, flags=re.MULTILINE):
             errors.append(f"{path.relative_to(root)}: direct Hermes imports are not allowed in readiness scaffolding")
+    return errors
+
+
+def check_release_surfaces(root: Path) -> list[str]:
+    errors: list[str] = []
+    executable_files = [
+        root / "scripts" / "install.sh",
+        root / "scripts" / "setup_mcp.sh",
+        root / "eval" / "run_eval.py",
+    ]
+    for path in executable_files:
+        if not path.exists():
+            errors.append(f"{path.relative_to(root)}: required release helper is missing")
+            continue
+        if path.stat().st_mode & 0o111 == 0:
+            errors.append(f"{path.relative_to(root)}: expected executable bit to be set")
     return errors

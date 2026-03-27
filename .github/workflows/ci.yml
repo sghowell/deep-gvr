@@ -31,3 +31,6 @@ jobs:
 
       - name: Unit tests
         run: uv run python -m unittest discover -s tests -v
+
+      - name: Benchmark smoke
+        run: uv run python eval/run_eval.py --routing-probe fallback --output /tmp/deep-gvr-eval-results.json
