@@ -11,3 +11,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [06-cross-model-routing.md](06-cross-model-routing.md)
 - [07-eval-release.md](07-eval-release.md)
 - [08-live-eval.md](08-live-eval.md)
+- [09-skill-integration.md](09-skill-integration.md)
