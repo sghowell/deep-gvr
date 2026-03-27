@@ -26,6 +26,7 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
+from .domain_context import load_domain_context
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .live_runtime import resolve_live_role_timeout_seconds, resolve_live_role_toolsets
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
@@ -676,6 +677,7 @@ def _run_live_case(
     sessions_root = output_root / "sessions"
     case_root.mkdir(parents=True, exist_ok=True)
     config = _benchmark_config(str(sessions_root), base_config=base_config)
+    domain, literature_context = load_domain_context(config)
     session_store = SessionStore(config.evidence.directory)
     tier_runner = Tier1LoopRunner(config, session_store=session_store, routing_probe=routing_probe)
     live_runner = HermesPromptRoleRunner(
@@ -696,6 +698,8 @@ def _run_live_case(
     try:
         result = tier_runner.run(
             problem=case.prompt,
+            domain=domain,
+            literature_context=literature_context,
             generator=live_runner.generator,
             verifier=live_runner.verifier,
             reviser=live_runner.reviser,
@@ -735,6 +739,8 @@ def _run_live_case(
             notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
         if verify_record.routing_temperature is not None:
             notes.append("Hermes CLI does not expose temperature overrides; prompt separation only was applied.")
+        if literature_context:
+            notes.append(f"Injected {len(literature_context)} domain context note(s) into the live run.")
         routing_mode = verify_record.routing_mode.value
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"

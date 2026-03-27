@@ -29,11 +29,22 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EvaluationTests(unittest.TestCase):
-    def _write_config(self, config_path: Path, evidence_dir: Path, *, provider: str, model: str) -> None:
+    def _write_config(
+        self,
+        config_path: Path,
+        evidence_dir: Path,
+        *,
+        provider: str = "default",
+        model: str = "",
+        context_file: str = "",
+        domain_default: str = "qec",
+    ) -> None:
         payload = DeepGvrConfig().to_dict()
         payload["evidence"]["directory"] = str(evidence_dir)
         payload["models"]["orchestrator"]["provider"] = provider
         payload["models"]["orchestrator"]["model"] = model
+        payload["domain"]["default"] = domain_default
+        payload["domain"]["context_file"] = context_file
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
@@ -196,6 +207,64 @@ class EvaluationTests(unittest.TestCase):
             self.assertIn("--toolsets", transcripts["calls"][0]["command"])
             self.assertIn("search", transcripts["calls"][0]["command"])
             self.assertNotIn("clarify", transcripts["calls"][0]["command"])
+
+    def test_live_mode_injects_shared_qec_domain_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._successful_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertTrue(any("Injected" in note for note in case.notes))
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertIn(
+                "Surface-code threshold under standard depolarizing assumptions is commonly reported around the sub-1% regime",
+                transcripts["calls"][0]["query"],
+            )
+
+    def test_live_mode_uses_custom_domain_context_file_from_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            context_file = Path(tmpdir) / "custom_context.md"
+            context_file.write_text(
+                "# Custom Context\n\n- Custom benchmark anchor for the live eval test.\n",
+                encoding="utf-8",
+            )
+            self._write_config(
+                config_path,
+                evidence_dir,
+                context_file=str(context_file),
+            )
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._successful_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertIn("Custom benchmark anchor for the live eval test.", transcripts["calls"][0]["query"])
 
     def test_live_mode_uses_configured_orchestrator_route(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

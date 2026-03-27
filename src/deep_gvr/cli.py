@@ -9,6 +9,7 @@ from typing import Any
 from uuid import uuid4
 
 from .contracts import DeepGvrConfig, ProbeStatus, SessionCheckpoint
+from .domain_context import load_domain_context
 from .evaluation import CommandExecutor, HermesPromptRoleRunner, LiveEvalConfig, benchmark_routing_probe
 from .formal import AristotleFormalVerifier, FormalVerifier
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
@@ -32,46 +33,6 @@ def _utc_now() -> datetime:
 
 def _isoformat(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def load_domain_context(
-    config: DeepGvrConfig,
-    *,
-    domain_override: str | None = None,
-) -> tuple[str, list[str]]:
-    domain = domain_override or config.domain.default
-    files: list[Path] = []
-    if config.domain.context_file:
-        files.append(Path(config.domain.context_file).expanduser())
-    else:
-        domain_files = {
-            "qec": _repo_root() / "domain" / "qec_context.md",
-            "fbqc": _repo_root() / "domain" / "fbqc_context.md",
-        }
-        if domain in domain_files:
-            files.append(domain_files[domain])
-        if domain == "qec":
-            files.append(_repo_root() / "domain" / "known_results.md")
-
-    notes: list[str] = []
-    for path in files:
-        if not path.exists():
-            raise FileNotFoundError(f"Configured domain context file {path} does not exist.")
-        notes.extend(_markdown_notes(path.read_text(encoding="utf-8")))
-    return domain, notes
-
-
-def _markdown_notes(text: str) -> list[str]:
-    notes: list[str] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if stripped.startswith(("- ", "* ")):
-            notes.append(stripped[2:].strip())
-        else:
-            notes.append(stripped)
-    return notes
 
 
 def _split_csv_flags(values: list[str]) -> list[str]:
