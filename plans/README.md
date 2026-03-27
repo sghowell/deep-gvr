@@ -25,3 +25,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [20-live-suite-stability.md](20-live-suite-stability.md)
 - [21-live-suite-hardening.md](21-live-suite-hardening.md)
 - [22-live-suite-broadening.md](22-live-suite-broadening.md)
+- [23-analytical-breadth-stability.md](23-analytical-breadth-stability.md)
