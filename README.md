@@ -91,10 +91,11 @@ The same runner now also supports live prompt-driven execution through `hermes c
 
 ```bash
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile full
 ```
 
-Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
+Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config` and uses the same repo-local route settings as `uv run deep-gvr`. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
 
 ## Reference Docs
 

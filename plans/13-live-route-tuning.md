@@ -17,16 +17,17 @@ Start from `main` and implement this slice on `codex/live-route-tuning`. Merge b
 ## Progress
 
 - [x] The new live-route-tuning plan has been added.
-- [ ] The live benchmark runner can load a runtime config file instead of always using the benchmark defaults.
-- [ ] Live eval preserves benchmark-safe overrides such as evidence directory and single-iteration behavior while honoring configured model routes.
-- [ ] Tests prove that live eval picks up configured provider/model values from the selected config path.
-- [ ] Docs explain how CLI and eval now share the same route-tuning surface.
+- [x] The live benchmark runner can load a runtime config file instead of always using the benchmark defaults.
+- [x] Live eval preserves benchmark-safe overrides such as evidence directory and single-iteration behavior while honoring configured model routes.
+- [x] Tests prove that live eval picks up configured provider/model values from the selected config path.
+- [x] Docs explain how CLI and eval now share the same route-tuning surface.
 
 ## Surprises & Discoveries
 
 - The CLI already loads `~/.hermes/deep-gvr/config.yaml`, but `eval/run_eval.py` still synthesizes a fresh `DeepGvrConfig`, which means benchmark runs do not benefit from any tuned model routing.
 - In fallback routing mode, live eval currently collapses onto the orchestrator route, so the configured `models.orchestrator` path is the main tuning lever in this environment.
 - The recent compact-prompt slice reduced query size but did not resolve generator latency, which makes route selection the next practical lever.
+- In the local route-tuned smokes, both eval and CLI transcripts showed the explicit configured route `nous/claude-opus-4-6`, but that route still timed out at 20 seconds on the generator, which points to timeout budget or provider/model choice as the remaining operator lever.
 
 ## Decision Log
 
@@ -39,7 +40,7 @@ Start from `main` and implement this slice on `codex/live-route-tuning`. Merge b
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with one route-tuning surface for both live session runs and live evaluation, so operators can choose a faster provider/model path in config and immediately exercise it through the benchmark runner.
+This slice leaves the repo with one route-tuning surface for both live session runs and live evaluation. `eval/run_eval.py --config ...` now honors the same routing config as the CLI while still isolating benchmark artifacts under its live output root. In the observed local smokes, the configured route was applied correctly in transcripts and reports, but the chosen `nous/claude-opus-4-6` path still timed out at 20 seconds, so the next lever is selecting a faster configured route or increasing timeout budget rather than further wiring work.
 
 ## Context and Orientation
 
