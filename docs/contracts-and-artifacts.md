@@ -5,6 +5,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 ## Core Contracts
 
 - `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, and domain defaults
+- `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
+- `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
 - `CandidateSolution`: generator or reviser output
 - `VerificationReport`: verifier output with tiered results
 - `SimSpec`: normalized simulation request
@@ -21,6 +23,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `templates/*.json`: sample artifacts used in tests
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
+- `eval/known_problems.json`: deterministic release benchmark corpus
+- `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_*.json`: persisted Tier 3 requests and returned formal results

@@ -18,6 +18,7 @@ The repository is intentionally structured for Codex-driven implementation. The 
 - Prompt and skill scaffolding in `prompts/` and `SKILL.md`
 - Capability probes and validation scripts in `scripts/`
 - Initial implementation backlog in `plans/`
+- Deterministic benchmark runner and recorded release baseline in `eval/`
 
 ## Intended Public Surface
 
@@ -45,12 +46,29 @@ uv sync
 uv run python scripts/check_repo.py
 uv run python scripts/run_capability_probes.py
 uv run python -m unittest discover -s tests -v
+uv run python eval/run_eval.py --routing-probe fallback --output eval/results/local_results.json
 ```
 
 If `uv` is not available yet, the local checks can also be run with a Python 3.12 interpreter and `PYTHONPATH=src`.
+
+## Installation
+
+For a local Hermes skill install, use the repo helper:
+
+```bash
+scripts/install.sh
+scripts/setup_mcp.sh --check
+```
+
+`scripts/install.sh` creates a symlink install under `~/.hermes/skills/deep-gvr` by default. Use `--copy` if you need a copied install or `--target` to choose a different skills directory.
+
+## Evaluation Baseline
+
+The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. The current committed baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
 
 ## Reference Docs
 
 - [docs/README.md](docs/README.md)
 - [docs/deep-gvr-architecture.md](docs/deep-gvr-architecture.md)
+- [eval/README.md](eval/README.md)
 - [plans/README.md](plans/README.md)
