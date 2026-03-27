@@ -41,6 +41,7 @@ When `--output` is omitted in live mode, the runner writes `report.json` into th
 - Role prompts are loaded from `prompts/` and executed through `hermes chat`.
 - Live mode uses the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you want the more verbose scaffolding in transcripts for debugging.
 - Live mode accepts `--config` and uses the same `models.*` routing settings as `uv run deep-gvr`, while still writing benchmark artifacts to the selected live output root instead of the config's evidence directory.
+- Live mode also injects the same domain context loader as `uv run deep-gvr`, so the generator receives the repo-local QEC anchor notes instead of an empty `literature_context`.
 - When `--toolsets` is omitted, live generator/verifier/reviser calls use a constrained default Hermes tool surface so they do not inherit the full interactive CLI tool policy by default.
 - Before expecting live Tier 3 cases to run through Aristotle, use `bash scripts/setup_mcp.sh --install --check` to activate and verify the local Hermes MCP config.
 - When `~/.hermes/config.yaml` defines `mcp_servers.aristotle`, live Tier 3 requests are also dispatched through `hermes chat` plus the configured Aristotle MCP tools.

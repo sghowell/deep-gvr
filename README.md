@@ -97,7 +97,7 @@ uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.ya
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile full
 ```
 
-Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config` and uses the same repo-local route settings as `uv run deep-gvr`. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
+Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config`, uses the same repo-local route settings as `uv run deep-gvr`, and injects the same domain context files that the CLI uses. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
 Live eval also uses the constrained default live runtime policy when `--toolsets` is omitted, so generator/verifier/reviser runs do not inherit the full Hermes CLI tool surface by default.
 
 ## Reference Docs
