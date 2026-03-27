@@ -20,3 +20,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [15-live-domain-context.md](15-live-domain-context.md)
 - [16-live-verifier-throughput.md](16-live-verifier-throughput.md)
 - [17-live-route-selection.md](17-live-route-selection.md)
+- [18-live-content-accuracy.md](18-live-content-accuracy.md)
