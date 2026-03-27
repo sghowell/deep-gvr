@@ -29,6 +29,8 @@ from .probes import run_capability_probes
 from .tier1 import (
     GenerationRequest,
     RevisionRequest,
+    SimulationRequest,
+    Simulator,
     SessionPaths,
     SessionStore,
     Tier1LoopRunner,
@@ -63,6 +65,8 @@ __all__ = [
     "Tier3ClaimResult",
     "GenerationRequest",
     "RevisionRequest",
+    "SimulationRequest",
+    "Simulator",
     "VerificationRequest",
     "VerificationHistoryEntry",
     "VerificationReport",

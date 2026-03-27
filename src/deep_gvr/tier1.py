@@ -9,11 +9,17 @@ from uuid import uuid4
 
 from .contracts import (
     CandidateSolution,
+    Backend,
     DeepGvrConfig,
     EvidenceRecord,
+    ModelSelection,
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
+    SimAnalysis,
+    SimResults,
+    SimSpec,
+    Tier2Report,
     VerificationHistoryEntry,
     VerificationReport,
     VerificationVerdict,
@@ -49,6 +55,7 @@ class VerificationRequest:
     session_id: str
     iteration: int
     candidate: CandidateSolution
+    simulation_results: SimResults | None = None
 
 
 @dataclass(slots=True)
@@ -71,6 +78,19 @@ class Verifier(Protocol):
 
 class Reviser(Protocol):
     def __call__(self, request: RevisionRequest) -> CandidateSolution:
+        ...
+
+
+@dataclass(slots=True)
+class SimulationRequest:
+    session_id: str
+    iteration: int
+    sim_spec: SimSpec
+    backend: Backend
+
+
+class Simulator(Protocol):
+    def __call__(self, request: SimulationRequest) -> SimResults:
         ...
 
 
@@ -168,6 +188,11 @@ class SessionStore:
         with evidence_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record.to_dict()) + "\n")
 
+    def write_artifact_json(self, session_id: str, filename: str, payload: dict[str, object]) -> str:
+        artifact_path = self.session_paths(session_id).artifacts_dir / filename
+        self._write_json(artifact_path, payload)
+        return _relative_to_root(self.root_directory, artifact_path)
+
     def read_evidence(self, session_id: str) -> list[EvidenceRecord]:
         evidence_path = self.session_paths(session_id).evidence_log
         if not evidence_path.exists():
@@ -222,6 +247,7 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
+        simulator: Simulator | None = None,
         literature_context: list[str] | tuple[str, ...] = (),
         domain: str | None = None,
         session_id: str | None = None,
@@ -233,7 +259,7 @@ class Tier1LoopRunner:
             literature_context=list(literature_context),
             session_id=session_id,
         )
-        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser)
+        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser, simulator=simulator)
 
     def resume(
         self,
@@ -242,9 +268,10 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
+        simulator: Simulator | None = None,
     ) -> Tier1RunResult:
         checkpoint = self.session_store.load_checkpoint(session_id)
-        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser)
+        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser, simulator=simulator)
 
     def _drive(
         self,
@@ -253,13 +280,14 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
+        simulator: Simulator | None,
     ) -> Tier1RunResult:
         while checkpoint.next_phase != "complete":
             if checkpoint.next_phase == "generate":
                 checkpoint = self._generate(checkpoint, generator)
                 continue
             if checkpoint.next_phase == "verify":
-                checkpoint = self._verify(checkpoint, verifier)
+                checkpoint = self._verify(checkpoint, verifier, simulator)
                 continue
             if checkpoint.next_phase == "revise":
                 checkpoint = self._revise(checkpoint, reviser)
@@ -307,7 +335,7 @@ class Tier1LoopRunner:
         self.session_store.save_checkpoint(checkpoint)
         return checkpoint
 
-    def _verify(self, checkpoint: SessionCheckpoint, verifier: Verifier) -> SessionCheckpoint:
+    def _verify(self, checkpoint: SessionCheckpoint, verifier: Verifier, simulator: Simulator | None) -> SessionCheckpoint:
         candidate = self._require_candidate(checkpoint)
         request = VerificationRequest(
             session_id=checkpoint.session_id,
@@ -315,6 +343,18 @@ class Tier1LoopRunner:
             candidate=candidate,
         )
         report = verifier(request)
+        simulation_results = None
+        if self._should_run_simulation(report):
+            simulation_results = self._simulate(checkpoint, report, simulator)
+            request = VerificationRequest(
+                session_id=checkpoint.session_id,
+                iteration=checkpoint.current_iteration,
+                candidate=candidate,
+                simulation_results=simulation_results,
+            )
+            report = verifier(request)
+            self._attach_simulation_results(report, simulation_results)
+
         checkpoint.verification_report = report
         checkpoint.verdict_history.append(
             VerificationHistoryEntry(
@@ -335,17 +375,20 @@ class Tier1LoopRunner:
                 flaws=list(report.flaws),
                 input_summary=f"Hypothesis: {candidate.hypothesis}",
                 output_summary=self._verification_summary(report),
+                simulation_results=simulation_results,
             ),
         )
 
         if report.verdict is VerificationVerdict.VERIFIED:
             checkpoint.status = "completed"
-            checkpoint.result_summary = f"Tier 1 verification passed on candidate {checkpoint.current_iteration}."
+            checkpoint.result_summary = (
+                f"Verification passed on candidate {checkpoint.current_iteration}."
+            )
             checkpoint.next_phase = "complete"
         elif report.verdict is VerificationVerdict.CANNOT_VERIFY:
             checkpoint.status = "cannot_verify"
             checkpoint.result_summary = (
-                "Tier 1 verification could not complete: "
+                "Verification could not complete: "
                 f"{report.cannot_verify_reason or 'no blocker summary was provided.'}"
             )
             checkpoint.next_phase = "complete"
@@ -405,8 +448,10 @@ class Tier1LoopRunner:
         flaws: list[str],
         input_summary: str,
         output_summary: str,
+        simulation_results: SimResults | None = None,
+        model_selection: ModelSelection | None = None,
     ) -> EvidenceRecord:
-        model_selection = self._model_for_phase(phase)
+        selection = model_selection or self._model_for_phase(phase)
         return EvidenceRecord(
             iteration=checkpoint.current_iteration,
             timestamp=checkpoint.last_updated,
@@ -416,10 +461,10 @@ class Tier1LoopRunner:
             verdict=verdict,
             tiers_applied=tiers_applied,
             flaws=flaws,
-            simulation_results=None,
+            simulation_results=simulation_results.to_dict() if simulation_results is not None else None,
             formal_verification_results=None,
-            model_used=model_selection.model,
-            provider=model_selection.provider,
+            model_used=selection.model,
+            provider=selection.provider,
             tokens_in=0,
             tokens_out=0,
             duration_seconds=0.0,
@@ -431,11 +476,15 @@ class Tier1LoopRunner:
             return self.config.models.generator
         if phase == "verify":
             return self.config.models.verifier
+        if phase == "simulate":
+            return ModelSelection(provider="adapter", model=self.config.verification.tier2.default_simulator)
         return self.config.models.reviser
 
     def _tiers_applied(self, report: VerificationReport) -> list[int]:
         tiers = [1]
-        if report.tier2 is not None:
+        if report.tier2 is not None and (
+            report.tier2.simulation_requested or report.tier2.results is not None or report.tier2.simulation_spec is not None
+        ):
             tiers.append(2)
         if report.tier3:
             tiers.append(3)
@@ -444,6 +493,9 @@ class Tier1LoopRunner:
     def _verification_summary(self, report: VerificationReport) -> str:
         if report.verdict is VerificationVerdict.VERIFIED:
             caveat_text = "; ".join(report.caveats) or "No caveats recorded."
+            if report.tier2 and report.tier2.results is not None:
+                interpretation = report.tier2.interpretation or "Simulation results were incorporated."
+                return f"Verified with Tier 2 evidence. {interpretation} Caveats: {caveat_text}"
             return f"Verified. Caveats: {caveat_text}"
         if report.verdict is VerificationVerdict.CANNOT_VERIFY:
             return f"Cannot verify. Blocker: {report.cannot_verify_reason or 'unspecified'}"
@@ -462,5 +514,120 @@ class Tier1LoopRunner:
             raise ValueError("A verification report is required before revision.")
         return checkpoint.verification_report
 
+    def _should_run_simulation(self, report: VerificationReport) -> bool:
+        return bool(
+            self.config.verification.tier2.enabled
+            and report.tier2 is not None
+            and report.tier2.simulation_requested
+            and report.tier2.simulation_spec is not None
+            and report.tier2.results is None
+        )
+
+    def _simulate(
+        self,
+        checkpoint: SessionCheckpoint,
+        report: VerificationReport,
+        simulator: Simulator | None,
+    ) -> SimResults:
+        tier2 = report.tier2
+        if tier2 is None or tier2.simulation_spec is None:
+            raise ValueError("Simulation mediation requires a Tier 2 spec.")
+
+        sim_spec = SimSpec.from_dict(tier2.simulation_spec)
+        request = SimulationRequest(
+            session_id=checkpoint.session_id,
+            iteration=checkpoint.current_iteration,
+            sim_spec=sim_spec,
+            backend=self.config.verification.tier2.default_backend,
+        )
+        sim_results = simulator(request) if simulator is not None else self._run_simulation_request(request)
+
+        spec_artifact = self.session_store.write_artifact_json(
+            checkpoint.session_id,
+            f"iteration_{checkpoint.current_iteration}_simulation_spec.json",
+            sim_spec.to_dict(),
+        )
+        results_artifact = self.session_store.write_artifact_json(
+            checkpoint.session_id,
+            f"iteration_{checkpoint.current_iteration}_simulation_results.json",
+            sim_results.to_dict(),
+        )
+        checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, [spec_artifact, results_artifact])
+        checkpoint.last_updated = self._timestamp()
+        checkpoint.result_summary = f"Completed Tier 2 simulation for candidate {checkpoint.current_iteration}."
+
+        self.session_store.append_evidence(
+            checkpoint.session_id,
+            self._evidence_record(
+                checkpoint=checkpoint,
+                phase="simulate",
+                verdict=None,
+                tiers_applied=[2],
+                flaws=[],
+                input_summary=f"Simulation requested: {tier2.reason}",
+                output_summary=self._simulation_summary(sim_results),
+                simulation_results=sim_results,
+            ),
+        )
+        self.session_store.save_checkpoint(checkpoint)
+        return sim_results
+
+    def _run_simulation_request(self, request: SimulationRequest) -> SimResults:
+        if request.sim_spec.simulator != self.config.verification.tier2.default_simulator:
+            return SimResults(
+                simulator=request.sim_spec.simulator,
+                adapter_version="0.1.0",
+                timestamp=self._timestamp(),
+                runtime_seconds=0.0,
+                backend=request.backend,
+                data=[],
+                analysis=_empty_sim_analysis("adapter_not_available"),
+                errors=[
+                    f"Simulator {request.sim_spec.simulator!r} is not configured in this environment.",
+                ],
+            )
+
+        from adapters.stim_adapter import StimAdapter
+
+        return StimAdapter().run(request.sim_spec, request.backend)
+
+    def _attach_simulation_results(self, report: VerificationReport, sim_results: SimResults) -> None:
+        if report.tier2 is None:
+            report.tier2 = Tier2Report(
+                simulation_requested=True,
+                reason="Simulation was executed by the orchestrator.",
+                simulation_spec=None,
+                results=sim_results.to_dict(),
+                interpretation=None,
+            )
+            return
+
+        if report.tier2.results is None:
+            report.tier2.results = sim_results.to_dict()
+
+    def _simulation_summary(self, sim_results: SimResults) -> str:
+        if sim_results.errors:
+            return f"Simulation returned errors: {'; '.join(sim_results.errors)}"
+        return (
+            f"Simulation produced {len(sim_results.data)} data point(s) via {sim_results.simulator} on "
+            f"{sim_results.backend.value}; threshold method={sim_results.analysis.threshold_method}."
+        )
+
+    def _merge_artifacts(self, current: list[str], additions: list[str]) -> list[str]:
+        merged = list(current)
+        for artifact in additions:
+            if artifact not in merged:
+                merged.append(artifact)
+        return merged
+
     def _timestamp(self) -> str:
         return _isoformat(self.clock())
+
+
+def _empty_sim_analysis(method: str) -> SimAnalysis:
+    return SimAnalysis(
+        threshold_estimate=None,
+        threshold_method=method,
+        below_threshold_distances=[],
+        scaling_exponent=None,
+    )

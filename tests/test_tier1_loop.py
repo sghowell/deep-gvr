@@ -10,7 +10,11 @@ from tests import _path_setup  # noqa: F401
 from deep_gvr.contracts import (
     AnalyticalCheck,
     AnalyticalStatus,
+    Backend,
     DeepGvrConfig,
+    SimAnalysis,
+    SimResults,
+    Tier2Report,
     Tier1Report,
     VerificationReport,
     VerificationVerdict,
@@ -19,6 +23,7 @@ from deep_gvr.tier1 import (
     GenerationRequest,
     RevisionRequest,
     SessionStore,
+    SimulationRequest,
     Tier1LoopRunner,
     VerificationRequest,
 )
@@ -281,6 +286,134 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual(len(result.checkpoint.verdict_history), 2)
             evidence = runner.session_store.read_evidence("session_budget_exhausted")
             self.assertEqual([record.phase for record in evidence], ["generate", "verify", "revise", "verify"])
+
+    def test_simulation_request_runs_mediator_and_reverifies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir))
+            verify_calls = 0
+            simulator_calls = 0
+
+            def generator(request: GenerationRequest):
+                return _candidate("Quantitative hypothesis")
+
+            def verifier(request: VerificationRequest):
+                nonlocal verify_calls
+                verify_calls += 1
+                if request.simulation_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="Quantitative claim needs empirical support.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Empirical evidence is required."],
+                            caveats=[],
+                        ),
+                        tier2=Tier2Report(
+                            simulation_requested=True,
+                            reason="The claim predicts a logical error rate.",
+                            simulation_spec={
+                                "simulator": "stim",
+                                "task": {
+                                    "code": "surface_code",
+                                    "task_type": "rotated_memory_z",
+                                    "distance": [3, 5],
+                                    "rounds_per_distance": "2d",
+                                    "noise_model": "depolarizing",
+                                    "error_rates": [0.003],
+                                    "decoder": "pymatching",
+                                    "shots_per_point": 100,
+                                },
+                                "resources": {
+                                    "timeout_seconds": 120,
+                                    "max_parallel": 1,
+                                },
+                            },
+                            results=None,
+                            interpretation=None,
+                        ),
+                        tier3=[],
+                        flaws=["Empirical evidence is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                self.assertIsNotNone(request.simulation_results)
+                return VerificationReport(
+                    verdict=VerificationVerdict.VERIFIED,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.PASS,
+                                detail="The empirical follow-up addressed the open claim.",
+                            )
+                        ],
+                        overall=VerificationVerdict.VERIFIED,
+                        flaws=[],
+                        caveats=[],
+                    ),
+                    tier2=Tier2Report(
+                        simulation_requested=True,
+                        reason="The claim predicts a logical error rate.",
+                        simulation_spec=None,
+                        results=request.simulation_results.to_dict(),
+                        interpretation="The simulated trend supports the candidate.",
+                    ),
+                    tier3=[],
+                    flaws=[],
+                    caveats=[],
+                    cannot_verify_reason=None,
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            def simulator(request: SimulationRequest):
+                nonlocal simulator_calls
+                simulator_calls += 1
+                self.assertEqual(request.backend, Backend.LOCAL)
+                return SimResults(
+                    simulator="stim",
+                    adapter_version="0.1.0",
+                    timestamp="2026-03-26T11:00:00Z",
+                    runtime_seconds=0.2,
+                    backend=Backend.LOCAL,
+                    data=[],
+                    analysis=SimAnalysis(
+                        threshold_estimate=0.003,
+                        threshold_method="monotonic_distance_improvement",
+                        below_threshold_distances=[5],
+                        scaling_exponent=None,
+                    ),
+                    errors=[],
+                )
+
+            result = runner.run(
+                problem="Check Tier 2 mediation",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                simulator=simulator,
+                session_id="session_tier2_verify",
+            )
+
+            self.assertEqual(result.final_report.verdict, VerificationVerdict.VERIFIED)
+            self.assertEqual(verify_calls, 2)
+            self.assertEqual(simulator_calls, 1)
+            self.assertIsNotNone(result.final_report.tier2)
+            self.assertIsNotNone(result.final_report.tier2.results)
+
+            checkpoint = runner.session_store.load_checkpoint("session_tier2_verify")
+            self.assertGreaterEqual(len(checkpoint.artifacts), 2)
+            evidence = runner.session_store.read_evidence("session_tier2_verify")
+            self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
+            self.assertIsNotNone(evidence[1].simulation_results)
 
 
 if __name__ == "__main__":
