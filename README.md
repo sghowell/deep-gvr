@@ -97,13 +97,17 @@ uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id kn
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile full
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 3
 ```
 
 Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config`, uses the same repo-local route settings as `uv run deep-gvr`, and injects the same domain context files that the CLI uses. Compact live verification also uses a dedicated compact verifier prompt/path to keep the verifier request smaller on the real Hermes route. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
+When `--repeat` is greater than `1`, the runner writes per-run reports under `<output-root>/runs/run-###/report.json` and an aggregate `consistency_report.json` at the root so stability can be measured directly instead of inferred from ad hoc reruns.
 Live eval also uses the constrained default live runtime policy when `--toolsets` is omitted, so generator/verifier/reviser runs do not inherit the full Hermes CLI tool surface by default.
 When `models.generator.model`, `models.verifier.model`, or `models.reviser.model` are set concretely in the runtime config, live CLI/eval runs now prefer those top-level role routes and fall back to the shared live route if Hermes returns a route-configuration error for the explicit provider/model path.
 The shared QEC domain anchors and generator prompt now also push live depolarizing-threshold answers to keep the main claim on the circuit-level surface-code regime, reserve `~10.9%` for the Nishimori-point bit-flip result, and prefer Fowler/Stephens for the sub-1% MWPM range.
 Live Tier 2 mediation now normalizes common verifier noise-model aliases such as `uniform_depolarizing` or `iid_depolarizing` to the canonical Stim value `depolarizing`, caps live requests at `shots_per_point <= 100000` and `max_parallel <= 4`, and gives the verifier a longer follow-up timeout floor once Tier 2 or Tier 3 evidence is attached.
+Live benchmark case results now record whether the strict verdict matched, whether an accepted refutation counted as success, whether the expected tiers were exercised, and an explicit `outcome` such as `direct_match`, `accepted_refutation`, `tier_mismatch`, `verdict_mismatch`, or `execution_error`.
+For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior and do not yet carry `simulation_results`, the live verifier guidance now defaults to requesting Tier 2 instead of letting Tier 1 plausibility settle the case.
 For live known-incorrect benchmark cases, the runner now also treats a verified direct refutation as success instead of requiring the generator to role-play a false claim.
 
 ## Reference Docs

@@ -46,6 +46,7 @@
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - The live benchmark runner supports named subsets such as `live-expansion` for representative multi-case sweeps
+- The live benchmark runner also supports repeated subset sweeps with a top-level `consistency_report.json` plus per-run reports under `runs/run-###/`
 - Live benchmark runs share the same repo-local domain-context loader as the CLI
 - The shared QEC domain-context loader now encodes threshold-regime and citation-scope guardrails for live depolarizing-threshold answers
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
@@ -54,5 +55,7 @@
 - Live generator/verifier/reviser calls default to a constrained Hermes tool surface instead of inheriting the full interactive CLI tool policy
 - The live role timeout is role-aware: verifier gets a higher floor, evidence-bearing verifier rechecks get a larger follow-up floor, and Tier 3 transport keeps its own proof timeout
 - Live Tier 2 mediation normalizes common verifier aliases to the canonical Stim `depolarizing` noise-model string and clamps live requests to a safe execution budget
+- Live benchmark case reports now separate `direct_match`, `accepted_refutation`, `tier_mismatch`, `verdict_mismatch`, and `execution_error` outcomes instead of burying those distinctions in notes
+- For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without `simulation_results`, the live verifier guidance now defaults to Tier 2 rather than letting Tier 1 plausibility settle the case
 - Live benchmark scoring accepts a verified direct refutation as success for known-incorrect cases
 - Local, Modal, and SSH backends represented from the start through the adapter interface
