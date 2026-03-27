@@ -17,9 +17,9 @@ Start from `main` and implement this slice on `codex/analytical-breadth-stabilit
 ## Progress
 
 - [x] Add the new plan and index it from `plans/README.md`.
-- [ ] Tighten generator and verifier guidance so literature-grounded threshold explanations and pure counting/scaling answers stay on Tier 1 unless they introduce a genuinely new empirical or formal claim.
-- [ ] Reduce avoidable compact-verifier overhead for analytical cases and, if needed, modestly raise the initial verifier timeout floor.
-- [ ] Run targeted tests, repo-wide validation, and repeated `live-analytical-breadth` checks, then record the resulting artifact roots and final stability state here.
+- [x] Tighten generator and verifier guidance so literature-grounded threshold explanations and pure counting/scaling answers stay on Tier 1 unless they introduce a genuinely new empirical or formal claim.
+- [x] Reduce avoidable compact-verifier overhead for analytical cases and modestly raise the initial verifier timeout floor.
+- [x] Run targeted tests, repo-wide validation, and repeated `live-analytical-breadth` checks, then record the resulting artifact roots and final stability state here.
 
 ## Surprises & Discoveries
 
@@ -27,6 +27,8 @@ Start from `main` and implement this slice on `codex/analytical-breadth-stabilit
 - `known-correct-surface-threshold` finished `VERIFIED`, but the verifier still routed it through Tier 2 because the candidate restated generic below-threshold suppression in a way that looked like a fresh simulation target.
 - `known-correct-planar-qubits` timed out in the verifier at 120 seconds even though the compact verifier query was only about 6.1k characters and the candidate was already concise, so prompt bulk is part of the problem but not the whole story.
 - The current compact verifier prompt duplicates a large fraction of the discipline already restated in the compact query builder, so shortening the prompt file itself is a low-risk way to reduce live verifier payload size without changing the overall contract surface.
+- Rebuilding the old failing analytical verifier inputs against the new compact prompt path cut about 875 characters from both the `known-correct-surface-threshold` and `known-correct-planar-qubits` verifier queries.
+- The remaining repeated-run blocker is now external to the repo logic: the real Hermes environment is returning a plain-text `AuthenticationError` for `nous/claude-opus-4-6` even when the live runner passes explicit `--provider openrouter --model ...` flags, so the broader analytical sweep now fails uniformly as a structured live route configuration error instead of the earlier mix of tier mismatch and timeout.
 
 ## Decision Log
 
@@ -37,7 +39,11 @@ Start from `main` and implement this slice on `codex/analytical-breadth-stabilit
 
 ## Outcomes & Retrospective
 
-- Pending implementation and live reruns.
+- The threshold over-escalation is fixed on the real route. The targeted live rerun at `/tmp/deep-gvr-analytical-threshold-stability/report.json` finished `1/1` passed with `known-correct-surface-threshold` staying on Tier 1.
+- The compact analytical verifier path is materially smaller now. Rebuilding the old failing verifier inputs against the current prompt/profile path cut about 875 characters from both the `known-correct-surface-threshold` and `known-correct-planar-qubits` verifier queries.
+- Provider-only live route selections are now treated as explicit top-level route intent, and Hermes plain-text auth/401 failures are now classified as live route configuration errors instead of bubbling up as JSON parse failures.
+- The repeated analytical breadth sweep did not stabilize in this local environment. The consistency report at `/tmp/deep-gvr-live-analytical-breadth-stability/consistency_report.json` finished `0/10` case-runs passed, but every failure is the same `execution_error`: Hermes rejected the active `nous/claude-opus-4-6` provider path during the generator call.
+- That means the repo-side analytical-breadth issues are no longer mixed. The remaining blocker is operational: the local Hermes provider credential or default-route setup must be fixed before `live-analytical-breadth` can become a reliable repeated gate here.
 
 ## Context and Orientation
 
@@ -78,6 +84,7 @@ uv run python -m unittest tests.test_evaluation -v
 ```bash
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile compact --command-timeout-seconds 120 --output-root /tmp/deep-gvr-analytical-threshold-stability
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-planar-qubits --prompt-profile compact --command-timeout-seconds 120 --output-root /tmp/deep-gvr-analytical-planar-stability
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-planar-qubits --prompt-profile compact --command-timeout-seconds 120 --output-root /tmp/deep-gvr-analytical-planar-stability-2
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-analytical-breadth --prompt-profile compact --command-timeout-seconds 120 --repeat 2 --output-root /tmp/deep-gvr-live-analytical-breadth-stability
 ```
 
@@ -103,6 +110,10 @@ Acceptance evidence:
 - The verifier keeps literature-threshold explanations and pure counting/scaling claims at Tier 1 unless the candidate adds a genuinely new empirical or formal obligation.
 - The compact analytical verifier path is smaller and/or more tolerant of live route latency than before.
 - A repeated `live-analytical-breadth` run either passes cleanly or narrows the remaining instability to one explicit cause with recorded artifacts.
+- Final recorded artifact set:
+  - Tier 1 threshold rerun without over-escalation: `/tmp/deep-gvr-analytical-threshold-stability/report.json`
+  - Provider-auth execution error after the route-fallback hardening: `/tmp/deep-gvr-analytical-planar-stability-2/report.json`
+  - Repeated analytical breadth narrowed to one external auth failure mode: `/tmp/deep-gvr-live-analytical-breadth-stability/consistency_report.json`
 
 ## Merge, Push, and Cleanup
 

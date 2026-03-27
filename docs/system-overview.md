@@ -52,7 +52,9 @@
 - The shared QEC domain-context loader now encodes threshold-regime and citation-scope guardrails for live depolarizing-threshold answers
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
 - Compact live verification uses a dedicated verifier prompt and tighter payload shape to reduce verifier-request bulk on the real Hermes route
+- Literature-grounded threshold explanations and pure asymptotic-counting claims now stay on Tier 1 by default unless the candidate adds a genuinely new empirical or formal obligation
 - Live CLI/eval can prefer explicit top-level role routes from config and fall back to the shared live route when a provider/model path is invalid
+- A non-default provider with an empty model now also counts as explicit top-level live route intent, so repo-local provider defaults such as `openrouter` are exercised in live runs
 - Live generator/verifier/reviser calls default to a constrained Hermes tool surface instead of inheriting the full interactive CLI tool policy
 - The live role timeout is role-aware: verifier gets a higher floor, evidence-bearing verifier rechecks get a larger follow-up floor, and Tier 3 transport keeps its own proof timeout
 - Live Tier 2 mediation normalizes common verifier aliases to the canonical Stim `depolarizing` noise-model string and clamps live requests to a safe execution budget
@@ -62,4 +64,6 @@
 - Live benchmark scoring now also accepts simulation-backed direct refutations when they clearly reject the benchmark claim with the expected tiers
 - Known-incorrect accepted-refutation scoring now recognizes conservative explicit 5% threshold refutations framed in sub-1% or `~0.6-0.8%` literature terms
 - Compact theorem/asymptotic proof claims now stay on the Tier 3 path, and failed Tier 3 proof results force `CANNOT_VERIFY` on the core theorem claim
+- Plain-text provider auth/401 failures from Hermes are now treated as live route configuration errors instead of JSON parse failures
+- Plan 23 narrowed the remaining analytical-breadth instability to an external Hermes provider-auth failure on this machine, rather than a repo-local tier-routing or prompt-discipline bug
 - Local, Modal, and SSH backends represented from the start through the adapter interface

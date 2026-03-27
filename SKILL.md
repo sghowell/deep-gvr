@@ -55,11 +55,14 @@ When the user invokes `/deep-gvr`:
 - `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - Live eval now reads the same repo-local runtime config as the CLI when `--config` is provided, so route tuning should happen in one config file instead of through benchmark-only overrides.
+- Live CLI/eval now treat a non-default provider selection as explicit top-level route intent even when the model field is empty, so repo-local provider defaults such as `openrouter` are actually exercised.
 - Live eval now also injects the same repo-local domain context files as the CLI, so benchmark runs no longer start from an empty `literature_context`.
 - Live Tier 2 mediation now normalizes common verifier noise-model aliases to the canonical Stim value `depolarizing` and clamps live requests to the repo-local safe budget of `shots_per_point <= 100000` and `max_parallel <= 4`.
 - The shared QEC domain context now explicitly separates code-capacity, bit-flip, and circuit-level threshold regimes so live depolarizing-threshold answers stay scoped to the right literature.
 - Compact live verification now uses a dedicated verifier prompt/path so the adversarial verifier request is materially smaller than the generic compact prompt shape.
+- Literature-grounded threshold explanations and pure asymptotic-counting claims now stay on Tier 1 by default unless the candidate adds a genuinely new empirical or formal obligation.
 - Live CLI/eval now treat concrete role-model pins as explicit top-level route intent and will fall back to the shared live route when Hermes rejects that provider/model path as a route-configuration error.
+- Plain-text provider auth/401 failures from Hermes are now treated as live route configuration errors instead of bubbling up as JSON parse failures.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
 - Hermes-backed live execution supports `compact` and `full` prompt profiles. `compact` is the default runtime path; `full` is the debugging path when prompt scaffolding needs inspection.
@@ -72,5 +75,6 @@ When the user invokes `/deep-gvr`:
 - Live case results now expose `strict_verdict_match`, `verdict_accepted`, `tiers_matched_expected`, `accepted_refutation`, and an explicit `outcome`, and repeated eval runs write a `consistency_report.json` so stability is measured structurally instead of from free-form notes.
 - For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without attached `simulation_results`, the live verifier guidance now defaults to requesting Tier 2.
 - For compact theorem or asymptotic proof claims, the live prompts now avoid unnecessary Tier 2 escalation and force `CANNOT_VERIFY` when the core theorem only has failed Tier 3 proof results.
+- The current remaining blocker for repeated `live-analytical-breadth` on this machine is operational, not repo-local: Hermes is rejecting the active `nous/claude-opus-4-6` provider path with HTTP 401 during generator calls.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.

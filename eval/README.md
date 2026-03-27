@@ -49,8 +49,9 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 - Role prompts are loaded from `prompts/` and executed through `hermes chat`.
 - Live mode uses the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you want the more verbose scaffolding in transcripts for debugging.
 - In compact mode, the verifier uses `prompts/verifier_compact.md` plus a tighter payload/contract shape so the live adversarial pass stays smaller than the generic compact prompt path.
+- Literature-grounded threshold explanations and pure asymptotic-counting claims now stay on Tier 1 by default unless the candidate adds a genuinely new empirical or formal obligation.
 - Live mode accepts `--config` and uses the same `models.*` routing settings as `uv run deep-gvr`, while still writing benchmark artifacts to the selected live output root instead of the config's evidence directory.
-- When a live config pins concrete role models, the live runner prefers those top-level role routes and falls back to the shared route only when Hermes returns a provider/model route error; the transcript artifact records both attempts.
+- When a live config pins a non-default provider or a concrete model, the live runner treats that as explicit top-level route intent and falls back to the shared route only when Hermes returns a provider/model route error; the transcript artifact records both attempts.
 - Live mode also injects the same domain context loader as `uv run deep-gvr`, so the generator receives the repo-local QEC anchor notes instead of an empty `literature_context`.
 - When `--toolsets` is omitted, live generator/verifier/reviser calls use a constrained default Hermes tool surface so they do not inherit the full interactive CLI tool policy by default.
 - Live Tier 2 mediation normalizes common verifier aliases such as `uniform_depolarizing` and `iid_depolarizing` to the canonical Stim noise-model string `depolarizing`.
@@ -69,6 +70,8 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 - When routing is in fallback mode, the harness records prompt separation plus the intended temperature values, but Hermes CLI does not expose a temperature flag. The live report records that limitation in case notes instead of pretending the override was applied.
 - The repo-local QEC anchors now explicitly separate the `~10.3%` independent-X/Z code-capacity figure from the `~10.9%` Nishimori-point bit-flip result and steer generic depolarizing-threshold answers toward the circuit-level Fowler/Stephens literature instead of overloaded mixed-regime summaries.
 - For known-incorrect live benchmark cases, a verified direct refutation now counts as success. The live runner no longer forces the generator to role-play a false claim just to preserve the deterministic benchmark verdict label.
+- If Hermes prints a plain-text provider auth or HTTP 401 failure instead of returning contract JSON, the runner now records it as a live route configuration error rather than surfacing it as a JSON parse failure.
+- In this local environment, the repeated analytical breadth sweep recorded at `/tmp/deep-gvr-live-analytical-breadth-stability/consistency_report.json` is currently blocked by that provider-auth path (`nous/claude-opus-4-6`), not by repo-local Tier 1 routing logic.
 
 ## Initial Categories
 
