@@ -19,6 +19,9 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 target_dir="${HOME}/.hermes/skills"
+config_dir="${HOME}/.hermes/deep-gvr"
+config_path="${config_dir}/config.yaml"
+config_template="${repo_root}/templates/config.template.yaml"
 install_mode="symlink"
 force="false"
 
@@ -65,7 +68,16 @@ else
   ln -s "${repo_root}" "${install_path}"
 fi
 
+mkdir -p "${config_dir}"
+if [[ ! -f "${config_path}" ]]; then
+  cp "${config_template}" "${config_path}"
+  echo "Created default config at ${config_path}."
+else
+  echo "Leaving existing config at ${config_path} in place."
+fi
+
 echo "Installed deep-gvr at ${install_path} using ${install_mode} mode."
 echo "Next steps:"
-echo "  1. Review ${install_path}/README.md for quickstart and evaluation commands."
-echo "  2. Run ${install_path}/scripts/setup_mcp.sh --check if you plan to use Tier 3."
+echo "  1. Review ${install_path}/README.md for quickstart, CLI, and evaluation commands."
+echo "  2. Run 'uv run deep-gvr --help' from ${install_path} to inspect the command surface."
+echo "  3. Run ${install_path}/scripts/setup_mcp.sh --check if you plan to use Tier 3."

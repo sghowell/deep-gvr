@@ -1,0 +1,39 @@
+loop:
+  max_iterations: 3
+  alternative_approach: true
+  max_alternatives: 2
+verification:
+  tier1:
+    enabled: true
+  tier2:
+    enabled: true
+    default_simulator: stim
+    default_backend: local
+    timeout_seconds: 3600
+    ssh:
+      host: ""
+      user: ""
+      key_path: ""
+  tier3:
+    enabled: false
+    backend: aristotle
+    timeout_seconds: 300
+models:
+  orchestrator:
+    provider: default
+    model: ""
+  generator:
+    provider: openrouter
+    model: ""
+  verifier:
+    provider: openrouter
+    model: ""
+  reviser:
+    provider: default
+    model: ""
+evidence:
+  directory: ~/.hermes/deep-gvr/sessions
+  persist_to_memory: true
+domain:
+  default: qec
+  context_file: ""

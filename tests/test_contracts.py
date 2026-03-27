@@ -4,6 +4,8 @@ import json
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.contracts import (
@@ -78,6 +80,13 @@ class ContractRoundTripTests(unittest.TestCase):
         schema = self._load_json("schemas/config.schema.json")
         fixture = self._load_json("templates/config.template.json")
         validate(fixture, schema)
+
+    def test_config_yaml_fixture_matches_json_template(self) -> None:
+        schema = self._load_json("schemas/config.schema.json")
+        json_fixture = self._load_json("templates/config.template.json")
+        yaml_fixture = yaml.safe_load((ROOT / "templates" / "config.template.yaml").read_text(encoding="utf-8"))
+        validate(yaml_fixture, schema)
+        self.assertEqual(yaml_fixture, json_fixture)
 
     def test_benchmark_suite_round_trip(self) -> None:
         payload = self._load_json("templates/benchmark_suite.template.json")

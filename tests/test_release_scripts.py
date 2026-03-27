@@ -15,17 +15,23 @@ class ReleaseScriptTests(unittest.TestCase):
     def test_install_script_creates_symlink_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             target_dir = Path(tmpdir) / "skills"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
             completed = subprocess.run(
                 ["bash", str(ROOT / "scripts" / "install.sh"), "--target", str(target_dir)],
                 check=False,
                 capture_output=True,
                 text=True,
                 cwd=ROOT,
+                env=env,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             install_path = target_dir / "deep-gvr"
             self.assertTrue(install_path.is_symlink())
             self.assertEqual(install_path.resolve(), ROOT.resolve())
+            config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
+            self.assertTrue(config_path.exists())
+            self.assertIn("default", config_path.read_text(encoding="utf-8"))
 
     def test_setup_mcp_script_reports_missing_key(self) -> None:
         env = dict(os.environ)

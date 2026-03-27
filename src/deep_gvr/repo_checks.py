@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import yaml
+
 from .json_schema import SchemaValidationError, validate
 
 REQUIRED_PLAN_HEADINGS = [
@@ -172,6 +174,17 @@ def check_schemas_and_templates(root: Path) -> list[str]:
             validate(instance, schema)
         except SchemaValidationError as exc:
             errors.append(f"{artifact_name}: schema validation failed: {exc}")
+
+    yaml_template = template_dir / "config.template.yaml"
+    if not yaml_template.exists():
+        errors.append("templates/config.template.yaml: required YAML config template is missing")
+    else:
+        schema = json.loads((schema_dir / "config.schema.json").read_text(encoding="utf-8"))
+        instance = yaml.safe_load(yaml_template.read_text(encoding="utf-8"))
+        try:
+            validate(instance, schema)
+        except SchemaValidationError as exc:
+            errors.append(f"config.template.yaml: schema validation failed: {exc}")
     return errors
 
 
@@ -186,6 +199,8 @@ def check_architecture_boundaries(root: Path) -> list[str]:
 
 def check_release_surfaces(root: Path) -> list[str]:
     errors: list[str] = []
+    if 'deep-gvr = "deep_gvr.cli:main"' not in (root / "pyproject.toml").read_text(encoding="utf-8"):
+        errors.append("pyproject.toml: missing deep-gvr console entrypoint")
     executable_files = [
         root / "scripts" / "install.sh",
         root / "scripts" / "setup_mcp.sh",
