@@ -19,7 +19,7 @@
 - Adapters in `adapters/`
 - Schemas in `schemas/`
 - Fixtures in `templates/`
-- Deterministic release benchmark runner in `eval/run_eval.py`
+- Deterministic and live benchmark runner in `eval/run_eval.py`
 - Capability probes and repo checks in `scripts/`
 
 ## Verification Model
@@ -41,4 +41,5 @@
 - Cross-model verification preferred, with prompt/temperature decorrelation as the fallback
 - Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
+- Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - Local, Modal, and SSH backends represented from the start through the adapter interface

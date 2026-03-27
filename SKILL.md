@@ -4,12 +4,13 @@ deep-gvr is a Hermes skill scaffold for agentic scientific research with a gener
 
 ## Current State
 
-The repo now includes a Python Tier 1 orchestration helper with append-only evidence logging and checkpoint-based resume. Hermes command wiring is still a scaffold; this file remains the operating contract for the future parent-agent procedure.
+The repo now includes a Python Tier 1 orchestration helper with append-only evidence logging and checkpoint-based resume, plus a live evaluation path that executes the real generator, verifier, and reviser prompts through `hermes chat`. The top-level `/deep-gvr` slash command wiring is still scaffolded; this file remains the operating contract for the future parent-agent procedure.
 
 ## Intended Commands
 
 - `/deep-gvr <question>` starts a new session
 - `/deep-gvr resume <session_id>` resumes a prior session
+- `python eval/run_eval.py --mode live ...` runs the prompt stack against the benchmark corpus and records live artifacts under `eval/results/live/`
 
 ## Required Inputs
 
@@ -36,5 +37,7 @@ The repo now includes a Python Tier 1 orchestration helper with append-only evid
 - The orchestrator mediates Tier 3 as verifier -> formal backend -> verifier, persisting both the formal request and returned results under the session artifacts directory.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
+- Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
+- Live evaluation bounds each `hermes chat` role call with a repo-local timeout so stalled model calls degrade into structured benchmark errors instead of hanging the run.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.

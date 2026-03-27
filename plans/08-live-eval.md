@@ -17,14 +17,17 @@ Start from the integration branch and work on `codex/live-eval`. Merge back loca
 ## Progress
 
 - [x] The deterministic fixture-backed release benchmark exists in `eval/`.
-- [ ] Live prompt-driven benchmark execution is not implemented.
-- [ ] No real benchmark artifacts are recorded for prompt behavior, routing choices, or tier outcomes.
-- [ ] The Hermes-facing command path in `SKILL.md` remains scaffolded.
+- [x] Live prompt-driven benchmark execution is implemented in `eval/run_eval.py` and `src/deep_gvr/evaluation.py`.
+- [x] Live benchmark runs record prompt behavior, routing choices, per-case artifacts, and session evidence under `eval/results/live/`.
+- [x] `SKILL.md` now documents the Hermes-facing live benchmark path and the current CLI limitation around temperature overrides.
 
 ## Surprises & Discoveries
 
 - The release benchmark added in `plans/07-eval-release.md` is intentionally deterministic and fixture-backed, so it is useful for repo readiness but not for measuring real prompt behavior.
 - The current evaluation runner already has a stable corpus, metric vocabulary, and output structure, which means the next slice should extend that surface instead of creating a second benchmark tool.
+- `hermes chat` supports quiet non-interactive execution and provider/model overrides, which is sufficient for live benchmark role execution without importing Hermes internals into Python.
+- `hermes chat` does not expose a temperature flag, so fallback routing in live mode can only enforce prompt separation while recording the intended temperature as a documented limitation.
+- A real live smoke run can stall on the external model path, so the repo-local runner should bound each Hermes role call and record a structured timeout instead of hanging indefinitely.
 
 ## Decision Log
 
@@ -37,10 +40,16 @@ Start from the integration branch and work on `codex/live-eval`. Merge back loca
 - Decision: extend `eval/run_eval.py` with a live mode instead of introducing a parallel evaluation entrypoint.
   Rationale: one runner with explicit modes keeps docs, tests, and operator workflow aligned.
   Date/Author: 2026-03-26 / Codex
+- Decision: reject writes from live reports to `eval/results/baseline_results.json` unless the operator explicitly opts in.
+  Rationale: the deterministic baseline is a release artifact and should not be clobbered by an environment-specific live run.
+  Date/Author: 2026-03-26 / Codex
+- Decision: bound each live `hermes chat` role call with a configurable subprocess timeout.
+  Rationale: prompt-driven validation should fail into artifacts and notes, not hang indefinitely on external model latency.
+  Date/Author: 2026-03-26 / Codex
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+The runner now supports deterministic and live modes through one CLI, deterministic baseline behavior remains stable for CI, live runs record prompt-driven artifacts under timestamped output roots, and stalled Hermes role calls fail into structured errors instead of hanging indefinitely. The remaining work after this slice is operational rather than structural: exercising the live mode against the real local environment and using the recorded artifacts to improve prompts, routing, and backend availability.
 
 ## Context and Orientation
 

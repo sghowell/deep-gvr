@@ -25,6 +25,12 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `domain/*.md`: concise domain context cards
 - `eval/known_problems.json`: deterministic release benchmark corpus
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
+- `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report
+- `eval/results/live/<run_id>/cases/<case_id>/candidate_solution.json`: live generator or reviser output for one benchmark case
+- `eval/results/live/<run_id>/cases/<case_id>/verification_report.json`: live verifier output for one benchmark case
+- `eval/results/live/<run_id>/cases/<case_id>/role_transcripts.json`: Hermes prompt and response transcripts for one live benchmark case
+- `eval/results/live/<run_id>/cases/<case_id>/case_result.json`: normalized per-case live benchmark summary
+- `eval/results/live/<run_id>/sessions/<session_id>/checkpoint.json`: persisted Tier 1 state for a live benchmark session
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_*.json`: persisted Tier 3 requests and returned formal results

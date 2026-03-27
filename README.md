@@ -64,9 +64,15 @@ scripts/setup_mcp.sh --check
 
 ## Evaluation Baseline
 
-The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. The current committed baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
+The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. The committed CI-safe baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
 
-The next planned implementation step is live prompt-driven benchmark execution, tracked in [plans/08-live-eval.md](plans/08-live-eval.md).
+The same runner now also supports live prompt-driven execution through `hermes chat`. A live smoke run writes a timestamped artifact directory under `eval/results/live/` and leaves the committed deterministic baseline untouched:
+
+```bash
+uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
+```
+
+Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
 
 ## Reference Docs
 
