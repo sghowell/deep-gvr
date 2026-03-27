@@ -29,8 +29,10 @@ That deterministic mode uses fixture agents instead of live Hermes subagents. It
 For live prompt execution, use:
 
 ```bash
+uv run python eval/run_eval.py --list-subsets
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
 ```
 
 When `--output` is omitted in live mode, the runner writes `report.json` into the timestamped live output directory automatically. Live runs never overwrite `results/baseline_results.json` unless `--allow-baseline-overwrite` is passed explicitly.
@@ -45,14 +47,18 @@ When `--output` is omitted in live mode, the runner writes `report.json` into th
 - When a live config pins concrete role models, the live runner prefers those top-level role routes and falls back to the shared route only when Hermes returns a provider/model route error; the transcript artifact records both attempts.
 - Live mode also injects the same domain context loader as `uv run deep-gvr`, so the generator receives the repo-local QEC anchor notes instead of an empty `literature_context`.
 - When `--toolsets` is omitted, live generator/verifier/reviser calls use a constrained default Hermes tool surface so they do not inherit the full interactive CLI tool policy by default.
+- Live Tier 2 mediation normalizes common verifier aliases such as `uniform_depolarizing` and `iid_depolarizing` to the canonical Stim noise-model string `depolarizing`.
+- Live Tier 2 requests are clamped to the repo-local safe budget of `shots_per_point <= 100000` and `max_parallel <= 4`.
 - Before expecting live Tier 3 cases to run through Aristotle, use `bash scripts/setup_mcp.sh --install --check` to activate and verify the local Hermes MCP config.
 - When `~/.hermes/config.yaml` defines `mcp_servers.aristotle`, live Tier 3 requests are also dispatched through `hermes chat` plus the configured Aristotle MCP tools.
 - `--command-timeout-seconds` sets the base live role timeout. The verifier gets a higher repo-local floor, while Tier 3 formal transport keeps using the configured proof timeout instead of inheriting the shorter live role bound.
+- The verifier now gets a larger follow-up timeout floor when Tier 2 or Tier 3 evidence is attached, so the evidence-bearing recheck is not forced through the same shorter budget as the initial audit.
 - If compact mode still times out on the generator or verifier, the next operator levers are a higher timeout or a faster configured model route; prompt compaction does not change underlying provider latency.
 - Per-case artifacts include `candidate_solution.json`, `verification_report.json`, `role_transcripts.json`, `case_result.json`, and the session evidence/checkpoint files.
 - A failed formalizable live case does not necessarily mean Tier 3 transport failed; generator or verifier timeouts are recorded separately in `live_error.json` and `role_transcripts.json`, while real Tier 3 attempts leave `formal_transport` and `formal_results` artifacts under the session directory.
 - When routing is in fallback mode, the harness records prompt separation plus the intended temperature values, but Hermes CLI does not expose a temperature flag. The live report records that limitation in case notes instead of pretending the override was applied.
 - The repo-local QEC anchors now explicitly separate the `~10.3%` independent-X/Z code-capacity figure from the `~10.9%` Nishimori-point bit-flip result and steer generic depolarizing-threshold answers toward the circuit-level Fowler/Stephens literature instead of overloaded mixed-regime summaries.
+- For known-incorrect live benchmark cases, a verified direct refutation now counts as success. The live runner no longer forces the generator to role-play a false claim just to preserve the deterministic benchmark verdict label.
 
 ## Initial Categories
 

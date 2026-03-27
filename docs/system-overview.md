@@ -45,11 +45,14 @@
 - Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
+- The live benchmark runner supports named subsets such as `live-expansion` for representative multi-case sweeps
 - Live benchmark runs share the same repo-local domain-context loader as the CLI
 - The shared QEC domain-context loader now encodes threshold-regime and citation-scope guardrails for live depolarizing-threshold answers
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
 - Compact live verification uses a dedicated verifier prompt and tighter payload shape to reduce verifier-request bulk on the real Hermes route
 - Live CLI/eval can prefer explicit top-level role routes from config and fall back to the shared live route when a provider/model path is invalid
 - Live generator/verifier/reviser calls default to a constrained Hermes tool surface instead of inheriting the full interactive CLI tool policy
-- The live role timeout is role-aware: verifier gets a higher floor, while Tier 3 transport keeps its own proof timeout
+- The live role timeout is role-aware: verifier gets a higher floor, evidence-bearing verifier rechecks get a larger follow-up floor, and Tier 3 transport keeps its own proof timeout
+- Live Tier 2 mediation normalizes common verifier aliases to the canonical Stim `depolarizing` noise-model string and clamps live requests to a safe execution budget
+- Live benchmark scoring accepts a verified direct refutation as success for known-incorrect cases
 - Local, Modal, and SSH backends represented from the start through the adapter interface
