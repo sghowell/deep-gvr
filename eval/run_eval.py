@@ -12,12 +12,24 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from deep_gvr.contracts import ProbeStatus
-from deep_gvr.evaluation import LiveEvalConfig, benchmark_routing_probe, run_benchmark_suite, write_benchmark_report
+from deep_gvr.evaluation import (
+    LiveEvalConfig,
+    available_benchmark_subsets,
+    benchmark_routing_probe,
+    format_benchmark_report_overview,
+    run_benchmark_suite,
+    write_benchmark_report,
+)
 from deep_gvr.prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the deep-gvr benchmark suite in deterministic or live mode.")
+    parser.add_argument(
+        "--list-subsets",
+        action="store_true",
+        help="Print the available named benchmark subsets and exit.",
+    )
     parser.add_argument(
         "--mode",
         choices=["deterministic", "live"],
@@ -55,6 +67,17 @@ def parse_args() -> argparse.Namespace:
         action="append",
         default=[],
         help="Run only the named benchmark case. Repeat the flag to select multiple cases.",
+    )
+    parser.add_argument(
+        "--category",
+        action="append",
+        default=[],
+        help="Run only cases in the named benchmark category. Repeat the flag to select multiple categories.",
+    )
+    parser.add_argument(
+        "--subset",
+        default="",
+        help="Run the named benchmark subset. Use --list-subsets to inspect the available subset names.",
     )
     parser.add_argument(
         "--max-cases",
@@ -123,6 +146,12 @@ def _materialize_path(value: str) -> Path:
 
 def main() -> int:
     args = parse_args()
+    if args.list_subsets:
+        print("Available benchmark subsets:")
+        for name, case_ids in sorted(available_benchmark_subsets().items()):
+            joined = ", ".join(case_ids)
+            print(f"- {name}: {joined}")
+        return 0
     routing_probe = None if args.routing_probe == "auto" else benchmark_routing_probe(ProbeStatus(args.routing_probe))
     live_config = None
     if args.mode == "live":
@@ -142,6 +171,8 @@ def main() -> int:
         output_root=args.output_root or None,
         run_id=args.run_id or None,
         case_ids=args.case_id,
+        categories=args.category,
+        subset=args.subset or None,
         max_cases=args.max_cases,
         live_config=live_config,
     )
@@ -169,6 +200,11 @@ def main() -> int:
         f"false_positive_rate={report.summary.false_positive_rate:.3f}, "
         f"tier_accuracy={report.summary.tier_accuracy:.3f}"
     )
+    overview_lines = format_benchmark_report_overview(report)
+    if overview_lines:
+        print("Case results:")
+        for line in overview_lines:
+            print(line)
     return 0 if report.summary.failed_cases == 0 else 1
 
 

@@ -47,6 +47,13 @@ _DETERMINISTIC_TIMESTAMP = "2026-03-26T00:00:00Z"
 _DETERMINISTIC_RUN_ID = "baseline"
 _ENABLED_TIERS = [1, 2, 3]
 _BASELINE_REPORT_PATH = Path("eval/results/baseline_results.json")
+_BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
+    "live-expansion": (
+        "known-incorrect-surface-threshold-5pct",
+        "simulation-verified-distance5",
+        "formal-proved-repetition-majority",
+    ),
+}
 
 
 def _serialize(value: Any) -> Any:
@@ -488,10 +495,31 @@ def load_benchmark_suite(
     path: str | Path,
     *,
     case_ids: list[str] | tuple[str, ...] = (),
+    categories: list[str] | tuple[str, ...] = (),
+    subset: str | None = None,
     max_cases: int | None = None,
 ) -> list[BenchmarkCase]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     cases = [BenchmarkCase.from_dict(item) for item in payload]
+    if subset:
+        try:
+            subset_ids = set(_BENCHMARK_SUBSETS[subset])
+        except KeyError as exc:
+            available = ", ".join(sorted(_BENCHMARK_SUBSETS))
+            raise ValueError(f"Unknown benchmark subset {subset!r}. Expected one of: {available}.") from exc
+        available_ids = {item.id for item in cases}
+        missing = sorted(subset_ids - available_ids)
+        if missing:
+            raise ValueError(f"Benchmark subset {subset!r} references unknown case ids: {', '.join(missing)}.")
+        cases = [item for item in cases if item.id in subset_ids]
+    if categories:
+        allowed_categories = {item.category for item in cases} if subset else {item.category for item in cases}
+        requested = set(categories)
+        unknown = sorted(requested - allowed_categories)
+        if unknown:
+            available = ", ".join(sorted(allowed_categories))
+            raise ValueError(f"Unknown benchmark categories: {', '.join(unknown)}. Available categories: {available}.")
+        cases = [item for item in cases if item.category in requested]
     if case_ids:
         allowed = set(case_ids)
         cases = [item for item in cases if item.id in allowed]
@@ -509,13 +537,21 @@ def run_benchmark_suite(
     output_root: str | Path | None = None,
     run_id: str | None = None,
     case_ids: list[str] | tuple[str, ...] = (),
+    categories: list[str] | tuple[str, ...] = (),
+    subset: str | None = None,
     max_cases: int | None = None,
     live_config: LiveEvalConfig | None = None,
     executor: CommandExecutor | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> BenchmarkReport:
     suite_file = Path(suite_path)
-    benchmark_cases = load_benchmark_suite(suite_file, case_ids=case_ids, max_cases=max_cases)
+    benchmark_cases = load_benchmark_suite(
+        suite_file,
+        case_ids=case_ids,
+        categories=categories,
+        subset=subset,
+        max_cases=max_cases,
+    )
     if not benchmark_cases:
         raise ValueError(f"No benchmark cases selected from {suite_file}.")
     probe = routing_probe or probe_model_routing()
@@ -572,6 +608,30 @@ def write_benchmark_report(
             "Live benchmark results must not overwrite eval/results/baseline_results.json without explicit approval."
         )
     _write_benchmark_report(report, output_path)
+
+
+def available_benchmark_subsets() -> dict[str, tuple[str, ...]]:
+    return dict(_BENCHMARK_SUBSETS)
+
+
+def format_benchmark_report_overview(report: BenchmarkReport) -> list[str]:
+    lines: list[str] = []
+    for case in report.cases:
+        status = "PASS" if case.passed else "FAIL"
+        expected_tiers = ",".join(str(item) for item in case.expected_tiers) or "-"
+        actual_tiers = ",".join(str(item) for item in case.actual_tiers) or "-"
+        lines.append(
+            f"{status} {case.id} [{case.category}] "
+            f"expected={case.expected_verdict.value} actual={case.actual_verdict.value} "
+            f"tiers={actual_tiers}/{expected_tiers}"
+        )
+        if case.notes:
+            lines.append(f"  note: {case.notes[0]}")
+        if case.error:
+            lines.append(f"  error: {case.error}")
+        if report.mode == "live":
+            lines.append(f"  case_root: {Path(report.output_root) / 'cases' / case.id}")
+    return lines
 
 
 def _write_benchmark_report(report: BenchmarkReport, output_path: Path) -> None:

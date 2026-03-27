@@ -17,7 +17,9 @@ from deep_gvr.evaluation import (
     CommandExecutionResult,
     HermesPromptRoleRunner,
     LiveEvalConfig,
+    available_benchmark_subsets,
     benchmark_routing_probe,
+    format_benchmark_report_overview,
     load_benchmark_suite,
     run_benchmark_suite,
     write_benchmark_report,
@@ -141,6 +143,30 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertEqual([item.id for item in cases], ["formal-proved-repetition-majority"])
 
+    def test_load_benchmark_suite_filters_categories(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            categories=["formalizable"],
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            ["formal-proved-repetition-majority", "formal-unavailable-repetition-scaling"],
+        )
+
+    def test_load_benchmark_suite_filters_named_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="live-expansion",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["live-expansion"]),
+        )
+
+    def test_load_benchmark_suite_rejects_unknown_subset(self) -> None:
+        with self.assertRaises(ValueError):
+            load_benchmark_suite(ROOT / "eval" / "known_problems.json", subset="missing-subset")
+
     def test_run_benchmark_suite_matches_expected_baseline(self) -> None:
         report = run_benchmark_suite(
             ROOT / "eval" / "known_problems.json",
@@ -180,6 +206,51 @@ class EvaluationTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["failed_cases"], 0)
             self.assertEqual(payload["suite_path"], "eval/known_problems.json")
 
+    def test_eval_cli_lists_named_subsets(self) -> None:
+        completed = subprocess.run(
+            [
+                "python3",
+                str(ROOT / "eval" / "run_eval.py"),
+                "--list-subsets",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("Available benchmark subsets:", completed.stdout)
+        self.assertIn("live-expansion", completed.stdout)
+        self.assertIn("formal-proved-repetition-majority", completed.stdout)
+
+    def test_eval_cli_prints_case_summary_for_named_subset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "results.json"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "eval" / "run_eval.py"),
+                    "--subset",
+                    "live-expansion",
+                    "--output",
+                    str(output_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("Case results:", completed.stdout)
+            self.assertIn(
+                "PASS known-incorrect-surface-threshold-5pct [known_incorrect] expected=FLAWS_FOUND actual=FLAWS_FOUND",
+                completed.stdout,
+            )
+            self.assertIn(
+                "PASS formal-proved-repetition-majority [formalizable] expected=VERIFIED actual=VERIFIED",
+                completed.stdout,
+            )
+
     def test_live_mode_records_artifacts_and_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_root = Path(tmpdir) / "live-results"
@@ -215,6 +286,24 @@ class EvaluationTests(unittest.TestCase):
             self.assertIn("Response budget:", transcripts["calls"][0]["query"])
             self.assertIn("--toolsets", transcripts["calls"][0]["command"])
             self.assertIn("clarify", transcripts["calls"][0]["command"])
+
+    def test_format_benchmark_report_overview_includes_case_root_and_note(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._successful_live_executor,
+            )
+
+            lines = format_benchmark_report_overview(report)
+            self.assertTrue(any(line.startswith("PASS known-correct-surface-threshold") for line in lines))
+            self.assertTrue(any("temperature overrides" in line for line in lines))
+            self.assertTrue(any(str(output_root / "cases" / "known-correct-surface-threshold") in line for line in lines))
 
     def test_live_mode_explicit_toolsets_override_restricted_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
