@@ -44,14 +44,18 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["claim", "backend", "proof_status", "details", "lean_code"],
+        "required": ["claim", "backend", "proof_status", "details", "lean_code", "proof_time_seconds"],
         "additionalProperties": false,
         "properties": {
           "claim": { "type": "string" },
           "backend": { "type": "string" },
-          "proof_status": { "type": "string" },
+          "proof_status": {
+            "type": "string",
+            "enum": ["requested", "proved", "disproved", "timeout", "error", "unavailable"]
+          },
           "details": { "type": "string" },
-          "lean_code": { "type": "string" }
+          "lean_code": { "type": "string" },
+          "proof_time_seconds": { "type": ["number", "null"] }
         }
       }
     },

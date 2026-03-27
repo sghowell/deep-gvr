@@ -41,6 +41,15 @@ class ProbeStatus(StrEnum):
     BLOCKED = "blocked"
 
 
+class ProofStatus(StrEnum):
+    REQUESTED = "requested"
+    PROVED = "proved"
+    DISPROVED = "disproved"
+    TIMEOUT = "timeout"
+    ERROR = "error"
+    UNAVAILABLE = "unavailable"
+
+
 @dataclass(slots=True)
 class ModelSelection:
     provider: str = "default"
@@ -255,18 +264,20 @@ class Tier2Report:
 class Tier3ClaimResult:
     claim: str
     backend: str
-    proof_status: str
+    proof_status: ProofStatus
     details: str
     lean_code: str = ""
+    proof_time_seconds: float | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Tier3ClaimResult":
         return cls(
             claim=data["claim"],
             backend=data["backend"],
-            proof_status=data["proof_status"],
+            proof_status=ProofStatus(data["proof_status"]),
             details=data["details"],
             lean_code=data.get("lean_code", ""),
+            proof_time_seconds=float(data["proof_time_seconds"]) if data.get("proof_time_seconds") is not None else None,
         )
 
     def to_dict(self) -> dict[str, Any]:

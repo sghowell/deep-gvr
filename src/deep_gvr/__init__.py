@@ -9,6 +9,7 @@ from .contracts import (
     DeepGvrConfig,
     EvidenceRecord,
     ProbeStatus,
+    ProofStatus,
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
@@ -25,6 +26,7 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
+from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .probes import run_capability_probes
 from .tier1 import (
     GenerationRequest,
@@ -47,6 +49,7 @@ __all__ = [
     "DeepGvrConfig",
     "EvidenceRecord",
     "ProbeStatus",
+    "ProofStatus",
     "SessionCheckpoint",
     "SessionIndex",
     "SessionSummary",
@@ -63,6 +66,9 @@ __all__ = [
     "Tier1RunResult",
     "Tier2Report",
     "Tier3ClaimResult",
+    "FormalVerificationRequest",
+    "FormalVerifier",
+    "AristotleFormalVerifier",
     "GenerationRequest",
     "RevisionRequest",
     "SimulationRequest",

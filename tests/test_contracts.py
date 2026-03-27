@@ -11,10 +11,12 @@ from deep_gvr.contracts import (
     CapabilityProbeResult,
     DeepGvrConfig,
     EvidenceRecord,
+    ProofStatus,
     SessionCheckpoint,
     SessionIndex,
     SimResults,
     SimSpec,
+    Tier3ClaimResult,
     VerificationReport,
 )
 from deep_gvr.json_schema import validate
@@ -80,6 +82,19 @@ class ContractRoundTripTests(unittest.TestCase):
         schema = self._load_json("schemas/session_checkpoint.schema.json")
         fixture = self._load_json("templates/session_checkpoint.template.json")
         validate(fixture, schema)
+
+    def test_tier3_claim_round_trip(self) -> None:
+        payload = {
+            "claim": "A formal claim",
+            "backend": "aristotle",
+            "proof_status": "proved",
+            "details": "Proof succeeded.",
+            "lean_code": "theorem example : True := by trivial",
+            "proof_time_seconds": 1.5,
+        }
+        model = Tier3ClaimResult.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+        self.assertEqual(model.proof_status, ProofStatus.PROVED)
 
 
 if __name__ == "__main__":

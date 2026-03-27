@@ -43,7 +43,16 @@
     "results": null,
     "interpretation": null
   },
-  "tier3": [],
+  "tier3": [
+    {
+      "claim": "For the repetition code of distance d, the minimum number of bit flips needed to cause logical failure is (d+1)/2 rounded down.",
+      "backend": "aristotle",
+      "proof_status": "requested",
+      "details": "This claim is formalizable and should be routed to Tier 3 when the backend is available.",
+      "lean_code": "",
+      "proof_time_seconds": null
+    }
+  ],
   "flaws": [
     "The quantitative claim is underspecified.",
     "The evidence does not justify the exact target value."
