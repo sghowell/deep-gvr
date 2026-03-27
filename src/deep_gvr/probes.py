@@ -58,20 +58,16 @@ def probe_mcp_inheritance() -> CapabilityProbeResult:
 
 
 def probe_checkpoint_resume() -> CapabilityProbeResult:
-    resume_hint = os.getenv("DEEP_GVR_SESSION_RESUME", "").strip().lower()
-    status = ProbeStatus.READY if resume_hint in {"designed", "implemented"} else ProbeStatus.FALLBACK
-    summary = (
-        "Session checkpoint/resume has an explicit repo contract."
-        if status is ProbeStatus.READY
-        else "Checkpoint/resume mechanics are defined by contract but not yet verified end-to-end."
-    )
     return CapabilityProbeResult(
         name="session_checkpoint_resume",
-        status=status,
-        summary=summary,
+        status=ProbeStatus.READY,
+        summary="Checkpoint/resume is implemented with a checkpoint artifact plus append-only evidence records.",
         preferred_outcome="Persist loop state, verdict history, and artifact references so resume can continue from the last complete step.",
         fallback="Resume from the last complete checkpoint and re-run any incomplete verification step.",
-        details={"resume_hint": resume_hint},
+        details={
+            "checkpoint_file": "sessions/<session_id>/checkpoint.json",
+            "evidence_log": "sessions/<session_id>.jsonl",
+        },
     )
 
 

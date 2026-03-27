@@ -1,4 +1,4 @@
-"""deep-gvr readiness scaffolding."""
+"""deep-gvr contracts, probes, and Tier 1 loop helpers."""
 
 from .contracts import (
     AnalyticalCheck,
@@ -9,6 +9,7 @@ from .contracts import (
     DeepGvrConfig,
     EvidenceRecord,
     ProbeStatus,
+    SessionCheckpoint,
     SessionIndex,
     SessionSummary,
     SimAnalysis,
@@ -20,10 +21,20 @@ from .contracts import (
     Tier1Report,
     Tier2Report,
     Tier3ClaimResult,
+    VerificationHistoryEntry,
     VerificationReport,
     VerificationVerdict,
 )
 from .probes import run_capability_probes
+from .tier1 import (
+    GenerationRequest,
+    RevisionRequest,
+    SessionPaths,
+    SessionStore,
+    Tier1LoopRunner,
+    Tier1RunResult,
+    VerificationRequest,
+)
 
 __all__ = [
     "AnalyticalCheck",
@@ -34,8 +45,11 @@ __all__ = [
     "DeepGvrConfig",
     "EvidenceRecord",
     "ProbeStatus",
+    "SessionCheckpoint",
     "SessionIndex",
     "SessionSummary",
+    "SessionPaths",
+    "SessionStore",
     "SimAnalysis",
     "SimDataPoint",
     "SimResources",
@@ -43,8 +57,14 @@ __all__ = [
     "SimSpec",
     "SimTask",
     "Tier1Report",
+    "Tier1LoopRunner",
+    "Tier1RunResult",
     "Tier2Report",
     "Tier3ClaimResult",
+    "GenerationRequest",
+    "RevisionRequest",
+    "VerificationRequest",
+    "VerificationHistoryEntry",
     "VerificationReport",
     "VerificationVerdict",
     "run_capability_probes",

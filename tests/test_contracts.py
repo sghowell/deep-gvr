@@ -11,6 +11,7 @@ from deep_gvr.contracts import (
     CapabilityProbeResult,
     DeepGvrConfig,
     EvidenceRecord,
+    SessionCheckpoint,
     SessionIndex,
     SimResults,
     SimSpec,
@@ -60,6 +61,11 @@ class ContractRoundTripTests(unittest.TestCase):
         model = SessionIndex.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_session_checkpoint_round_trip(self) -> None:
+        payload = self._load_json("templates/session_checkpoint.template.json")
+        model = SessionCheckpoint.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_capability_probe_round_trip(self) -> None:
         payload = self._load_json("templates/capability_probe.template.json")
         model = CapabilityProbeResult.from_dict(payload)
@@ -68,6 +74,11 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_config_fixture_validates(self) -> None:
         schema = self._load_json("schemas/config.schema.json")
         fixture = self._load_json("templates/config.template.json")
+        validate(fixture, schema)
+
+    def test_session_checkpoint_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/session_checkpoint.schema.json")
+        fixture = self._load_json("templates/session_checkpoint.template.json")
         validate(fixture, schema)
 
 

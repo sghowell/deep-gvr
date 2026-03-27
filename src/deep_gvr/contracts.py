@@ -481,6 +481,74 @@ class EvidenceRecord:
 
 
 @dataclass(slots=True)
+class VerificationHistoryEntry:
+    iteration: int
+    verdict: VerificationVerdict
+    flaws: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "VerificationHistoryEntry":
+        return cls(
+            iteration=int(data["iteration"]),
+            verdict=VerificationVerdict(data["verdict"]),
+            flaws=list(data.get("flaws", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class SessionCheckpoint:
+    session_id: str
+    problem: str
+    domain: str
+    started: str
+    last_updated: str
+    status: str
+    current_iteration: int
+    max_iterations: int
+    next_phase: str
+    literature_context: list[str]
+    candidate: CandidateSolution | None
+    verification_report: VerificationReport | None
+    verdict_history: list[VerificationHistoryEntry]
+    result_summary: str
+    final_verdict: str
+    evidence_file: str
+    artifacts_dir: str
+    artifacts: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SessionCheckpoint":
+        candidate = data.get("candidate")
+        verification_report = data.get("verification_report")
+        return cls(
+            session_id=data["session_id"],
+            problem=data["problem"],
+            domain=data["domain"],
+            started=data["started"],
+            last_updated=data["last_updated"],
+            status=data["status"],
+            current_iteration=int(data["current_iteration"]),
+            max_iterations=int(data["max_iterations"]),
+            next_phase=data["next_phase"],
+            literature_context=list(data.get("literature_context", [])),
+            candidate=CandidateSolution.from_dict(candidate) if candidate else None,
+            verification_report=VerificationReport.from_dict(verification_report) if verification_report else None,
+            verdict_history=[VerificationHistoryEntry.from_dict(item) for item in data.get("verdict_history", [])],
+            result_summary=data["result_summary"],
+            final_verdict=data["final_verdict"],
+            evidence_file=data["evidence_file"],
+            artifacts_dir=data["artifacts_dir"],
+            artifacts=list(data.get("artifacts", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class SessionSummary:
     problem: str
     domain: str

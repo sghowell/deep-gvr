@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "required": [
+    "session_id",
+    "problem",
+    "domain",
+    "started",
+    "last_updated",
+    "status",
+    "current_iteration",
+    "max_iterations",
+    "next_phase",
+    "literature_context",
+    "candidate",
+    "verification_report",
+    "verdict_history",
+    "result_summary",
+    "final_verdict",
+    "evidence_file",
+    "artifacts_dir",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": { "type": "string", "minLength": 1 },
+    "problem": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "started": { "type": "string", "minLength": 1 },
+    "last_updated": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "current_iteration": { "type": "integer" },
+    "max_iterations": { "type": "integer" },
+    "next_phase": { "type": "string", "minLength": 1 },
+    "literature_context": { "type": "array", "items": { "type": "string" } },
+    "candidate": { "type": ["object", "null"] },
+    "verification_report": { "type": ["object", "null"] },
+    "verdict_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["iteration", "verdict", "flaws"],
+        "additionalProperties": false,
+        "properties": {
+          "iteration": { "type": "integer" },
+          "verdict": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] },
+          "flaws": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "result_summary": { "type": "string" },
+    "final_verdict": { "type": "string", "minLength": 1 },
+    "evidence_file": { "type": "string", "minLength": 1 },
+    "artifacts_dir": { "type": "string", "minLength": 1 },
+    "artifacts": { "type": "array", "items": { "type": "string" } }
+  }
+}

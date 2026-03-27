@@ -142,6 +142,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "sim_spec.template.json": "sim_spec.schema.json",
         "sim_results.template.json": "sim_results.schema.json",
         "evidence_record.template.json": "evidence.schema.json",
+        "session_checkpoint.template.json": "session_checkpoint.schema.json",
         "session_index.template.json": "session_index.schema.json",
         "capability_probe.template.json": "capability_probe.schema.json",
     }
