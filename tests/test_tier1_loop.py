@@ -12,13 +12,16 @@ from deep_gvr.contracts import (
     AnalyticalStatus,
     Backend,
     DeepGvrConfig,
+    ProofStatus,
     SimAnalysis,
     SimResults,
     Tier2Report,
     Tier1Report,
+    Tier3ClaimResult,
     VerificationReport,
     VerificationVerdict,
 )
+from deep_gvr.formal import AristotleFormalVerifier, FormalVerificationRequest
 from deep_gvr.tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -76,10 +79,11 @@ def _report(
 
 
 class Tier1LoopTests(unittest.TestCase):
-    def _config(self, evidence_dir: str, *, max_iterations: int = 3) -> DeepGvrConfig:
+    def _config(self, evidence_dir: str, *, max_iterations: int = 3, enable_tier3: bool = False) -> DeepGvrConfig:
         config = DeepGvrConfig()
         config.evidence.directory = evidence_dir
         config.loop.max_iterations = max_iterations
+        config.verification.tier3.enabled = enable_tier3
         config.models.generator.provider = "generator-provider"
         config.models.generator.model = "generator-model"
         config.models.verifier.provider = "verifier-provider"
@@ -414,6 +418,188 @@ class Tier1LoopTests(unittest.TestCase):
             evidence = runner.session_store.read_evidence("session_tier2_verify")
             self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
             self.assertIsNotNone(evidence[1].simulation_results)
+
+    def test_formal_request_runs_mediator_and_reverifies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir, enable_tier3=True))
+            verify_calls = 0
+            formal_calls = 0
+
+            def generator(request: GenerationRequest):
+                return _candidate("Formal hypothesis")
+
+            def verifier(request: VerificationRequest):
+                nonlocal verify_calls
+                verify_calls += 1
+                if request.formal_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="The theorem sketch needs formal confirmation.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Formal confirmation is required."],
+                            caveats=[],
+                        ),
+                        tier2=None,
+                        tier3=[
+                            Tier3ClaimResult(
+                                claim="For every odd repetition-code distance d, majority decoding corrects up to (d-1)/2 bit flips.",
+                                backend="aristotle",
+                                proof_status=ProofStatus.REQUESTED,
+                                details="This theorem statement should be routed to Tier 3.",
+                                lean_code="",
+                                proof_time_seconds=None,
+                            )
+                        ],
+                        flaws=["Formal confirmation is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                self.assertIsNotNone(request.formal_results)
+                return VerificationReport(
+                    verdict=VerificationVerdict.VERIFIED,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.PASS,
+                                detail="The formal result resolved the open theorem claim.",
+                            )
+                        ],
+                        overall=VerificationVerdict.VERIFIED,
+                        flaws=[],
+                        caveats=[],
+                    ),
+                    tier2=None,
+                    tier3=list(request.formal_results),
+                    flaws=[],
+                    caveats=[],
+                    cannot_verify_reason=None,
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            def formal_verifier(request: FormalVerificationRequest):
+                nonlocal formal_calls
+                formal_calls += 1
+                self.assertEqual(request.backend, "aristotle")
+                return [
+                    Tier3ClaimResult(
+                        claim=request.claims[0].claim,
+                        backend="aristotle",
+                        proof_status=ProofStatus.PROVED,
+                        details="Aristotle completed the proof.",
+                        lean_code="theorem repetition_majority : True := by trivial",
+                        proof_time_seconds=2.5,
+                    )
+                ]
+
+            result = runner.run(
+                problem="Check Tier 3 mediation",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                formal_verifier=formal_verifier,
+                session_id="session_tier3_verify",
+            )
+
+            self.assertEqual(result.final_report.verdict, VerificationVerdict.VERIFIED)
+            self.assertEqual(verify_calls, 2)
+            self.assertEqual(formal_calls, 1)
+            self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.PROVED)
+
+            checkpoint = runner.session_store.load_checkpoint("session_tier3_verify")
+            self.assertGreaterEqual(len(checkpoint.artifacts), 2)
+            evidence = runner.session_store.read_evidence("session_tier3_verify")
+            self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "verify"])
+            self.assertIsNotNone(evidence[1].formal_verification_results)
+
+    def test_formal_request_uses_structured_unavailable_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir, enable_tier3=True))
+
+            def generator(request: GenerationRequest):
+                return _candidate("Formal fallback hypothesis")
+
+            def verifier(request: VerificationRequest):
+                if request.formal_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="Formal confirmation is unavailable without Tier 3 output.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Formal confirmation is required."],
+                            caveats=[],
+                        ),
+                        tier2=None,
+                        tier3=[
+                            Tier3ClaimResult(
+                                claim="For every repetition-code distance d >= 1, the code distance is d.",
+                                backend="aristotle",
+                                proof_status=ProofStatus.REQUESTED,
+                                details="A formal check is requested.",
+                                lean_code="",
+                                proof_time_seconds=None,
+                            )
+                        ],
+                        flaws=["Formal confirmation is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                self.assertIsNotNone(request.formal_results)
+                self.assertEqual(request.formal_results[0].proof_status, ProofStatus.UNAVAILABLE)
+                return VerificationReport(
+                    verdict=VerificationVerdict.VERIFIED,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.PASS,
+                                detail="The claim remains analytically plausible, but Tier 3 is unavailable.",
+                            )
+                        ],
+                        overall=VerificationVerdict.VERIFIED,
+                        flaws=[],
+                        caveats=["Formal verification was unavailable in this environment."],
+                    ),
+                    tier2=None,
+                    tier3=list(request.formal_results),
+                    flaws=[],
+                    caveats=["Formal verification was unavailable in this environment."],
+                    cannot_verify_reason=None,
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            result = runner.run(
+                problem="Check Tier 3 fallback",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                formal_verifier=AristotleFormalVerifier(),
+                session_id="session_tier3_fallback",
+            )
+
+            self.assertEqual(result.final_report.verdict, VerificationVerdict.VERIFIED)
+            self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.UNAVAILABLE)
+            evidence = runner.session_store.read_evidence("session_tier3_fallback")
+            self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "verify"])
 
 
 if __name__ == "__main__":

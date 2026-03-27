@@ -13,6 +13,7 @@ from .contracts import (
     DeepGvrConfig,
     EvidenceRecord,
     ModelSelection,
+    ProofStatus,
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
@@ -20,10 +21,12 @@ from .contracts import (
     SimResults,
     SimSpec,
     Tier2Report,
+    Tier3ClaimResult,
     VerificationHistoryEntry,
     VerificationReport,
     VerificationVerdict,
 )
+from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 
 
 def _utc_now() -> datetime:
@@ -56,6 +59,7 @@ class VerificationRequest:
     iteration: int
     candidate: CandidateSolution
     simulation_results: SimResults | None = None
+    formal_results: list[Tier3ClaimResult] | None = None
 
 
 @dataclass(slots=True)
@@ -248,6 +252,7 @@ class Tier1LoopRunner:
         verifier: Verifier,
         reviser: Reviser,
         simulator: Simulator | None = None,
+        formal_verifier: FormalVerifier | None = None,
         literature_context: list[str] | tuple[str, ...] = (),
         domain: str | None = None,
         session_id: str | None = None,
@@ -259,7 +264,14 @@ class Tier1LoopRunner:
             literature_context=list(literature_context),
             session_id=session_id,
         )
-        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser, simulator=simulator)
+        return self._drive(
+            checkpoint,
+            generator=generator,
+            verifier=verifier,
+            reviser=reviser,
+            simulator=simulator,
+            formal_verifier=formal_verifier,
+        )
 
     def resume(
         self,
@@ -269,9 +281,17 @@ class Tier1LoopRunner:
         verifier: Verifier,
         reviser: Reviser,
         simulator: Simulator | None = None,
+        formal_verifier: FormalVerifier | None = None,
     ) -> Tier1RunResult:
         checkpoint = self.session_store.load_checkpoint(session_id)
-        return self._drive(checkpoint, generator=generator, verifier=verifier, reviser=reviser, simulator=simulator)
+        return self._drive(
+            checkpoint,
+            generator=generator,
+            verifier=verifier,
+            reviser=reviser,
+            simulator=simulator,
+            formal_verifier=formal_verifier,
+        )
 
     def _drive(
         self,
@@ -281,13 +301,14 @@ class Tier1LoopRunner:
         verifier: Verifier,
         reviser: Reviser,
         simulator: Simulator | None,
+        formal_verifier: FormalVerifier | None,
     ) -> Tier1RunResult:
         while checkpoint.next_phase != "complete":
             if checkpoint.next_phase == "generate":
                 checkpoint = self._generate(checkpoint, generator)
                 continue
             if checkpoint.next_phase == "verify":
-                checkpoint = self._verify(checkpoint, verifier, simulator)
+                checkpoint = self._verify(checkpoint, verifier, simulator, formal_verifier)
                 continue
             if checkpoint.next_phase == "revise":
                 checkpoint = self._revise(checkpoint, reviser)
@@ -335,7 +356,13 @@ class Tier1LoopRunner:
         self.session_store.save_checkpoint(checkpoint)
         return checkpoint
 
-    def _verify(self, checkpoint: SessionCheckpoint, verifier: Verifier, simulator: Simulator | None) -> SessionCheckpoint:
+    def _verify(
+        self,
+        checkpoint: SessionCheckpoint,
+        verifier: Verifier,
+        simulator: Simulator | None,
+        formal_verifier: FormalVerifier | None,
+    ) -> SessionCheckpoint:
         candidate = self._require_candidate(checkpoint)
         request = VerificationRequest(
             session_id=checkpoint.session_id,
@@ -344,16 +371,24 @@ class Tier1LoopRunner:
         )
         report = verifier(request)
         simulation_results = None
+        formal_results: list[Tier3ClaimResult] | None = None
         if self._should_run_simulation(report):
             simulation_results = self._simulate(checkpoint, report, simulator)
+        if self._should_run_formal(report):
+            formal_results = self._formalize(checkpoint, report, formal_verifier)
+        if simulation_results is not None or formal_results is not None:
             request = VerificationRequest(
                 session_id=checkpoint.session_id,
                 iteration=checkpoint.current_iteration,
                 candidate=candidate,
                 simulation_results=simulation_results,
+                formal_results=formal_results,
             )
             report = verifier(request)
-            self._attach_simulation_results(report, simulation_results)
+            if simulation_results is not None:
+                self._attach_simulation_results(report, simulation_results)
+            if formal_results is not None:
+                self._attach_formal_results(report, formal_results)
 
         checkpoint.verification_report = report
         checkpoint.verdict_history.append(
@@ -376,6 +411,7 @@ class Tier1LoopRunner:
                 input_summary=f"Hypothesis: {candidate.hypothesis}",
                 output_summary=self._verification_summary(report),
                 simulation_results=simulation_results,
+                formal_results=formal_results,
             ),
         )
 
@@ -449,6 +485,7 @@ class Tier1LoopRunner:
         input_summary: str,
         output_summary: str,
         simulation_results: SimResults | None = None,
+        formal_results: list[Tier3ClaimResult] | None = None,
         model_selection: ModelSelection | None = None,
     ) -> EvidenceRecord:
         selection = model_selection or self._model_for_phase(phase)
@@ -462,7 +499,7 @@ class Tier1LoopRunner:
             tiers_applied=tiers_applied,
             flaws=flaws,
             simulation_results=simulation_results.to_dict() if simulation_results is not None else None,
-            formal_verification_results=None,
+            formal_verification_results=[item.to_dict() for item in formal_results] if formal_results is not None else None,
             model_used=selection.model,
             provider=selection.provider,
             tokens_in=0,
@@ -478,6 +515,8 @@ class Tier1LoopRunner:
             return self.config.models.verifier
         if phase == "simulate":
             return ModelSelection(provider="adapter", model=self.config.verification.tier2.default_simulator)
+        if phase == "formalize":
+            return ModelSelection(provider="adapter", model=self.config.verification.tier3.backend)
         return self.config.models.reviser
 
     def _tiers_applied(self, report: VerificationReport) -> list[int]:
@@ -495,7 +534,17 @@ class Tier1LoopRunner:
             caveat_text = "; ".join(report.caveats) or "No caveats recorded."
             if report.tier2 and report.tier2.results is not None:
                 interpretation = report.tier2.interpretation or "Simulation results were incorporated."
+                if report.tier3 and all(item.proof_status is not ProofStatus.REQUESTED for item in report.tier3):
+                    return (
+                        f"Verified with Tier 2 and Tier 3 evidence. {interpretation} "
+                        f"Formal statuses: {self._formal_status_summary(report.tier3)}. Caveats: {caveat_text}"
+                    )
                 return f"Verified with Tier 2 evidence. {interpretation} Caveats: {caveat_text}"
+            if report.tier3 and all(item.proof_status is not ProofStatus.REQUESTED for item in report.tier3):
+                return (
+                    f"Verified with Tier 3 evidence. Formal statuses: {self._formal_status_summary(report.tier3)}. "
+                    f"Caveats: {caveat_text}"
+                )
             return f"Verified. Caveats: {caveat_text}"
         if report.verdict is VerificationVerdict.CANNOT_VERIFY:
             return f"Cannot verify. Blocker: {report.cannot_verify_reason or 'unspecified'}"
@@ -503,6 +552,9 @@ class Tier1LoopRunner:
 
     def _flaw_summary(self, flaws: list[str]) -> str:
         return "; ".join(flaws) if flaws else "No flaw details recorded."
+
+    def _formal_status_summary(self, results: list[Tier3ClaimResult]) -> str:
+        return "; ".join(f"{item.claim} -> {item.proof_status.value}" for item in results)
 
     def _require_candidate(self, checkpoint: SessionCheckpoint) -> CandidateSolution:
         if checkpoint.candidate is None:
@@ -521,6 +573,13 @@ class Tier1LoopRunner:
             and report.tier2.simulation_requested
             and report.tier2.simulation_spec is not None
             and report.tier2.results is None
+        )
+
+    def _should_run_formal(self, report: VerificationReport) -> bool:
+        return bool(
+            self.config.verification.tier3.enabled
+            and report.tier3
+            and any(item.proof_status is ProofStatus.REQUESTED for item in report.tier3)
         )
 
     def _simulate(
@@ -605,6 +664,75 @@ class Tier1LoopRunner:
         if report.tier2.results is None:
             report.tier2.results = sim_results.to_dict()
 
+    def _formalize(
+        self,
+        checkpoint: SessionCheckpoint,
+        report: VerificationReport,
+        formal_verifier: FormalVerifier | None,
+    ) -> list[Tier3ClaimResult]:
+        requested_claims = [item for item in report.tier3 if item.proof_status is ProofStatus.REQUESTED]
+        request = FormalVerificationRequest(
+            session_id=checkpoint.session_id,
+            iteration=checkpoint.current_iteration,
+            claims=requested_claims,
+            backend=self.config.verification.tier3.backend,
+            timeout_seconds=self.config.verification.tier3.timeout_seconds,
+        )
+        verifier = formal_verifier or AristotleFormalVerifier()
+        results = verifier(request)
+
+        request_artifact = self.session_store.write_artifact_json(
+            checkpoint.session_id,
+            f"iteration_{checkpoint.current_iteration}_formal_request.json",
+            {
+                "backend": request.backend,
+                "timeout_seconds": request.timeout_seconds,
+                "claims": [item.to_dict() for item in request.claims],
+            },
+        )
+        results_artifact = self.session_store.write_artifact_json(
+            checkpoint.session_id,
+            f"iteration_{checkpoint.current_iteration}_formal_results.json",
+            {
+                "backend": request.backend,
+                "results": [item.to_dict() for item in results],
+            },
+        )
+        checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, [request_artifact, results_artifact])
+        checkpoint.last_updated = self._timestamp()
+        checkpoint.result_summary = f"Completed Tier 3 formal mediation for candidate {checkpoint.current_iteration}."
+
+        self.session_store.append_evidence(
+            checkpoint.session_id,
+            self._evidence_record(
+                checkpoint=checkpoint,
+                phase="formalize",
+                verdict=None,
+                tiers_applied=[3],
+                flaws=[],
+                input_summary=f"Formal verification requested for {len(request.claims)} claim(s).",
+                output_summary=self._formal_summary(results),
+                formal_results=results,
+            ),
+        )
+        self.session_store.save_checkpoint(checkpoint)
+        return results
+
+    def _attach_formal_results(self, report: VerificationReport, formal_results: list[Tier3ClaimResult]) -> None:
+        if not report.tier3:
+            report.tier3 = list(formal_results)
+            return
+
+        results_by_claim = {item.claim: item for item in formal_results}
+        merged: list[Tier3ClaimResult] = []
+        for item in report.tier3:
+            if item.claim in results_by_claim:
+                merged.append(results_by_claim.pop(item.claim))
+            else:
+                merged.append(item)
+        merged.extend(results_by_claim.values())
+        report.tier3 = merged
+
     def _simulation_summary(self, sim_results: SimResults) -> str:
         if sim_results.errors:
             return f"Simulation returned errors: {'; '.join(sim_results.errors)}"
@@ -612,6 +740,9 @@ class Tier1LoopRunner:
             f"Simulation produced {len(sim_results.data)} data point(s) via {sim_results.simulator} on "
             f"{sim_results.backend.value}; threshold method={sim_results.analysis.threshold_method}."
         )
+
+    def _formal_summary(self, results: list[Tier3ClaimResult]) -> str:
+        return f"Formal verification results: {self._formal_status_summary(results)}"
 
     def _merge_artifacts(self, current: list[str], additions: list[str]) -> list[str]:
         merged = list(current)
