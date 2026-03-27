@@ -273,6 +273,26 @@ class EvaluationTests(unittest.TestCase):
                 "If a work is named in the body, list it in `references`",
                 transcripts["calls"][0]["query"],
             )
+            self.assertIn(
+                "Do not attribute the surface-code threshold directly to the generic concatenated-code threshold theorem",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "For standard depolarizing surface-code threshold questions, prefer the sub-1% circuit-level regime as the main claim",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "Wang, Fowler, and Hollenberg",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "Physical Review A 83(2) from 2011",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "Prefer Fowler et al. (2012) or Stephens (2014) for the familiar sub-1% circuit-level MWPM threshold range",
+                transcripts["calls"][0]["query"],
+            )
 
     def test_live_mode_uses_custom_domain_context_file_from_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -448,6 +468,22 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertIn(
             "If a citation is not important enough to list in `references`, do not name it in the body.",
+            compact_query,
+        )
+        self.assertIn(
+            "Do not say the surface-code threshold follows directly from the generic fault-tolerance threshold theorem",
+            compact_query,
+        )
+        self.assertIn(
+            "For a standard depolarizing surface-code threshold question, keep the main claim on the depolarizing surface-code threshold",
+            compact_query,
+        )
+        self.assertIn(
+            "If you are unsure of a bibliographic year, omit the year rather than invent one that conflicts with the journal or volume.",
+            compact_query,
+        )
+        self.assertIn(
+            "Prefer Fowler et al. (2012) or Stephens (2014) for the sub-1% circuit-level MWPM range",
             compact_query,
         )
         self.assertLess(len(compact_query), len(full_query))
