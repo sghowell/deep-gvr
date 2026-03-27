@@ -34,11 +34,12 @@ uv run python eval/run_eval.py --list-subsets
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
-uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 3
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 2
 ```
 
 When `--output` is omitted in live mode, the runner writes `report.json` into the timestamped live output directory automatically. Live runs never overwrite `results/baseline_results.json` unless `--allow-baseline-overwrite` is passed explicitly.
 When `--repeat` is greater than `1`, the runner writes `consistency_report.json` at the chosen output root and stores each individual run under `runs/run-###/report.json`.
+The current representative gate is the repeated `live-expansion` sweep above; plan 21 recorded a stable `2/2` result at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`.
 
 ## Live Mode Notes
 

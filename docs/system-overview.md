@@ -47,6 +47,7 @@
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - The live benchmark runner supports named subsets such as `live-expansion` for representative multi-case sweeps
 - The live benchmark runner also supports repeated subset sweeps with a top-level `consistency_report.json` plus per-run reports under `runs/run-###/`
+- The current representative stability gate is a repeated `live-expansion` sweep, and plan 21 recorded a clean `2/2` pass on that subset
 - Live benchmark runs share the same repo-local domain-context loader as the CLI
 - The shared QEC domain-context loader now encodes threshold-regime and citation-scope guardrails for live depolarizing-threshold answers
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
@@ -58,4 +59,5 @@
 - Live benchmark case reports now separate `direct_match`, `accepted_refutation`, `tier_mismatch`, `verdict_mismatch`, and `execution_error` outcomes instead of burying those distinctions in notes
 - For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without `simulation_results`, the live verifier guidance now defaults to Tier 2 rather than letting Tier 1 plausibility settle the case
 - Live benchmark scoring accepts a verified direct refutation as success for known-incorrect cases
+- Known-incorrect accepted-refutation scoring now recognizes conservative explicit 5% threshold refutations framed in sub-1% or `~0.6-0.8%` literature terms
 - Local, Modal, and SSH backends represented from the start through the adapter interface

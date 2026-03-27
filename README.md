@@ -97,7 +97,7 @@ uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id kn
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile full
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
-uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 3
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 2
 ```
 
 Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config`, uses the same repo-local route settings as `uv run deep-gvr`, and injects the same domain context files that the CLI uses. Compact live verification also uses a dedicated compact verifier prompt/path to keep the verifier request smaller on the real Hermes route. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
@@ -109,6 +109,7 @@ Live Tier 2 mediation now normalizes common verifier noise-model aliases such as
 Live benchmark case results now record whether the strict verdict matched, whether an accepted refutation counted as success, whether the expected tiers were exercised, and an explicit `outcome` such as `direct_match`, `accepted_refutation`, `tier_mismatch`, `verdict_mismatch`, or `execution_error`.
 For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior and do not yet carry `simulation_results`, the live verifier guidance now defaults to requesting Tier 2 instead of letting Tier 1 plausibility settle the case.
 For live known-incorrect benchmark cases, the runner now also treats a verified direct refutation as success instead of requiring the generator to role-play a false claim.
+The current representative stability gate is `--subset live-expansion --repeat 2`; plan 21 recorded a clean `2/2` repeated sweep at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`.
 
 ## Reference Docs
 
