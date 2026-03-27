@@ -29,6 +29,7 @@ from .contracts import (
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
+from .runtime_config import load_runtime_config
 from .tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -476,6 +477,7 @@ def run_benchmark_suite(
     *,
     routing_probe: CapabilityProbeResult | None = None,
     mode: str = "deterministic",
+    config_path: str | Path | None = None,
     output_root: str | Path | None = None,
     run_id: str | None = None,
     case_ids: list[str] | tuple[str, ...] = (),
@@ -506,6 +508,7 @@ def run_benchmark_suite(
         results = _run_live_suite(
             benchmark_cases,
             routing_probe=probe,
+            base_config=load_runtime_config(config_path) if config_path is not None else DeepGvrConfig(),
             output_root=resolved_output_root,
             run_id=resolved_run_id,
             live_config=live_config or LiveEvalConfig(),
@@ -575,6 +578,7 @@ def _run_live_suite(
     benchmark_cases: list[BenchmarkCase],
     *,
     routing_probe: CapabilityProbeResult,
+    base_config: DeepGvrConfig,
     output_root: Path,
     run_id: str,
     live_config: LiveEvalConfig,
@@ -587,6 +591,7 @@ def _run_live_suite(
             _run_live_case(
                 case,
                 routing_probe=routing_probe,
+                base_config=base_config,
                 output_root=output_root,
                 run_id=run_id,
                 live_config=live_config,
@@ -650,6 +655,7 @@ def _run_live_case(
     case: BenchmarkCase,
     *,
     routing_probe: CapabilityProbeResult,
+    base_config: DeepGvrConfig,
     output_root: Path,
     run_id: str,
     live_config: LiveEvalConfig,
@@ -662,7 +668,7 @@ def _run_live_case(
     case_root = output_root / "cases" / case.id
     sessions_root = output_root / "sessions"
     case_root.mkdir(parents=True, exist_ok=True)
-    config = _benchmark_config(str(sessions_root))
+    config = _benchmark_config(str(sessions_root), base_config=base_config)
     session_store = SessionStore(config.evidence.directory)
     tier_runner = Tier1LoopRunner(config, session_store=session_store, routing_probe=routing_probe)
     live_runner = HermesPromptRoleRunner(
@@ -798,8 +804,8 @@ def _persist_live_case_artifacts(
     return deduped
 
 
-def _benchmark_config(evidence_directory: str) -> DeepGvrConfig:
-    config = DeepGvrConfig()
+def _benchmark_config(evidence_directory: str, *, base_config: DeepGvrConfig | None = None) -> DeepGvrConfig:
+    config = DeepGvrConfig.from_dict((base_config or DeepGvrConfig()).to_dict())
     config.evidence.directory = evidence_directory
     config.loop.max_iterations = 1
     config.verification.tier3.enabled = True

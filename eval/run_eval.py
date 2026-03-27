@@ -30,6 +30,11 @@ def parse_args() -> argparse.Namespace:
         help="Path to the benchmark suite JSON file.",
     )
     parser.add_argument(
+        "--config",
+        default="",
+        help="Runtime config path for live mode. Uses the repo default path when omitted.",
+    )
+    parser.add_argument(
         "--output",
         default="",
         help="Optional path for the JSON benchmark report output. Live mode defaults to <output-root>/report.json.",
@@ -133,6 +138,7 @@ def main() -> int:
         args.suite,
         routing_probe=routing_probe,
         mode=args.mode,
+        config_path=args.config or None,
         output_root=args.output_root or None,
         run_id=args.run_id or None,
         case_ids=args.case_id,

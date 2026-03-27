@@ -8,16 +8,18 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import yaml
-
 from .contracts import DeepGvrConfig, ProbeStatus, SessionCheckpoint
 from .evaluation import CommandExecutor, HermesPromptRoleRunner, LiveEvalConfig, benchmark_routing_probe
 from .formal import AristotleFormalVerifier, FormalVerifier
-from .json_schema import validate
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
+from .runtime_config import (
+    default_config_path,
+    default_config_payload,
+    load_runtime_config,
+    resolve_config_path,
+    write_default_config,
+)
 from .tier1 import SessionStore, Tier1LoopRunner, Tier1RunResult
-
-_DEFAULT_CONFIG_PATH = Path("~/.hermes/deep-gvr/config.yaml")
 
 
 def _repo_root() -> Path:
@@ -30,44 +32,6 @@ def _utc_now() -> datetime:
 
 def _isoformat(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def default_config_path() -> Path:
-    return _DEFAULT_CONFIG_PATH.expanduser()
-
-
-def default_config_payload() -> dict[str, Any]:
-    return DeepGvrConfig().to_dict()
-
-
-def resolve_config_path(path: str | Path | None = None) -> Path:
-    if path is None:
-        return default_config_path()
-    return Path(path).expanduser()
-
-
-def write_default_config(path: str | Path | None = None, *, force: bool = False) -> Path:
-    config_path = resolve_config_path(path)
-    if config_path.exists() and not force:
-        return config_path
-
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(
-        yaml.safe_dump(default_config_payload(), sort_keys=False),
-        encoding="utf-8",
-    )
-    return config_path
-
-
-def load_runtime_config(path: str | Path | None = None) -> DeepGvrConfig:
-    config_path = resolve_config_path(path)
-    if not config_path.exists():
-        write_default_config(config_path)
-
-    payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    schema = json.loads((_repo_root() / "schemas" / "config.schema.json").read_text(encoding="utf-8"))
-    validate(payload, schema)
-    return DeepGvrConfig.from_dict(payload)
 
 
 def load_domain_context(

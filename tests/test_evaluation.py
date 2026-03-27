@@ -6,9 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests import _path_setup  # noqa: F401
 
-from deep_gvr.contracts import ProbeStatus, VerificationVerdict
+from deep_gvr.cli import load_runtime_config
+from deep_gvr.contracts import DeepGvrConfig, ProbeStatus, VerificationVerdict
 from deep_gvr.evaluation import (
     CommandExecutionResult,
     HermesPromptRoleRunner,
@@ -23,6 +26,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EvaluationTests(unittest.TestCase):
+    def _write_config(self, config_path: Path, evidence_dir: Path, *, provider: str, model: str) -> None:
+        payload = DeepGvrConfig().to_dict()
+        payload["evidence"]["directory"] = str(evidence_dir)
+        payload["models"]["orchestrator"]["provider"] = provider
+        payload["models"]["orchestrator"]["model"] = model
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
     def _successful_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
         del cwd
         query = command[command.index("-q") + 1]
@@ -158,6 +169,44 @@ class EvaluationTests(unittest.TestCase):
             )
             self.assertEqual(len(transcripts["calls"]), 2)
             self.assertIn("Response budget:", transcripts["calls"][0]["query"])
+
+    def test_live_mode_uses_configured_orchestrator_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            self._write_config(
+                config_path,
+                evidence_dir,
+                provider="openai",
+                model="gpt-5.4-mini",
+            )
+            configured = load_runtime_config(config_path)
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._successful_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertEqual(case.provider, "openai")
+            self.assertEqual(case.model_used, "gpt-5.4-mini")
+            self.assertEqual(configured.models.orchestrator.provider, "openai")
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            command = transcripts["calls"][0]["command"]
+            self.assertIn("--provider", command)
+            self.assertIn("--model", command)
+            self.assertIn("openai", command)
+            self.assertIn("gpt-5.4-mini", command)
 
     def test_compact_prompt_profile_emits_shorter_query_than_full(self) -> None:
         prompt_root = ROOT / "prompts"
