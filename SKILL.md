@@ -14,6 +14,8 @@ Live Hermes prompt execution now defaults to a `compact` prompt profile so bench
 - `python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml ...` runs the prompt stack against the benchmark corpus and records live artifacts under `eval/results/live/`
 - `python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --subset live-expansion ...` runs the representative multi-case live subset used for ongoing harness tuning
 - `python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --subset live-expansion --repeat 2 ...` is the current representative stability gate for the live benchmark subset
+- `python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --subset live-analytical-breadth ...` runs the broader Tier 1 coverage sweep
+- `python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --subset live-escalation-breadth --command-timeout-seconds 120 ...` runs the broader Tier 2 and Tier 3 coverage sweep
 
 ## Procedure
 
@@ -65,8 +67,10 @@ When the user invokes `/deep-gvr`:
 - Live evaluation treats `--command-timeout-seconds` as the base role timeout, applies a higher repo-local floor to the verifier, applies a larger follow-up floor once Tier 2 or Tier 3 evidence is attached, and leaves Tier 3 formal transport on the configured proof timeout.
 - Tier 3 transport readiness is separate from subagent MCP inheritance. The verifier still does not assume direct MCP access; the orchestrator checks for `mcp_servers.aristotle` and mediates the proof attempt.
 - For live known-incorrect benchmark cases, the evaluation runner now accepts a verified direct refutation as success instead of forcing the generator to produce a false candidate.
+- The same accepted-refutation scoring now also covers simulation-backed direct refutations when the live run clearly disproves the benchmark claim.
 - The accepted-refutation scoring now also recognizes conservative explicit refutations of the 5% circuit-level threshold claim when they clearly reject the claim and ground it in a sub-1% or `~0.6-0.8%` literature range.
 - Live case results now expose `strict_verdict_match`, `verdict_accepted`, `tiers_matched_expected`, `accepted_refutation`, and an explicit `outcome`, and repeated eval runs write a `consistency_report.json` so stability is measured structurally instead of from free-form notes.
 - For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without attached `simulation_results`, the live verifier guidance now defaults to requesting Tier 2.
+- For compact theorem or asymptotic proof claims, the live prompts now avoid unnecessary Tier 2 escalation and force `CANNOT_VERIFY` when the core theorem only has failed Tier 3 proof results.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.

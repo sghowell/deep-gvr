@@ -35,11 +35,13 @@ uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id kn
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact --repeat 2
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-analytical-breadth --prompt-profile compact
+uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-escalation-breadth --prompt-profile compact --command-timeout-seconds 120
 ```
 
 When `--output` is omitted in live mode, the runner writes `report.json` into the timestamped live output directory automatically. Live runs never overwrite `results/baseline_results.json` unless `--allow-baseline-overwrite` is passed explicitly.
 When `--repeat` is greater than `1`, the runner writes `consistency_report.json` at the chosen output root and stores each individual run under `runs/run-###/report.json`.
-The current representative gate is the repeated `live-expansion` sweep above; plan 21 recorded a stable `2/2` result at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`.
+The current representative gate is the repeated `live-expansion` sweep above; plan 21 recorded a stable `2/2` result at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`. The broader `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` subsets are coverage sweeps, not the fast repeated gate.
 
 ## Live Mode Notes
 
@@ -61,7 +63,9 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 - If compact mode still times out on the generator or verifier, the next operator levers are a higher timeout or a faster configured model route; prompt compaction does not change underlying provider latency.
 - Per-case artifacts include `candidate_solution.json`, `verification_report.json`, `role_transcripts.json`, `case_result.json`, and the session evidence/checkpoint files.
 - `case_result.json` now records `strict_verdict_match`, `verdict_accepted`, `tiers_matched_expected`, `accepted_refutation`, and an explicit `outcome` classification so operators can separate honest refutations from true verdict/tier failures.
+- `accepted_refutation` now also covers simulation-backed direct refutations such as a verified rejection of the `simulation-rejected-distance7` benchmark claim.
 - A failed formalizable live case does not necessarily mean Tier 3 transport failed; generator or verifier timeouts are recorded separately in `live_error.json` and `role_transcripts.json`, while real Tier 3 attempts leave `formal_transport` and `formal_results` artifacts under the session directory.
+- For compact theorem/asymptotic proof claims, the live verifier now keeps proof-oriented cases on Tier 3 and returns `CANNOT_VERIFY` when the core theorem claim only has Tier 3 `error`, `timeout`, or `unavailable` results.
 - When routing is in fallback mode, the harness records prompt separation plus the intended temperature values, but Hermes CLI does not expose a temperature flag. The live report records that limitation in case notes instead of pretending the override was applied.
 - The repo-local QEC anchors now explicitly separate the `~10.3%` independent-X/Z code-capacity figure from the `~10.9%` Nishimori-point bit-flip result and steer generic depolarizing-threshold answers toward the circuit-level Fowler/Stephens literature instead of overloaded mixed-regime summaries.
 - For known-incorrect live benchmark cases, a verified direct refutation now counts as success. The live runner no longer forces the generator to role-play a false claim just to preserve the deterministic benchmark verdict label.
