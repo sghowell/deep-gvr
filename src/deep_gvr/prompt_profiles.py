@@ -55,6 +55,32 @@ def build_live_role_query(
             f"{dump_prompt_json(payload, profile=profile)}\n"
         )
 
+    if role == "verifier":
+        return _build_compact_verifier_query(
+            prompt_text=prompt_text,
+            payload=payload,
+            route_lines=route_lines,
+        )
+
+    return _build_compact_generic_query(
+        role=role,
+        prompt_text=prompt_text,
+        payload=payload,
+        response_contract=response_contract,
+        route_lines=route_lines,
+        profile=profile,
+    )
+
+
+def _build_compact_generic_query(
+    *,
+    role: str,
+    prompt_text: str,
+    payload: dict[str, Any],
+    response_contract: dict[str, Any],
+    route_lines: list[str],
+    profile: str,
+) -> str:
     budget_lines = _live_response_budget_lines(role)
     return "\n".join(
         [
@@ -73,6 +99,76 @@ def build_live_role_query(
             "",
         ]
     )
+
+
+def _build_compact_verifier_query(
+    *,
+    prompt_text: str,
+    payload: dict[str, Any],
+    route_lines: list[str],
+) -> str:
+    return "\n".join(
+        [
+            "# deep-gvr",
+            "Role: verifier",
+            "Audit the candidate only. Return one JSON object.",
+            prompt_text,
+            "Response budget:",
+            "- Keep each check detail to one short sentence.",
+            "- List only the flaws or caveats needed for the verdict.",
+            "- Request Tier 2 or Tier 3 only when the candidate truly requires it.",
+            "JSON shape:",
+            (
+                '{"verdict":"VERIFIED|FLAWS_FOUND|CANNOT_VERIFY",'
+                '"tier1":{"checks":[{"check":"...","status":"pass|fail|uncertain","detail":"..."}],'
+                '"overall":"VERIFIED|FLAWS_FOUND|CANNOT_VERIFY","flaws":["..."],"caveats":["..."]},'
+                '"tier2":{"simulation_requested":false,"reason":"...","simulation_spec":null},'
+                '"tier3":[],'
+                '"flaws":["..."],"caveats":["..."],"cannot_verify_reason":null}'
+            ),
+            "Route:",
+            "; ".join(route_lines),
+            "Payload:",
+            *_compact_verifier_payload_lines(payload),
+            "",
+        ]
+    )
+
+
+def _compact_verifier_payload_lines(payload: dict[str, Any]) -> list[str]:
+    candidate = payload.get("candidate", {})
+    lines = [
+        f"session_id={payload.get('session_id', '')}",
+        f"iteration={payload.get('iteration', '')}",
+        "candidate:",
+        f"- hypothesis: {candidate.get('hypothesis', '')}",
+        f"- approach: {candidate.get('approach', '')}",
+        *_candidate_list_lines("technical_details", candidate.get("technical_details", [])),
+        *_candidate_list_lines("expected_results", candidate.get("expected_results", [])),
+        *_candidate_list_lines("assumptions", candidate.get("assumptions", [])),
+        *_candidate_list_lines("limitations", candidate.get("limitations", [])),
+        *_candidate_list_lines("references", candidate.get("references", [])),
+    ]
+    simulation_results = payload.get("simulation_results")
+    if simulation_results is None:
+        lines.append("simulation_results: none")
+    else:
+        lines.append(f"simulation_results: {dump_prompt_json(simulation_results, profile='compact')}")
+    formal_results = payload.get("formal_results")
+    if not formal_results:
+        lines.append("formal_results: none")
+    else:
+        lines.append(f"formal_results: {dump_prompt_json(formal_results, profile='compact')}")
+    return lines
+
+
+def _candidate_list_lines(label: str, values: Any) -> list[str]:
+    items = list(values or [])
+    if not items:
+        return [f"- {label}: none"]
+    lines = [f"- {label}:"]
+    lines.extend(f"  - {item}" for item in items)
+    return lines
 
 
 def build_formal_query(

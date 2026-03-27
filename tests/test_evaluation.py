@@ -22,6 +22,7 @@ from deep_gvr.evaluation import (
     run_benchmark_suite,
     write_benchmark_report,
 )
+from deep_gvr.prompt_profiles import _build_compact_generic_query
 from deep_gvr.routing import EffectiveModelRoute
 from deep_gvr.tier1 import VerificationRequest
 
@@ -402,6 +403,93 @@ class EvaluationTests(unittest.TestCase):
 
         self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
         self.assertEqual(mocked_executor.call_args.args[2], 90)
+
+    def test_compact_verifier_query_is_shorter_than_generic_compact_form(self) -> None:
+        runner = HermesPromptRoleRunner(
+            LiveEvalConfig(prompt_profile="compact"),
+            prompt_root=ROOT / "prompts",
+        )
+        payload = {
+            "session_id": "session_eval",
+            "iteration": 1,
+            "candidate": {
+                "hypothesis": "The planar surface code has a threshold under standard depolarizing noise assumptions.",
+                "approach": "Explain the literature-backed threshold claim with decoder and noise-model qualifiers.",
+                "technical_details": [
+                    "Code-capacity thresholds are around ten percent.",
+                    "Phenomenological thresholds are in the low single-digit percent range.",
+                    "Circuit-level thresholds are in the sub-one-percent range.",
+                ],
+                "expected_results": [
+                    "Below threshold the logical error rate decreases with distance.",
+                    "At threshold the distance curves cross.",
+                ],
+                "assumptions": ["Independent depolarizing noise.", "Global decoder access to syndrome history."],
+                "limitations": ["Threshold values are decoder-dependent."],
+                "references": ["Dennis et al. 2002", "Fowler et al. 2012"],
+                "revision_notes": ["Numbers are paired with noise-model qualifiers."],
+            },
+            "simulation_results": None,
+            "formal_results": None,
+        }
+        route_notes = ["Use prompt separation plus temperature decorrelation and record the limitation."]
+        generic_prompt = (ROOT / "prompts" / "verifier.md").read_text(encoding="utf-8")
+        compact_prompt = (ROOT / "prompts" / "verifier_compact.md").read_text(encoding="utf-8")
+        response_contract = {
+            "verdict": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+            "tier1": {
+                "checks": [{"check": "string", "status": "pass|fail|uncertain", "detail": "string"}],
+                "overall": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+                "flaws": ["string"],
+                "caveats": ["string"],
+            },
+            "tier2": {
+                "simulation_requested": "boolean",
+                "reason": "string",
+                "simulation_spec": "object | null",
+                "results": "object | null",
+                "interpretation": "string | null",
+            },
+            "tier3": [
+                {
+                    "claim": "string",
+                    "backend": "string",
+                    "proof_status": "requested|proved|disproved|timeout|error|unavailable",
+                    "details": "string",
+                    "lean_code": "string",
+                    "proof_time_seconds": "number | null",
+                }
+            ],
+            "flaws": ["string"],
+            "caveats": ["string"],
+            "cannot_verify_reason": "string | null",
+        }
+
+        verifier_query = runner._build_query(
+            role="verifier",
+            prompt_text=compact_prompt,
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=route_notes,
+            route_temperature=0.1,
+        )
+        generic_query = _build_compact_generic_query(
+            role="verifier",
+            prompt_text=generic_prompt,
+            payload=payload,
+            response_contract=response_contract,
+            route_lines=[
+                "role=verifier",
+                *route_notes,
+                "Temperature fallback is recorded only; Hermes CLI cannot enforce it.",
+            ],
+            profile="compact",
+        )
+
+        self.assertIn("prompts/verifier_compact.md", str(runner._resolve_prompt_path("verifier", "verifier.md")))
+        self.assertLess(len(verifier_query), len(generic_query))
+        self.assertNotIn("revision_notes", verifier_query)
+        self.assertIn('"tier3":[]', verifier_query)
 
     def test_live_mode_does_not_clip_formal_transport_to_live_role_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

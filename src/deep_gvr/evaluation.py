@@ -398,7 +398,7 @@ class HermesPromptRoleRunner:
         route_notes: list[str],
         route_temperature: float | None,
     ) -> str:
-        prompt_path = self.prompt_root / prompt_file
+        prompt_path = self._resolve_prompt_path(role, prompt_file)
         prompt_text = prompt_path.read_text(encoding="utf-8")
         query = self._build_query(
             role=role,
@@ -442,6 +442,13 @@ class HermesPromptRoleRunner:
                 f"Hermes role {role!r} failed with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
             )
         return result.stdout
+
+    def _resolve_prompt_path(self, role: str, prompt_file: str) -> Path:
+        if self.config.prompt_profile == "compact" and role == "verifier":
+            compact_path = self.prompt_root / f"{Path(prompt_file).stem}_compact.md"
+            if compact_path.exists():
+                return compact_path
+        return self.prompt_root / prompt_file
 
     def _build_query(
         self,
