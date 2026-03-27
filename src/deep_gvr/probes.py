@@ -41,7 +41,10 @@ def probe_mcp_inheritance() -> CapabilityProbeResult:
         summary = "Hermes and Aristotle credentials are present, and MCP inheritance is explicitly marked supported."
     else:
         status = ProbeStatus.FALLBACK
-        summary = "Subagent MCP inheritance is not verified; plan on orchestrator-mediated formal verification."
+        summary = (
+            "Subagent MCP inheritance is not verified; use the implemented orchestrator-mediated formal "
+            "verification fallback."
+        )
 
     return CapabilityProbeResult(
         name="subagent_mcp_inheritance",

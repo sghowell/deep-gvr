@@ -9,6 +9,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `VerificationReport`: verifier output with tiered results
 - `SimSpec`: normalized simulation request
 - `SimResults`: normalized simulation output
+- `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
 - `EvidenceRecord`: append-only record for one GVR phase transition
 - `SessionCheckpoint`: resume-safe loop state for the last complete phase
 - `SessionIndex`: summary view of known sessions
@@ -22,6 +23,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `domain/*.md`: concise domain context cards
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_*.json`: persisted Tier 3 requests and returned formal results
 
 ## Alignment Rules
 

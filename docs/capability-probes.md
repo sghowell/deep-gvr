@@ -15,6 +15,7 @@ The architecture document identifies several implementation unknowns that are im
 
 - Question: do delegated subagents inherit MCP tool access?
 - Default until proven otherwise: assume verifier-side MCP access is not guaranteed.
+- Current baseline: Tier 3 is mediated through the orchestrator, which persists formal request/results artifacts and passes returned results back into verification.
 - Preferred outcome: verifier can call Aristotle directly.
 - Fallback: orchestrator mediates formal verification requests and passes results back into verification.
 

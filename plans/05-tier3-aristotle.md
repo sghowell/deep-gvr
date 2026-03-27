@@ -16,21 +16,27 @@ Start from the integration branch and work on `codex/tier3-aristotle`. Merge bac
 
 ## Progress
 
-- [ ] Tier 3 is not implemented.
+- [x] Tier 3 mediation is implemented in the loop runner with formal request/results artifact persistence.
+- [x] The default Aristotle runner returns structured unavailable results when transport is not wired.
+- [x] Tests cover proof success, timeout mapping, and unavailable-service fallback.
 
 ## Surprises & Discoveries
 
-- None yet.
+- The repo environment already exposes `ARISTOTLE_API_KEY`, so tests needed to control the environment explicitly instead of assuming the key was absent.
+- Without a repo-local Hermes MCP transport API, the most reliable v0.1 slice is a mediated Aristotle boundary plus injected executor support for success and timeout paths.
 
 ## Decision Log
 
 - Decision: use Aristotle as the first Tier 3 backend.
   Rationale: it avoids requiring a local Lean toolchain for the initial version.
   Date/Author: 2026-03-26 / Codex
+- Decision: implement a default Aristotle runner that emits structured `unavailable` results until a transport is wired.
+  Rationale: the plan requires graceful degradation now, while leaving a clean seam for future Hermes MCP integration.
+  Date/Author: 2026-03-26 / Codex
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+The repo now supports formal-verification mediation end to end: the verifier can request formal checks, the orchestrator persists the request and returned results, the default Aristotle runner degrades gracefully when transport is unavailable, and reverification can consume proof success, timeout, or unavailable outcomes without changing the verifier contract.
 
 ## Context and Orientation
 

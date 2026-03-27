@@ -33,6 +33,7 @@ The repo now includes a Python Tier 1 orchestration helper with append-only evid
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
+- The orchestrator mediates Tier 3 as verifier -> formal backend -> verifier, persisting both the formal request and returned results under the session artifacts directory.
 - Cross-model verification is preferred. If Hermes cannot route models per subagent, fall back to prompt and temperature decorrelation.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.
