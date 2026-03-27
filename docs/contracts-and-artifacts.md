@@ -4,13 +4,13 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 
 ## Core Contracts
 
-- `DeepGvrConfig`: loop settings, verification tiers, model routing, evidence storage, and domain defaults
+- `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, and domain defaults
 - `CandidateSolution`: generator or reviser output
 - `VerificationReport`: verifier output with tiered results
 - `SimSpec`: normalized simulation request
 - `SimResults`: normalized simulation output
 - `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
-- `EvidenceRecord`: append-only record for one GVR phase transition
+- `EvidenceRecord`: append-only record for one GVR phase transition, including the effective provider/model path, routing mode, and any fallback temperature
 - `SessionCheckpoint`: resume-safe loop state for the last complete phase
 - `SessionIndex`: summary view of known sessions
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
@@ -28,6 +28,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 ## Alignment Rules
 
 - Field names must match across prompts, Python models, schemas, and fixtures.
+- Config changes that affect effective model routing must update the routing helper, fixtures, and evidence examples in the same branch.
 - Sample artifacts should be realistic enough to support smoke tests and contract review.
 - Prompt changes that affect artifacts must update schemas and fixtures in the same branch.
 - New public artifacts, including resume state, must have schema, template, and tests in the same branch.

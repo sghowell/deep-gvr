@@ -287,9 +287,11 @@ A key enhancement over Aletheia: the Generator and Verifier should use *differen
 
 The key constraint: **Generator and Verifier must not use the same model.** If only one provider is available, use different model variants (e.g., claude-sonnet vs claude-opus) or different temperature settings as a weaker form of decorrelation.
 
+**Current repo baseline:** derive an effective routing plan from the configured orchestrator and per-role model selections plus the routing probe. When the probe is `ready`, use direct generator/verifier/reviser routes. When it is not, inherit the orchestrator route and record role-specific temperature decorrelation in evidence.
+
 **Implementation approach:**
 
-Hermes's `delegate_task` spawns subagents that inherit the parent's model configuration. Per-subagent model routing is not natively supported as of March 2026. Two implementation paths:
+Hermes's `delegate_task` spawns subagents that inherit the parent's model configuration. Per-subagent model routing is not natively supported as of March 2026. Three implementation paths:
 
 1. **Preferred: Hermes config override.** Investigate whether `delegate_task` accepts model configuration in its parameters. If so, pass model overrides per role. This may require an upstream PR.
 
@@ -686,6 +688,9 @@ Each line in the session's `.jsonl` file:
   "formal_verification_results": null | { ... },
   "model_used": "claude-sonnet-4-20250514",
   "provider": "openrouter",
+  "routing_mode": "direct" | "temperature_decorrelation",
+  "routing_temperature": null | 0.2,
+  "routing_notes": ["string", ...],
   "tokens_in": 4500,
   "tokens_out": 3200,
   "duration_seconds": 45.2,
@@ -915,6 +920,9 @@ verification:
 
 # Model routing (cross-model verification)
 models:
+  orchestrator:
+    provider: default          # "default" = use Hermes's configured model
+    model: ""
   generator:
     provider: openrouter       # openrouter | nous | openai | default
     model: ""                  # Empty = use provider's default strong model

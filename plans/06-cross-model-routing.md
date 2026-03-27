@@ -11,26 +11,32 @@ Start from the integration branch and work on `codex/cross-model-routing`. Merge
 ## Commit Plan
 
 - `implement model routing strategy`
-- `add fallback routing and documentation`
-- `add routing validation cases`
+- `document routing fallback behavior`
 
 ## Progress
 
-- [ ] Cross-model routing is not implemented.
+- [x] Added a deterministic routing plan driven by config plus the routing probe.
+- [x] Threaded effective generator, verifier, and reviser routes into Tier 1 requests and evidence records.
+- [x] Added tests for preferred direct routing and temperature-decorrelation fallback behavior.
+- [ ] Run full branch validation, merge locally, push, confirm CI, and clean up.
 
 ## Surprises & Discoveries
 
-- None yet.
+- The repo needed an explicit orchestrator route in `DeepGvrConfig` so fallback evidence can record the inherited model path instead of leaving it implicit.
+- A ready routing probe is not enough by itself; the runner still needs a same-model fallback when generator and verifier config resolve to the same provider/model pair.
 
 ## Decision Log
 
 - Decision: treat prompt and temperature decorrelation as the documented fallback, not the preferred design.
   Rationale: the architecture depends on independent failure modes when the platform allows it.
   Date/Author: 2026-03-26 / Codex
+- Decision: add `models.orchestrator` to the config contract and use it as the shared inherited path when per-subagent routing is unavailable.
+  Rationale: fallback evidence must record the effective model path deterministically from repo-local state.
+  Date/Author: 2026-03-26 / Codex
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+Implementation is complete; merge and release steps remain.
 
 ## Context and Orientation
 
@@ -42,9 +48,10 @@ Implement a routing layer that prefers distinct providers or models and records 
 
 ## Concrete Steps
 
-1. Confirm Hermes routing support through probes.
-2. Add the effective model-selection logic.
-3. Add tests for preferred and fallback paths.
+1. Confirm Hermes routing support through probes and treat the result as routing input, not hidden environment lore.
+2. Add deterministic effective model-selection logic for orchestrator, generator, verifier, and reviser roles.
+3. Record the effective route, routing mode, and any temperature fallback in evidence artifacts.
+4. Add tests for preferred direct routing, same-model fallback, and orchestrator-inherited fallback.
 
 ## Validation and Acceptance
 
@@ -64,4 +71,4 @@ Routing decisions must remain deterministic from config plus capability state so
 
 ## Interfaces and Dependencies
 
-Primary paths: config contract, routing helpers, probe results, and evidence records.
+Primary paths: `src/deep_gvr/contracts.py`, `src/deep_gvr/routing.py`, `src/deep_gvr/tier1.py`, config/evidence schemas and templates, probe results, and routing-focused tests.

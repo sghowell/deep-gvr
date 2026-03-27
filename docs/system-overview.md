@@ -38,4 +38,5 @@
 - Sequential GVR loop first
 - Resume from the last complete checkpoint instead of replaying partial phases
 - Cross-model verification preferred, with prompt/temperature decorrelation as the fallback
+- Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Local, Modal, and SSH backends represented from the start through the adapter interface

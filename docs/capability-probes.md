@@ -8,6 +8,7 @@ The architecture document identifies several implementation unknowns that are im
 
 - Question: can Hermes route different models to delegated subagents?
 - Default until proven otherwise: assume no per-subagent override support.
+- Current baseline: the routing helper resolves direct per-role routes when the probe is `ready`; otherwise it records the shared orchestrator route plus role-specific temperature decorrelation in evidence.
 - Preferred outcome: explicit generator and verifier model overrides.
 - Fallback: use prompt separation plus temperature decorrelation and document the limitation.
 
