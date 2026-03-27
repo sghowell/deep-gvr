@@ -87,7 +87,7 @@ def parse_args() -> argparse.Namespace:
         "--command-timeout-seconds",
         type=int,
         default=120,
-        help="Per-role Hermes command timeout for live mode.",
+        help="Base Hermes command timeout for live role calls. The verifier may use a higher repo-local floor.",
     )
     parser.add_argument(
         "--toolsets",

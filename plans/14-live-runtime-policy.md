@@ -17,10 +17,10 @@ Start from `main` and implement this slice on `codex/live-runtime-policy`. Merge
 ## Progress
 
 - [x] Added the new plan and indexed it from `plans/README.md`.
-- [ ] Constrained live role calls to a narrow default Hermes toolset when operators do not explicitly request toolsets.
-- [ ] Stopped live formal transport from inheriting the shorter generator/verifier timeout budget.
-- [ ] Added tests for the runtime policy and updated repo docs.
-- [ ] Re-ran live smokes to confirm the changed runtime behavior.
+- [x] Constrained live role calls to a narrow default Hermes toolset when operators do not explicitly request toolsets.
+- [x] Stopped live formal transport from inheriting the shorter generator/verifier timeout budget.
+- [x] Added tests for the runtime policy and updated repo docs.
+- [x] Re-ran live smokes to confirm the changed runtime behavior.
 
 ## Surprises & Discoveries
 
@@ -28,6 +28,7 @@ Start from `main` and implement this slice on `codex/live-runtime-policy`. Merge
 - Forcing `--toolsets clarify` on the live role call removed the repo-reading behavior and let the generator finish within 60 seconds on the same route, which shows the inherited tool policy is a real latency contributor.
 - The verifier still timed out at 60 seconds under the restricted toolset, which points to a second lever: role-specific timeout policy rather than a single flat bound for every live step.
 - The formal verifier currently receives the same `command_timeout_seconds` override as the live role runner, which clips Tier 3 transport to the same shorter budget even though the formal request already carries its own timeout.
+- Once generator and verifier started completing under the new runtime policy, the live path exposed a latent Tier 2 robustness bug: malformed verifier `simulation_spec` payloads crashed the orchestrator with `KeyError` instead of producing structured simulation errors. This slice now converts those malformed specs into normalized simulation-error artifacts.
 
 ## Decision Log
 
@@ -43,7 +44,7 @@ Start from `main` and implement this slice on `codex/live-runtime-policy`. Merge
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a more realistic live runtime policy: role prompts should default to a constrained Hermes tool surface, verifier/formal steps should no longer be forced into the same short timeout budget as generation, and operators should be able to understand the resulting behavior from repo-local docs and artifacts.
+This slice leaves the repo with a more realistic live runtime policy: role prompts default to a constrained Hermes tool surface, verifier/formal steps are no longer forced into the same short timeout budget as generation, and malformed Tier 2 specs now degrade into structured simulation errors instead of a crash. In the recorded live smoke at `/tmp/deep-gvr-live-runtime-policy-2`, generator and verifier both completed under the default policy, the transcript showed `--toolsets clarify` rather than repo exploration, and the run ended with a normal verifier verdict (`FLAWS_FOUND`) instead of a timeout/crash. That moves the remaining live-quality gap back to prompt/model quality rather than harness control flow.
 
 ## Context and Orientation
 

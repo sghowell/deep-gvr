@@ -54,7 +54,8 @@ When the user invokes `/deep-gvr`:
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
 - Hermes-backed live execution supports `compact` and `full` prompt profiles. `compact` is the default runtime path; `full` is the debugging path when prompt scaffolding needs inspection.
-- Live evaluation bounds each `hermes chat` role call with a repo-local timeout so stalled model calls degrade into structured benchmark errors instead of hanging the run.
+- Live generator/verifier/reviser calls now default to a constrained Hermes tool surface when `--toolsets` is omitted, so prompt execution does not inherit the full interactive CLI tool policy by default.
+- Live evaluation treats `--command-timeout-seconds` as the base role timeout, applies a higher repo-local floor to the verifier, and leaves Tier 3 formal transport on the configured proof timeout.
 - Tier 3 transport readiness is separate from subagent MCP inheritance. The verifier still does not assume direct MCP access; the orchestrator checks for `mcp_servers.aristotle` and mediates the proof attempt.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.

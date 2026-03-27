@@ -81,6 +81,8 @@ uv run deep-gvr resume <session_id>
 
 The command loads `~/.hermes/deep-gvr/config.yaml`, injects domain context from `domain/`, runs the existing generator-verifier-reviser loop, and writes evidence to the configured session directory.
 Live Hermes calls now use the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you need the more verbose scaffolding for debugging prompt behavior.
+When `--toolsets` is omitted, live generator/verifier/reviser calls now force a narrow Hermes tool surface instead of inheriting the full interactive CLI tool policy. This keeps role prompts focused on returning contract-shaped JSON rather than exploring the repo by default. Pass `--toolsets ...` when you explicitly want a broader live tool surface.
+`--command-timeout-seconds` is now the base live role timeout. The verifier may receive a higher repo-local floor, while Tier 3 formal transport keeps using the configured proof timeout instead of inheriting the shorter live role bound.
 If Aristotle transport is configured in `~/.hermes/config.yaml`, Tier 3 requests are dispatched through `hermes chat` plus the discovered `mcp_aristotle_*` tools and the session records a `formal_transport` artifact alongside the formal request/results artifacts.
 
 ## Evaluation Baseline
@@ -96,6 +98,7 @@ uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id kn
 ```
 
 Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config` and uses the same repo-local route settings as `uv run deep-gvr`. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
+Live eval also uses the constrained default live runtime policy when `--toolsets` is omitted, so generator/verifier/reviser runs do not inherit the full Hermes CLI tool surface by default.
 
 ## Reference Docs
 

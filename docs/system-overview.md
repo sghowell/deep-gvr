@@ -46,4 +46,6 @@
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
+- Live generator/verifier/reviser calls default to a constrained Hermes tool surface instead of inheriting the full interactive CLI tool policy
+- The live role timeout is role-aware: verifier gets a higher floor, while Tier 3 transport keeps its own proof timeout
 - Local, Modal, and SSH backends represented from the start through the adapter interface
