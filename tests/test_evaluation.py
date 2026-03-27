@@ -12,11 +12,20 @@ import yaml
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.cli import load_runtime_config
-from deep_gvr.contracts import CandidateSolution, DeepGvrConfig, ProbeStatus, VerificationVerdict
+from deep_gvr.contracts import (
+    Backend,
+    CandidateSolution,
+    DeepGvrConfig,
+    ProbeStatus,
+    SimAnalysis,
+    SimResults,
+    VerificationVerdict,
+)
 from deep_gvr.evaluation import (
     CommandExecutionResult,
     HermesPromptRoleRunner,
     LiveEvalConfig,
+    _accept_verified_refutation,
     available_benchmark_subsets,
     benchmark_routing_probe,
     format_benchmark_report_overview,
@@ -166,6 +175,24 @@ class EvaluationTests(unittest.TestCase):
     def test_load_benchmark_suite_rejects_unknown_subset(self) -> None:
         with self.assertRaises(ValueError):
             load_benchmark_suite(ROOT / "eval" / "known_problems.json", subset="missing-subset")
+
+    def test_accept_verified_refutation_for_known_incorrect_case(self) -> None:
+        case = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            case_ids=["known-incorrect-surface-threshold-5pct"],
+        )[0]
+        candidate = CandidateSolution(
+            hypothesis="The claim that the circuit-level threshold is 5% is not defensible; the literature keeps it in the sub-1% regime.",
+            approach="Reject the claim on literature grounds instead of fabricating support for it.",
+            technical_details=["The circuit-level threshold remains well below 5% under standard depolarizing noise."],
+            expected_results=["The verifier should accept the refutation as a correct rejection of the benchmark claim."],
+            assumptions=["Standard circuit-level depolarizing assumptions apply."],
+            limitations=["This is a benchmark refutation candidate."],
+            references=["Fowler et al. 2012", "Stephens 2014"],
+            revision_notes=[],
+        )
+
+        self.assertTrue(_accept_verified_refutation(case, VerificationVerdict.VERIFIED, candidate))
 
     def test_run_benchmark_suite_matches_expected_baseline(self) -> None:
         report = run_benchmark_suite(
@@ -575,6 +602,30 @@ class EvaluationTests(unittest.TestCase):
             "Prefer Fowler et al. (2012) or Stephens (2014) for the sub-1% circuit-level MWPM range",
             compact_query,
         )
+        self.assertIn(
+            "For simulation-driven quantitative claims, prefer the smallest falsifiable prediction the simulator can actually check",
+            compact_query,
+        )
+        self.assertIn(
+            "Do not strengthen the core claim into harder-to-verify quantitative subclaims unless the prompt asks for them",
+            compact_query,
+        )
+        self.assertIn(
+            "For small-distance simulator-backed claims, keep the hypothesis on the ordering the prompt actually asks for",
+            compact_query,
+        )
+        self.assertIn(
+            "prefer direct ordering checks over ratio targets or straight-line-fit claims",
+            compact_query,
+        )
+        self.assertIn(
+            "When refuting a known-false claim, keep `expected_results` to the minimal literature-backed consequences",
+            compact_query,
+        )
+        self.assertIn(
+            "prefer a conservative literature range like `~0.6-0.8%`",
+            compact_query,
+        )
         self.assertLess(len(compact_query), len(full_query))
 
     def test_verifier_uses_timeout_floor_with_default_executor(self) -> None:
@@ -625,6 +676,70 @@ class EvaluationTests(unittest.TestCase):
 
         self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
         self.assertEqual(mocked_executor.call_args.args[2], 90)
+
+    def test_verifier_with_simulation_results_uses_followup_timeout_floor(self) -> None:
+        runner = HermesPromptRoleRunner(
+            LiveEvalConfig(command_timeout_seconds=5),
+            prompt_root=ROOT / "prompts",
+        )
+        request = VerificationRequest(
+            session_id="session_eval",
+            iteration=1,
+            candidate=CandidateSolution(
+                hypothesis="Hypothesis",
+                approach="Approach",
+                technical_details=["Detail"],
+                expected_results=["Result"],
+                assumptions=["Assumption"],
+                limitations=["Limitation"],
+                references=["Reference"],
+            ),
+            route=EffectiveModelRoute(provider="default", model="configured-by-hermes"),
+            simulation_results=SimResults(
+                simulator="stim",
+                adapter_version="0.1.0",
+                timestamp="2026-03-27T00:00:00Z",
+                runtime_seconds=0.1,
+                backend=Backend.LOCAL,
+                data=[],
+                analysis=SimAnalysis(
+                    threshold_estimate=0.001,
+                    threshold_method="monotonic_distance_improvement",
+                    below_threshold_distances=[5],
+                    scaling_exponent=None,
+                ),
+                errors=[],
+            ),
+        )
+        payload = {
+            "verdict": "VERIFIED",
+            "tier1": {
+                "checks": [
+                    {
+                        "check": "benchmark_ground_truth",
+                        "status": "pass",
+                        "detail": "The claim matches the benchmark ground truth.",
+                    }
+                ],
+                "overall": "VERIFIED",
+                "flaws": [],
+                "caveats": [],
+            },
+            "tier2": None,
+            "tier3": [],
+            "flaws": [],
+            "caveats": [],
+            "cannot_verify_reason": None,
+        }
+
+        with patch(
+            "deep_gvr.evaluation._default_executor",
+            return_value=CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr=""),
+        ) as mocked_executor:
+            report = runner.verifier(request)
+
+        self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
+        self.assertEqual(mocked_executor.call_args.args[2], 180)
 
     def test_compact_verifier_query_is_shorter_than_generic_compact_form(self) -> None:
         runner = HermesPromptRoleRunner(
@@ -712,6 +827,17 @@ class EvaluationTests(unittest.TestCase):
         self.assertLess(len(verifier_query), len(generic_query))
         self.assertNotIn("revision_notes", verifier_query)
         self.assertIn('"tier3":[]', verifier_query)
+        self.assertIn('"task":{"code":"surface_code","task_type":"rotated_memory_z"', verifier_query)
+        self.assertIn('"noise_model":"depolarizing"', verifier_query)
+        self.assertIn('"resources":{"timeout_seconds":...,"max_parallel":...}', verifier_query)
+        self.assertIn("Use the canonical noise model string `depolarizing`", verifier_query)
+        self.assertIn("Keep `shots_per_point` at or below 100000", verifier_query)
+        self.assertIn("Do not request Tier 2 or Tier 3 just to polish a verdict that Tier 1 already settles", verifier_query)
+        self.assertIn(
+            "Keep known-false literature-grounded contradictions at Tier 1 unless simulation is needed for the core contradiction itself",
+            verifier_query,
+        )
+        self.assertIn("If the main claim is a short formal theorem, request tier3", verifier_query)
 
     def test_live_mode_does_not_clip_formal_transport_to_live_role_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

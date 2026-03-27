@@ -218,7 +218,7 @@ class StimAdapter(SimulatorAdapter):
 
         if monotonic_candidates:
             return SimAnalysis(
-                threshold_estimate=max(monotonic_candidates),
+                threshold_estimate=None,
                 threshold_method="monotonic_distance_improvement",
                 below_threshold_distances=sorted(below_threshold_distances),
                 scaling_exponent=None,

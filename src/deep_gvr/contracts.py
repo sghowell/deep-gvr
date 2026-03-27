@@ -55,6 +55,24 @@ class ProofStatus(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
+_SIM_NOISE_MODEL_ALIASES = {
+    "depolarizing": "depolarizing",
+    "uniform_depolarizing": "depolarizing",
+    "iid_depolarizing": "depolarizing",
+}
+_SIM_MAX_SHOTS_PER_POINT = 100_000
+_SIM_MAX_PARALLEL = 4
+
+
+def _normalize_sim_noise_model(value: str) -> str:
+    normalized = value.strip().lower()
+    return _SIM_NOISE_MODEL_ALIASES.get(normalized, normalized)
+
+
+def _bounded_positive_int(value: Any, *, maximum: int) -> int:
+    return max(1, min(int(value), maximum))
+
+
 @dataclass(slots=True)
 class ModelSelection:
     provider: str = "default"
@@ -278,11 +296,14 @@ class Tier3ClaimResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Tier3ClaimResult":
+        claim = data.get("claim") or data.get("statement") or data.get("obligation")
+        if claim is None:
+            raise KeyError("claim")
         return cls(
-            claim=data["claim"],
-            backend=data["backend"],
-            proof_status=ProofStatus(data["proof_status"]),
-            details=data["details"],
+            claim=claim,
+            backend=data.get("backend", "aristotle"),
+            proof_status=ProofStatus(data.get("proof_status", ProofStatus.REQUESTED.value)),
+            details=data.get("details") or data.get("reason") or data.get("proof_obligation", ""),
             lean_code=data.get("lean_code", ""),
             proof_time_seconds=float(data["proof_time_seconds"]) if data.get("proof_time_seconds") is not None else None,
         )
@@ -335,10 +356,10 @@ class SimTask:
             task_type=data["task_type"],
             distance=[int(item) for item in data["distance"]],
             rounds_per_distance=data["rounds_per_distance"],
-            noise_model=data["noise_model"],
+            noise_model=_normalize_sim_noise_model(data["noise_model"]),
             error_rates=[float(item) for item in data["error_rates"]],
             decoder=data["decoder"],
-            shots_per_point=int(data["shots_per_point"]),
+            shots_per_point=_bounded_positive_int(data["shots_per_point"], maximum=_SIM_MAX_SHOTS_PER_POINT),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -354,7 +375,7 @@ class SimResources:
     def from_dict(cls, data: dict[str, Any]) -> "SimResources":
         return cls(
             timeout_seconds=int(data["timeout_seconds"]),
-            max_parallel=int(data["max_parallel"]),
+            max_parallel=_bounded_positive_int(data["max_parallel"], maximum=_SIM_MAX_PARALLEL),
         )
 
     def to_dict(self) -> dict[str, Any]:

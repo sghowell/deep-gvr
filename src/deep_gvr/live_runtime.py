@@ -4,6 +4,7 @@ from typing import Sequence
 
 _DEFAULT_ROLE_TOOLSETS = ("clarify",)
 _VERIFIER_TIMEOUT_FLOOR_SECONDS = 90
+_VERIFIER_EVIDENCE_TIMEOUT_FLOOR_SECONDS = 180
 
 
 def resolve_live_role_toolsets(role: str, explicit_toolsets: Sequence[str] | None = None) -> list[str]:
@@ -14,7 +15,15 @@ def resolve_live_role_toolsets(role: str, explicit_toolsets: Sequence[str] | Non
     return []
 
 
-def resolve_live_role_timeout_seconds(role: str, base_timeout_seconds: int) -> int:
+def resolve_live_role_timeout_seconds(
+    role: str,
+    base_timeout_seconds: int,
+    *,
+    has_simulation_results: bool = False,
+    has_formal_results: bool = False,
+) -> int:
     if role == "verifier":
+        if has_simulation_results or has_formal_results:
+            return max(base_timeout_seconds, _VERIFIER_EVIDENCE_TIMEOUT_FLOOR_SECONDS)
         return max(base_timeout_seconds, _VERIFIER_TIMEOUT_FLOOR_SECONDS)
     return base_timeout_seconds

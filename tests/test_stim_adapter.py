@@ -9,7 +9,7 @@ from pathlib import Path
 
 from tests import _path_setup  # noqa: F401
 
-from deep_gvr.contracts import Backend, SimSpec
+from deep_gvr.contracts import Backend, SimDataPoint, SimSpec
 
 from adapters.stim_adapter import StimAdapter
 
@@ -100,9 +100,46 @@ class StimAdapterSmokeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             payload = json.loads(output_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["simulator"], "stim")
-            self.assertEqual(payload["backend"], "local")
-            self.assertEqual(len(payload["data"]), 1)
-            self.assertEqual(payload["errors"], [])
+        self.assertEqual(payload["backend"], "local")
+        self.assertEqual(len(payload["data"]), 1)
+        self.assertEqual(payload["errors"], [])
+
+    def test_monotonic_analysis_does_not_report_test_error_rate_as_threshold(self) -> None:
+        analysis = StimAdapter()._analyze(
+            [
+                SimDataPoint(
+                    distance=3,
+                    rounds=3,
+                    physical_error_rate=0.001,
+                    logical_error_rate=2.2e-4,
+                    shots=100000,
+                    errors_observed=22,
+                    decoder="pymatching",
+                ),
+                SimDataPoint(
+                    distance=5,
+                    rounds=5,
+                    physical_error_rate=0.001,
+                    logical_error_rate=3.0e-5,
+                    shots=100000,
+                    errors_observed=3,
+                    decoder="pymatching",
+                ),
+                SimDataPoint(
+                    distance=7,
+                    rounds=7,
+                    physical_error_rate=0.001,
+                    logical_error_rate=1.0e-5,
+                    shots=100000,
+                    errors_observed=1,
+                    decoder="pymatching",
+                ),
+            ]
+        )
+
+        self.assertEqual(analysis.threshold_method, "monotonic_distance_improvement")
+        self.assertIsNone(analysis.threshold_estimate)
+        self.assertEqual(analysis.below_threshold_distances, [5, 7])
 
 
 if __name__ == "__main__":

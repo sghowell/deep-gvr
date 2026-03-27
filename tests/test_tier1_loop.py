@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -34,6 +35,7 @@ from deep_gvr.tier1 import (
     SimulationRequest,
     Tier1LoopRunner,
     VerificationRequest,
+    _load_stim_adapter_class,
 )
 
 
@@ -446,6 +448,37 @@ class Tier1LoopTests(unittest.TestCase):
             evidence = runner.session_store.read_evidence("session_tier2_verify")
             self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
             self.assertIsNotNone(evidence[1].simulation_results)
+
+    def test_load_stim_adapter_class_restores_repo_root_import_path(self) -> None:
+        repo_root = str(Path(__file__).resolve().parents[1])
+        original_repo_root_present = repo_root in sys.path
+        if original_repo_root_present:
+            sys.path.remove(repo_root)
+
+        original_adapters = sys.modules.get("adapters")
+        original_stim_adapter = sys.modules.get("adapters.stim_adapter")
+        sys.modules.pop("adapters", None)
+        sys.modules.pop("adapters.stim_adapter", None)
+
+        try:
+            adapter_class = _load_stim_adapter_class()
+            self.assertEqual(adapter_class.__name__, "StimAdapter")
+            self.assertIn(repo_root, sys.path)
+        finally:
+            if not original_repo_root_present:
+                sys.path = [entry for entry in sys.path if entry != repo_root]
+            elif repo_root not in sys.path:
+                sys.path.insert(0, repo_root)
+
+            if original_adapters is None:
+                sys.modules.pop("adapters", None)
+            else:
+                sys.modules["adapters"] = original_adapters
+
+            if original_stim_adapter is None:
+                sys.modules.pop("adapters.stim_adapter", None)
+            else:
+                sys.modules["adapters.stim_adapter"] = original_stim_adapter
 
     def test_invalid_simulation_spec_becomes_structured_simulation_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

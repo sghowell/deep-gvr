@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 import json
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -49,6 +51,20 @@ def _relative_to_root(root: Path, path: Path) -> str:
         return path.relative_to(root).as_posix()
     except ValueError:
         return str(path)
+
+
+def _load_stim_adapter_class():
+    try:
+        from adapters.stim_adapter import StimAdapter
+    except ModuleNotFoundError as exc:
+        if exc.name not in {"adapters", "adapters.stim_adapter"}:
+            raise
+        repo_root = Path(__file__).resolve().parents[2]
+        if str(repo_root) not in sys.path:
+            sys.path.insert(0, str(repo_root))
+        module = importlib.import_module("adapters.stim_adapter")
+        return module.StimAdapter
+    return StimAdapter
 
 
 @dataclass(slots=True)
@@ -696,9 +712,7 @@ class Tier1LoopRunner:
                 ],
             )
 
-        from adapters.stim_adapter import StimAdapter
-
-        return StimAdapter().run(request.sim_spec, request.backend)
+        return _load_stim_adapter_class()().run(request.sim_spec, request.backend)
 
     def _attach_simulation_results(self, report: VerificationReport, sim_results: SimResults) -> None:
         if report.tier2 is None:

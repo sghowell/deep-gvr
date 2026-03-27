@@ -51,6 +51,31 @@ class ContractRoundTripTests(unittest.TestCase):
         model = SimSpec.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_sim_spec_normalizes_noise_model_alias_and_caps_requested_budget(self) -> None:
+        payload = {
+            "simulator": "stim",
+            "task": {
+                "code": "surface_code",
+                "task_type": "rotated_memory_z",
+                "distance": [3, 5, 7],
+                "rounds_per_distance": "d",
+                "noise_model": "uniform_depolarizing",
+                "error_rates": [0.001],
+                "decoder": "pymatching",
+                "shots_per_point": 10_000_000,
+            },
+            "resources": {
+                "timeout_seconds": 600,
+                "max_parallel": 12,
+            },
+        }
+
+        model = SimSpec.from_dict(payload)
+
+        self.assertEqual(model.task.noise_model, "depolarizing")
+        self.assertEqual(model.task.shots_per_point, 100_000)
+        self.assertEqual(model.resources.max_parallel, 4)
+
     def test_sim_results_round_trip(self) -> None:
         payload = self._load_json("templates/sim_results.template.json")
         model = SimResults.from_dict(payload)
@@ -125,6 +150,37 @@ class ContractRoundTripTests(unittest.TestCase):
         model = Tier3ClaimResult.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
         self.assertEqual(model.proof_status, ProofStatus.PROVED)
+
+    def test_tier3_claim_defaults_backend_when_missing(self) -> None:
+        payload = {
+            "claim": "A formal claim",
+            "proof_status": "requested",
+            "details": "Needs Tier 3.",
+        }
+        model = Tier3ClaimResult.from_dict(payload)
+        self.assertEqual(model.backend, "aristotle")
+        self.assertEqual(model.proof_status, ProofStatus.REQUESTED)
+
+    def test_tier3_claim_defaults_requested_status_and_reason_details(self) -> None:
+        payload = {
+            "claim": "A formal claim",
+            "reason": "This theorem should be formalized.",
+        }
+        model = Tier3ClaimResult.from_dict(payload)
+        self.assertEqual(model.backend, "aristotle")
+        self.assertEqual(model.proof_status, ProofStatus.REQUESTED)
+        self.assertEqual(model.details, "This theorem should be formalized.")
+
+    def test_tier3_claim_accepts_statement_shape(self) -> None:
+        payload = {
+            "obligation": "majority_decode_correctness",
+            "statement": "For all odd d >= 1, majority decoding recovers the codeword.",
+            "reason": "Short formal theorem.",
+        }
+        model = Tier3ClaimResult.from_dict(payload)
+        self.assertEqual(model.claim, "For all odd d >= 1, majority decoding recovers the codeword.")
+        self.assertEqual(model.proof_status, ProofStatus.REQUESTED)
+        self.assertEqual(model.details, "Short formal theorem.")
 
 
 if __name__ == "__main__":
