@@ -14,6 +14,7 @@ from .contracts import DeepGvrConfig, ProbeStatus, SessionCheckpoint
 from .evaluation import CommandExecutor, HermesPromptRoleRunner, LiveEvalConfig, benchmark_routing_probe
 from .formal import AristotleFormalVerifier, FormalVerifier
 from .json_schema import validate
+from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
 from .tier1 import SessionStore, Tier1LoopRunner, Tier1RunResult
 
 _DEFAULT_CONFIG_PATH = Path("~/.hermes/deep-gvr/config.yaml")
@@ -150,6 +151,7 @@ def run_session_command(
     config_path: str | Path | None = None,
     domain: str | None = None,
     prompt_root: str | Path = "prompts",
+    prompt_profile: str = DEFAULT_PROMPT_PROFILE,
     routing_probe_mode: str = "auto",
     toolsets: list[str] | None = None,
     skills: list[str] | None = None,
@@ -168,6 +170,7 @@ def run_session_command(
         config_path=resolved_config_path,
         config_created=config_created,
         prompt_root=prompt_root,
+        prompt_profile=prompt_profile,
         routing_probe_mode=routing_probe_mode,
         toolsets=toolsets or [],
         skills=skills or [],
@@ -186,6 +189,7 @@ def resume_session_command(
     *,
     config_path: str | Path | None = None,
     prompt_root: str | Path = "prompts",
+    prompt_profile: str = DEFAULT_PROMPT_PROFILE,
     routing_probe_mode: str = "auto",
     toolsets: list[str] | None = None,
     skills: list[str] | None = None,
@@ -202,6 +206,7 @@ def resume_session_command(
         config_path=resolved_config_path,
         config_created=config_created,
         prompt_root=prompt_root,
+        prompt_profile=prompt_profile,
         routing_probe_mode=routing_probe_mode,
         toolsets=toolsets or [],
         skills=skills or [],
@@ -219,6 +224,7 @@ def _execute_command(
     config_path: Path,
     config_created: bool,
     prompt_root: str | Path,
+    prompt_profile: str,
     routing_probe_mode: str,
     toolsets: list[str],
     skills: list[str],
@@ -240,6 +246,7 @@ def _execute_command(
     role_runner = HermesPromptRoleRunner(
         LiveEvalConfig(
             prompt_root=prompt_root,
+            prompt_profile=prompt_profile,
             command_timeout_seconds=command_timeout_seconds,
             toolsets=list(toolsets),
             skills=list(skills),
@@ -259,6 +266,7 @@ def _execute_command(
         model=config.models.orchestrator.model,
         toolsets=list(toolsets),
         skills=list(skills),
+        prompt_profile=prompt_profile,
     )
     session_id = run_session_id if command == "run" else resume_session_id
     try:
@@ -511,6 +519,12 @@ def build_parser() -> argparse.ArgumentParser:
     common_parent.add_argument("--config", default="", help="Config path. Default: ~/.hermes/deep-gvr/config.yaml")
     common_parent.add_argument("--prompt-root", default="prompts", help="Prompt directory.")
     common_parent.add_argument(
+        "--prompt-profile",
+        choices=list(PROMPT_PROFILES),
+        default=DEFAULT_PROMPT_PROFILE,
+        help="Prompt scaffolding profile for live Hermes calls.",
+    )
+    common_parent.add_argument(
         "--routing-probe",
         choices=["auto", "ready", "fallback"],
         default="auto",
@@ -563,6 +577,7 @@ def main(argv: list[str] | None = None) -> int:
     kwargs = {
         "config_path": args.config or None,
         "prompt_root": args.prompt_root,
+        "prompt_profile": args.prompt_profile,
         "routing_probe_mode": args.routing_probe,
         "toolsets": _split_csv_flags(args.toolsets),
         "skills": _split_csv_flags(args.skills),

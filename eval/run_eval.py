@@ -13,6 +13,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from deep_gvr.contracts import ProbeStatus
 from deep_gvr.evaluation import LiveEvalConfig, benchmark_routing_probe, run_benchmark_suite, write_benchmark_report
+from deep_gvr.prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,6 +73,12 @@ def parse_args() -> argparse.Namespace:
         help="Prompt directory for live mode.",
     )
     parser.add_argument(
+        "--prompt-profile",
+        choices=list(PROMPT_PROFILES),
+        default=DEFAULT_PROMPT_PROFILE,
+        help="Prompt scaffolding profile for live Hermes calls.",
+    )
+    parser.add_argument(
         "--command-timeout-seconds",
         type=int,
         default=120,
@@ -117,6 +124,7 @@ def main() -> int:
         live_config = LiveEvalConfig(
             hermes_binary=args.hermes_binary,
             prompt_root=args.prompt_root,
+            prompt_profile=args.prompt_profile,
             command_timeout_seconds=args.command_timeout_seconds,
             toolsets=_split_csv_flags(args.toolsets),
             skills=_split_csv_flags(args.skills),

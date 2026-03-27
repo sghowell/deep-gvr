@@ -12,6 +12,7 @@ from tests import _path_setup  # noqa: F401
 from deep_gvr.contracts import ProofStatus, Tier3ClaimResult
 from deep_gvr.formal import (
     AristotleFormalVerifier,
+    AristotleTransportStatus,
     CommandExecutionResult,
     FormalVerificationRequest,
     inspect_aristotle_transport,
@@ -152,6 +153,34 @@ class AristotleFormalVerifierTests(unittest.TestCase):
 
         self.assertEqual(result_set.results[0].proof_status, ProofStatus.TIMEOUT)
         self.assertEqual(result_set.transport_artifact["status"], "timeout")
+
+    def test_compact_prompt_profile_emits_shorter_formal_query_than_full(self) -> None:
+        request = _request()
+        transport = AristotleTransportStatus(
+            hermes_available=True,
+            aristotle_key_present=True,
+            hermes_config_path="/tmp/hermes.yaml",
+            hermes_config_exists=True,
+            mcp_server_name="aristotle",
+            mcp_server_configured=True,
+            configured_mcp_servers=["aristotle"],
+        )
+        prompt_text = "# Formalizer Prompt\n\nReturn normalized results."
+
+        compact_query = AristotleFormalVerifier(prompt_profile="compact")._build_query(
+            request,
+            prompt_text=prompt_text,
+            transport=transport,
+        )
+        full_query = AristotleFormalVerifier(prompt_profile="full")._build_query(
+            request,
+            prompt_text=prompt_text,
+            transport=transport,
+        )
+
+        self.assertIn("Response budget:", compact_query)
+        self.assertNotIn("Response budget:", full_query)
+        self.assertLess(len(compact_query), len(full_query))
 
 
 class AristotleTransportInspectionTests(unittest.TestCase):

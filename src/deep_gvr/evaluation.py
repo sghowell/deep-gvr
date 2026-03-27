@@ -27,6 +27,7 @@ from .contracts import (
     VerificationVerdict,
 )
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
 from .tier1 import (
     GenerationRequest,
@@ -230,6 +231,7 @@ class FixtureAgents:
 class LiveEvalConfig:
     hermes_binary: str = "hermes"
     prompt_root: str | Path = "prompts"
+    prompt_profile: str = DEFAULT_PROMPT_PROFILE
     command_timeout_seconds: int = 120
     toolsets: list[str] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
@@ -442,26 +444,14 @@ class HermesPromptRoleRunner:
         route_notes: list[str],
         route_temperature: float | None,
     ) -> str:
-        route_lines = [f"- Role: {role}"]
-        if route_notes:
-            route_lines.extend(f"- Routing note: {note}" for note in route_notes)
-        if route_temperature is not None:
-            route_lines.append(
-                "- Requested temperature fallback is recorded by the harness, but Hermes CLI does not expose a temperature flag; rely on prompt separation only."
-            )
-
-        return (
-            "# deep-gvr live benchmark\n\n"
-            f"Role: {role}\n\n"
-            "Follow the role prompt below exactly when producing your answer.\n\n"
-            f"{prompt_text}\n\n"
-            "Return ONLY one JSON object. Do not wrap it in markdown fences. Do not add commentary.\n\n"
-            "JSON contract:\n"
-            f"{json.dumps(response_contract, indent=2)}\n\n"
-            "Routing context:\n"
-            f"{chr(10).join(route_lines)}\n\n"
-            "Request payload:\n"
-            f"{json.dumps(payload, indent=2)}\n"
+        return build_live_role_query(
+            role=role,
+            prompt_text=prompt_text,
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=route_notes,
+            route_temperature=route_temperature,
+            prompt_profile=self.config.prompt_profile,
         )
 
 
@@ -703,6 +693,7 @@ def _run_live_case(
                 hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
                 prompt_root=prompt_root,
                 cwd=_repo_root(),
+                prompt_profile=live_config.prompt_profile,
                 command_timeout_seconds=live_config.command_timeout_seconds,
                 provider=config.models.orchestrator.provider,
                 model=config.models.orchestrator.model,

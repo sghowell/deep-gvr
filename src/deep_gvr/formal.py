@@ -11,6 +11,7 @@ from typing import Any, Callable, Protocol
 import yaml
 
 from .contracts import ProofStatus, Tier3ClaimResult
+from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_formal_query
 
 
 @dataclass(slots=True)
@@ -117,6 +118,7 @@ class AristotleFormalVerifier:
         toolsets: list[str] | None = None,
         skills: list[str] | None = None,
         mcp_server_name: str = "aristotle",
+        prompt_profile: str = DEFAULT_PROMPT_PROFILE,
     ) -> None:
         self.executor = executor
         self.command_executor = command_executor
@@ -130,6 +132,7 @@ class AristotleFormalVerifier:
         self.toolsets = list(toolsets or [])
         self.skills = list(skills or [])
         self.mcp_server_name = mcp_server_name
+        self.prompt_profile = prompt_profile
 
     def __call__(self, request: FormalVerificationRequest) -> FormalVerificationResultSet:
         if request.backend != "aristotle":
@@ -294,18 +297,6 @@ class AristotleFormalVerifier:
         prompt_text: str,
         transport: AristotleTransportStatus,
     ) -> str:
-        response_contract = {
-            "results": [
-                {
-                    "claim": "string",
-                    "backend": "aristotle",
-                    "proof_status": "requested|proved|disproved|timeout|error|unavailable",
-                    "details": "string",
-                    "lean_code": "string",
-                    "proof_time_seconds": "number | null",
-                }
-            ]
-        }
         payload = {
             "session_id": request.session_id,
             "iteration": request.iteration,
@@ -318,17 +309,11 @@ class AristotleFormalVerifier:
             f"- Configured MCP servers: {', '.join(transport.configured_mcp_servers) or 'none'}",
             "- If Aristotle MCP tools are unavailable, return unavailable results instead of inventing proof success.",
         ]
-        return (
-            "# deep-gvr tier3 formal verification\n\n"
-            "Follow the formal-verification prompt below exactly when producing your answer.\n\n"
-            f"{prompt_text}\n\n"
-            "Return ONLY one JSON object. Do not wrap it in markdown fences. Do not add commentary.\n\n"
-            "JSON contract:\n"
-            f"{json.dumps(response_contract, indent=2)}\n\n"
-            "Transport context:\n"
-            f"{chr(10).join(transport_lines)}\n\n"
-            "Request payload:\n"
-            f"{json.dumps(payload, indent=2)}\n"
+        return build_formal_query(
+            prompt_text=prompt_text,
+            payload=payload,
+            transport_lines=transport_lines,
+            prompt_profile=self.prompt_profile,
         )
 
     def _normalize_results(

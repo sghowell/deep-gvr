@@ -11,6 +11,7 @@ from tests import _path_setup  # noqa: F401
 from deep_gvr.contracts import ProbeStatus, VerificationVerdict
 from deep_gvr.evaluation import (
     CommandExecutionResult,
+    HermesPromptRoleRunner,
     LiveEvalConfig,
     benchmark_routing_probe,
     load_benchmark_suite,
@@ -156,6 +157,57 @@ class EvaluationTests(unittest.TestCase):
                 (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
             )
             self.assertEqual(len(transcripts["calls"]), 2)
+            self.assertIn("Response budget:", transcripts["calls"][0]["query"])
+
+    def test_compact_prompt_profile_emits_shorter_query_than_full(self) -> None:
+        prompt_root = ROOT / "prompts"
+        compact_runner = HermesPromptRoleRunner(
+            LiveEvalConfig(prompt_profile="compact"),
+            prompt_root=prompt_root,
+        )
+        full_runner = HermesPromptRoleRunner(
+            LiveEvalConfig(prompt_profile="full"),
+            prompt_root=prompt_root,
+        )
+        payload = {
+            "session_id": "session_eval",
+            "problem": "Explain why the surface code has a threshold.",
+            "domain": "qec",
+            "literature_context": [],
+            "prior_verdicts": [],
+        }
+        response_contract = {
+            "hypothesis": "string",
+            "approach": "string",
+            "technical_details": ["string"],
+            "expected_results": ["string"],
+            "assumptions": ["string"],
+            "limitations": ["string"],
+            "references": ["string"],
+            "revision_notes": ["string"],
+        }
+        prompt_text = (prompt_root / "generator.md").read_text(encoding="utf-8")
+
+        compact_query = compact_runner._build_query(
+            role="generator",
+            prompt_text=prompt_text,
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=["Use prompt separation plus temperature decorrelation and record the limitation."],
+            route_temperature=0.7,
+        )
+        full_query = full_runner._build_query(
+            role="generator",
+            prompt_text=prompt_text,
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=["Use prompt separation plus temperature decorrelation and record the limitation."],
+            route_temperature=0.7,
+        )
+
+        self.assertIn("Response budget:", compact_query)
+        self.assertNotIn("Response budget:", full_query)
+        self.assertLess(len(compact_query), len(full_query))
 
     def test_live_mode_records_error_artifact_on_executor_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

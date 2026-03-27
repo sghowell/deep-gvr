@@ -96,8 +96,29 @@ class SkillCliTests(unittest.TestCase):
             self.assertTrue(any(path.endswith("_run_role_transcripts.json") for path in summary.artifacts))
             transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
             self.assertTrue(transcript_path.exists())
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertIn("Response budget:", transcripts["calls"][0]["query"])
             checkpoint = json.loads(Path(summary.checkpoint_file).read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(checkpoint["literature_context"]), 1)
+
+    def test_run_session_command_supports_full_prompt_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            self._write_config(config_path, evidence_dir)
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_run_full",
+                executor=self._successful_executor,
+                command_timeout_seconds=5,
+                prompt_profile="full",
+            )
+
+            transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertNotIn("Response budget:", transcripts["calls"][0]["query"])
 
     def test_resume_session_command_continues_existing_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
