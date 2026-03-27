@@ -28,6 +28,7 @@
 - Tier 3 formal verification is triggered by formalizable claims
 - Any failed applicable tier is a failed candidate
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
+- The local Tier 2 baseline uses the Stim adapter with PyMatching decoding
 
 ## Early Defaults
 

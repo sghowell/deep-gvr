@@ -31,6 +31,7 @@ The repo now includes a Python Tier 1 orchestration helper with append-only evid
 - The verifier input must remain isolated to the candidate artifact plus iteration metadata.
 - Resume continues from the last complete phase recorded in `checkpoint.json`.
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
+- The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
 - Cross-model verification is preferred. If Hermes cannot route models per subagent, fall back to prompt and temperature decorrelation.
 

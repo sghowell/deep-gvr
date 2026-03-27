@@ -29,6 +29,7 @@ The architecture document identifies several implementation unknowns that are im
 
 - Question: how should `local`, `modal`, and `ssh` be selected and validated?
 - Default until proven otherwise: all adapters expose the same CLI and return structured errors when a backend is unavailable.
+- Current baseline: the Stim adapter runs real local simulations and returns structured unavailability for Modal and SSH.
 - Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH probes.
 - Fallback: mark unsupported backends unavailable without blocking local development.
 

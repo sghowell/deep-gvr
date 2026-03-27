@@ -21,6 +21,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
+- `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 
 ## Alignment Rules
 

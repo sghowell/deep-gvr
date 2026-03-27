@@ -2,7 +2,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is an early working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, and a repo-local Tier 1 orchestration helper with checkpointed resume semantics.
+The repository is intentionally structured for Codex-driven implementation. The current state is an early working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a repo-local loop helper with checkpointed resume semantics, and a working local Stim/PyMatching Tier 2 path.
 
 ## What Exists Now
 
@@ -12,6 +12,7 @@ The repository is intentionally structured for Codex-driven implementation. The 
 - Indexed design docs in [docs/README.md](docs/README.md)
 - Typed Python contracts in `src/deep_gvr/`
 - Tier 1 loop helpers and session persistence in `src/deep_gvr/tier1.py`
+- Local Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
 - JSON schemas in `schemas/`
 - Prompt and skill scaffolding in `prompts/` and `SKILL.md`
 - Capability probes and validation scripts in `scripts/`

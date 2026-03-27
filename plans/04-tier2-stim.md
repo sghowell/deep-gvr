@@ -16,21 +16,27 @@ Start from the integration branch and work on `codex/tier2-stim`. Merge back loc
 
 ## Progress
 
-- [ ] Stim adapter is currently a scaffold only.
+- [x] Stim local execution and output normalization are implemented with Stim plus PyMatching.
+- [x] The loop runner mediates verifier-requested simulation through persisted spec/results artifacts.
+- [x] Tests cover local adapter execution, unsupported backends, and verifier -> simulator -> verifier flow.
 
 ## Surprises & Discoveries
 
-- None yet.
+- The Python Stim API was a better fit than relying on a `stim` CLI binary, because the package exposes generated circuits and detector sampling directly.
+- Tier 2 mediation fit cleanly into the existing checkpoint/evidence model by adding a `simulate` phase and artifact writes, without changing the verifier isolation boundary.
 
 ## Decision Log
 
 - Decision: Stim is the first empirical backend.
   Rationale: it covers the initial QEC benchmark surface with a well-known simulator.
   Date/Author: 2026-03-26 / Codex
+- Decision: use Stim's Python API with PyMatching decoding for the local backend.
+  Rationale: it keeps the adapter self-contained, testable in CI, and independent of a separate system-level CLI install.
+  Date/Author: 2026-03-26 / Codex
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+The repo now has a working Tier 2 baseline: the Stim adapter executes local rotated-memory surface-code experiments, normalizes results, and the loop runner can mediate a quantitative verifier request by running simulation and passing the results back into verification.
 
 ## Context and Orientation
 
