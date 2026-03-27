@@ -79,6 +79,82 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn("mcp_servers.aristotle", completed.stdout)
 
+    def test_setup_mcp_script_installs_aristotle_server_in_empty_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "setup_mcp.sh"),
+                    "--install",
+                    "--config",
+                    str(config_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = config_path.read_text(encoding="utf-8")
+            self.assertIn("mcp_servers:", payload)
+            self.assertIn('command: "uvx"', payload)
+            self.assertIn('ARISTOTLE_API_KEY: "${ARISTOTLE_API_KEY}"', payload)
+
+    def test_setup_mcp_script_install_is_idempotent_and_preserves_existing_servers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            config_path.write_text(
+                "\n".join(
+                    [
+                        "model:",
+                        "  default: claude-opus-4-6",
+                        "mcp_servers:",
+                        "  weather:",
+                        "    command: uvx",
+                        "    args:",
+                        "      - weather-mcp",
+                        "timezone: America/Los_Angeles",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            first = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "setup_mcp.sh"),
+                    "--install",
+                    "--config",
+                    str(config_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            second = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "setup_mcp.sh"),
+                    "--install",
+                    "--config",
+                    str(config_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(second.returncode, 0, second.stderr)
+
+            payload = config_path.read_text(encoding="utf-8")
+            self.assertIn("weather:", payload)
+            self.assertIn("timezone: America/Los_Angeles", payload)
+            self.assertEqual(payload.count("aristotle:"), 1)
+            self.assertIn("mcp_servers:", payload)
+
 
 if __name__ == "__main__":
     unittest.main()
