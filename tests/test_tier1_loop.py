@@ -11,8 +11,11 @@ from deep_gvr.contracts import (
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
+    CapabilityProbeResult,
     DeepGvrConfig,
+    ProbeStatus,
     ProofStatus,
+    RoutingMode,
     SimAnalysis,
     SimResults,
     Tier2Report,
@@ -84,6 +87,8 @@ class Tier1LoopTests(unittest.TestCase):
         config.evidence.directory = evidence_dir
         config.loop.max_iterations = max_iterations
         config.verification.tier3.enabled = enable_tier3
+        config.models.orchestrator.provider = "orchestrator-provider"
+        config.models.orchestrator.model = "orchestrator-model"
         config.models.generator.provider = "generator-provider"
         config.models.generator.model = "generator-model"
         config.models.verifier.provider = "verifier-provider"
@@ -92,20 +97,36 @@ class Tier1LoopTests(unittest.TestCase):
         config.models.reviser.model = "reviser-model"
         return config
 
+    def _routing_probe(self, status: ProbeStatus) -> CapabilityProbeResult:
+        return CapabilityProbeResult(
+            name="per_subagent_model_routing",
+            status=status,
+            summary="Test routing probe result.",
+            preferred_outcome="Route generator and verifier to distinct providers or models.",
+            fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
+            details={},
+        )
+
     def test_completed_run_creates_checkpoint_index_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir))
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
             calls: dict[str, int] = {"generate": 0, "verify": 0, "revise": 0}
 
             def generator(request: GenerationRequest):
                 calls["generate"] += 1
                 self.assertEqual(request.problem, "Check a Tier 1 claim")
+                self.assertEqual(request.route.provider, "generator-provider")
+                self.assertEqual(request.route.model, "generator-model")
+                self.assertEqual(request.route.routing_mode, RoutingMode.DIRECT)
                 return _candidate("Initial hypothesis")
 
             def verifier(request: VerificationRequest):
                 calls["verify"] += 1
                 self.assertFalse(hasattr(request, "problem"))
                 self.assertEqual(request.candidate.hypothesis, "Initial hypothesis")
+                self.assertEqual(request.route.provider, "verifier-provider")
+                self.assertEqual(request.route.model, "verifier-model")
+                self.assertEqual(request.route.routing_mode, RoutingMode.DIRECT)
                 return _report(VerificationVerdict.VERIFIED)
 
             def reviser(request: RevisionRequest):
@@ -139,10 +160,12 @@ class Tier1LoopTests(unittest.TestCase):
             evidence = [json.loads(line) for line in evidence_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual([item["phase"] for item in evidence], ["generate", "verify"])
             self.assertEqual(evidence[1]["provider"], "verifier-provider")
+            self.assertEqual(evidence[1]["routing_mode"], "direct")
+            self.assertIsNone(evidence[1]["routing_temperature"])
 
     def test_flaws_found_triggers_revision_then_verifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir))
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
             verify_calls = 0
 
             def generator(request: GenerationRequest):
@@ -181,7 +204,7 @@ class Tier1LoopTests(unittest.TestCase):
 
     def test_cannot_verify_stops_without_revision(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir))
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
             revise_calls = 0
 
             def generator(request: GenerationRequest):
@@ -214,7 +237,7 @@ class Tier1LoopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = self._config(tmpdir)
             store = SessionStore(tmpdir)
-            runner = Tier1LoopRunner(config, session_store=store)
+            runner = Tier1LoopRunner(config, session_store=store, routing_probe=self._routing_probe(ProbeStatus.READY))
             generator_calls = 0
             verifier_calls = 0
 
@@ -263,7 +286,10 @@ class Tier1LoopTests(unittest.TestCase):
 
     def test_iteration_budget_exhaustion_admits_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir, max_iterations=2))
+            runner = Tier1LoopRunner(
+                self._config(tmpdir, max_iterations=2),
+                routing_probe=self._routing_probe(ProbeStatus.READY),
+            )
 
             def generator(request: GenerationRequest):
                 return _candidate("Initial hypothesis")
@@ -293,7 +319,7 @@ class Tier1LoopTests(unittest.TestCase):
 
     def test_simulation_request_runs_mediator_and_reverifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir))
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
             verify_calls = 0
             simulator_calls = 0
 
@@ -421,7 +447,10 @@ class Tier1LoopTests(unittest.TestCase):
 
     def test_formal_request_runs_mediator_and_reverifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir, enable_tier3=True))
+            runner = Tier1LoopRunner(
+                self._config(tmpdir, enable_tier3=True),
+                routing_probe=self._routing_probe(ProbeStatus.READY),
+            )
             verify_calls = 0
             formal_calls = 0
 
@@ -524,7 +553,10 @@ class Tier1LoopTests(unittest.TestCase):
 
     def test_formal_request_uses_structured_unavailable_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            runner = Tier1LoopRunner(self._config(tmpdir, enable_tier3=True))
+            runner = Tier1LoopRunner(
+                self._config(tmpdir, enable_tier3=True),
+                routing_probe=self._routing_probe(ProbeStatus.READY),
+            )
 
             def generator(request: GenerationRequest):
                 return _candidate("Formal fallback hypothesis")
@@ -600,6 +632,42 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.UNAVAILABLE)
             evidence = runner.session_store.read_evidence("session_tier3_fallback")
             self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "verify"])
+
+    def test_fallback_routing_uses_orchestrator_model_with_temperatures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.FALLBACK))
+
+            def generator(request: GenerationRequest):
+                self.assertEqual(request.route.provider, "orchestrator-provider")
+                self.assertEqual(request.route.model, "orchestrator-model")
+                self.assertEqual(request.route.routing_mode, RoutingMode.TEMPERATURE_DECORRELATION)
+                self.assertEqual(request.route.temperature, 0.7)
+                return _candidate("Fallback-routed hypothesis")
+
+            def verifier(request: VerificationRequest):
+                self.assertEqual(request.route.provider, "orchestrator-provider")
+                self.assertEqual(request.route.model, "orchestrator-model")
+                self.assertEqual(request.route.routing_mode, RoutingMode.TEMPERATURE_DECORRELATION)
+                self.assertEqual(request.route.temperature, 0.2)
+                return _report(VerificationVerdict.VERIFIED)
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            runner.run(
+                problem="Check fallback routing behavior",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                session_id="session_fallback_routing",
+            )
+
+            evidence = runner.session_store.read_evidence("session_fallback_routing")
+            self.assertEqual(evidence[0].provider, "orchestrator-provider")
+            self.assertEqual(evidence[0].model_used, "orchestrator-model")
+            self.assertEqual(evidence[0].routing_mode, RoutingMode.TEMPERATURE_DECORRELATION)
+            self.assertEqual(evidence[0].routing_temperature, 0.7)
+            self.assertEqual(evidence[1].routing_temperature, 0.2)
 
 
 if __name__ == "__main__":

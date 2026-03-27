@@ -13,6 +13,11 @@
   "formal_verification_results": null,
   "model_used": "deepseek-r1",
   "provider": "openrouter",
+  "routing_mode": "direct",
+  "routing_temperature": null,
+  "routing_notes": [
+    "Resolved the empty verifier model to the documented openrouter default."
+  ],
   "tokens_in": 4500,
   "tokens_out": 3200,
   "duration_seconds": 42.5,

@@ -64,6 +64,15 @@
       "required": ["generator", "verifier", "reviser"],
       "additionalProperties": false,
       "properties": {
+        "orchestrator": {
+          "type": "object",
+          "required": ["provider", "model"],
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        },
         "generator": {
           "type": "object",
           "required": ["provider", "model"],

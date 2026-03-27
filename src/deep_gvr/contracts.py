@@ -41,6 +41,11 @@ class ProbeStatus(StrEnum):
     BLOCKED = "blocked"
 
 
+class RoutingMode(StrEnum):
+    DIRECT = "direct"
+    TEMPERATURE_DECORRELATION = "temperature_decorrelation"
+
+
 class ProofStatus(StrEnum):
     REQUESTED = "requested"
     PROVED = "proved"
@@ -100,6 +105,7 @@ class VerificationConfig:
 
 @dataclass(slots=True)
 class ModelsConfig:
+    orchestrator: ModelSelection = field(default_factory=ModelSelection)
     generator: ModelSelection = field(default_factory=lambda: ModelSelection(provider="openrouter"))
     verifier: ModelSelection = field(default_factory=lambda: ModelSelection(provider="openrouter"))
     reviser: ModelSelection = field(default_factory=ModelSelection)
@@ -157,6 +163,7 @@ class DeepGvrConfig:
                 ),
             ),
             models=ModelsConfig(
+                orchestrator=ModelSelection(**data["models"].get("orchestrator", {})),
                 generator=ModelSelection(**data["models"]["generator"]),
                 verifier=ModelSelection(**data["models"]["verifier"]),
                 reviser=ModelSelection(**data["models"]["reviser"]),
@@ -460,6 +467,9 @@ class EvidenceRecord:
     formal_verification_results: list[dict[str, Any]] | None
     model_used: str
     provider: str
+    routing_mode: RoutingMode
+    routing_temperature: float | None
+    routing_notes: list[str]
     tokens_in: int
     tokens_out: int
     duration_seconds: float
@@ -481,6 +491,11 @@ class EvidenceRecord:
             formal_verification_results=data.get("formal_verification_results"),
             model_used=data.get("model_used", ""),
             provider=data.get("provider", ""),
+            routing_mode=RoutingMode(data.get("routing_mode", RoutingMode.DIRECT.value)),
+            routing_temperature=(
+                float(data["routing_temperature"]) if data.get("routing_temperature") is not None else None
+            ),
+            routing_notes=list(data.get("routing_notes", [])),
             tokens_in=int(data.get("tokens_in", 0)),
             tokens_out=int(data.get("tokens_out", 0)),
             duration_seconds=float(data.get("duration_seconds", 0.0)),

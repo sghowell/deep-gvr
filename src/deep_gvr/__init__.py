@@ -10,6 +10,7 @@ from .contracts import (
     EvidenceRecord,
     ProbeStatus,
     ProofStatus,
+    RoutingMode,
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
@@ -28,6 +29,7 @@ from .contracts import (
 )
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .probes import run_capability_probes
+from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
 from .tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -48,8 +50,11 @@ __all__ = [
     "CapabilityProbeResult",
     "DeepGvrConfig",
     "EvidenceRecord",
+    "EffectiveModelRoute",
     "ProbeStatus",
     "ProofStatus",
+    "RoutingMode",
+    "RoutingPlan",
     "SessionCheckpoint",
     "SessionIndex",
     "SessionSummary",
@@ -77,5 +82,6 @@ __all__ = [
     "VerificationHistoryEntry",
     "VerificationReport",
     "VerificationVerdict",
+    "build_routing_plan",
     "run_capability_probes",
 ]

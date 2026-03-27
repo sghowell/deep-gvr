@@ -10,10 +10,11 @@ from uuid import uuid4
 from .contracts import (
     CandidateSolution,
     Backend,
+    CapabilityProbeResult,
     DeepGvrConfig,
     EvidenceRecord,
-    ModelSelection,
     ProofStatus,
+    RoutingMode,
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
@@ -27,6 +28,7 @@ from .contracts import (
     VerificationVerdict,
 )
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .routing import EffectiveModelRoute, build_routing_plan
 
 
 def _utc_now() -> datetime:
@@ -51,6 +53,7 @@ class GenerationRequest:
     domain: str
     literature_context: list[str]
     prior_verdicts: list[VerificationHistoryEntry]
+    route: EffectiveModelRoute
 
 
 @dataclass(slots=True)
@@ -58,6 +61,7 @@ class VerificationRequest:
     session_id: str
     iteration: int
     candidate: CandidateSolution
+    route: EffectiveModelRoute
     simulation_results: SimResults | None = None
     formal_results: list[Tier3ClaimResult] | None = None
 
@@ -68,6 +72,7 @@ class RevisionRequest:
     iteration: int
     candidate: CandidateSolution
     verification_report: VerificationReport
+    route: EffectiveModelRoute
 
 
 class Generator(Protocol):
@@ -239,10 +244,12 @@ class Tier1LoopRunner:
         *,
         session_store: SessionStore | None = None,
         clock: Callable[[], datetime] | None = None,
+        routing_probe: CapabilityProbeResult | None = None,
     ) -> None:
         self.config = config
         self.clock = clock or _utc_now
         self.session_store = session_store or SessionStore(config.evidence.directory, clock=self.clock)
+        self.routing_plan = build_routing_plan(config, routing_probe=routing_probe)
 
     def run(
         self,
@@ -333,6 +340,7 @@ class Tier1LoopRunner:
             domain=checkpoint.domain,
             literature_context=list(checkpoint.literature_context),
             prior_verdicts=list(checkpoint.verdict_history),
+            route=self.routing_plan.generator,
         )
         candidate = generator(request)
         checkpoint.current_iteration += 1
@@ -368,6 +376,7 @@ class Tier1LoopRunner:
             session_id=checkpoint.session_id,
             iteration=checkpoint.current_iteration,
             candidate=candidate,
+            route=self.routing_plan.verifier,
         )
         report = verifier(request)
         simulation_results = None
@@ -381,6 +390,7 @@ class Tier1LoopRunner:
                 session_id=checkpoint.session_id,
                 iteration=checkpoint.current_iteration,
                 candidate=candidate,
+                route=self.routing_plan.verifier,
                 simulation_results=simulation_results,
                 formal_results=formal_results,
             )
@@ -451,6 +461,7 @@ class Tier1LoopRunner:
             iteration=next_iteration,
             candidate=candidate,
             verification_report=report,
+            route=self.routing_plan.reviser,
         )
         revised_candidate = reviser(request)
         checkpoint.current_iteration = next_iteration
@@ -486,9 +497,9 @@ class Tier1LoopRunner:
         output_summary: str,
         simulation_results: SimResults | None = None,
         formal_results: list[Tier3ClaimResult] | None = None,
-        model_selection: ModelSelection | None = None,
+        route: EffectiveModelRoute | None = None,
     ) -> EvidenceRecord:
-        selection = model_selection or self._model_for_phase(phase)
+        resolved_route = route or self._route_for_phase(phase)
         return EvidenceRecord(
             iteration=checkpoint.current_iteration,
             timestamp=checkpoint.last_updated,
@@ -500,24 +511,37 @@ class Tier1LoopRunner:
             flaws=flaws,
             simulation_results=simulation_results.to_dict() if simulation_results is not None else None,
             formal_verification_results=[item.to_dict() for item in formal_results] if formal_results is not None else None,
-            model_used=selection.model,
-            provider=selection.provider,
+            model_used=resolved_route.model,
+            provider=resolved_route.provider,
+            routing_mode=resolved_route.routing_mode,
+            routing_temperature=resolved_route.temperature,
+            routing_notes=list(resolved_route.notes),
             tokens_in=0,
             tokens_out=0,
             duration_seconds=0.0,
             artifacts=list(checkpoint.artifacts),
         )
 
-    def _model_for_phase(self, phase: str):
+    def _route_for_phase(self, phase: str) -> EffectiveModelRoute:
         if phase == "generate":
-            return self.config.models.generator
+            return self.routing_plan.generator
         if phase == "verify":
-            return self.config.models.verifier
+            return self.routing_plan.verifier
         if phase == "simulate":
-            return ModelSelection(provider="adapter", model=self.config.verification.tier2.default_simulator)
+            return EffectiveModelRoute(
+                provider="adapter",
+                model=self.config.verification.tier2.default_simulator,
+                routing_mode=RoutingMode.DIRECT,
+                notes=["Simulation routing is handled by the adapter boundary."],
+            )
         if phase == "formalize":
-            return ModelSelection(provider="adapter", model=self.config.verification.tier3.backend)
-        return self.config.models.reviser
+            return EffectiveModelRoute(
+                provider="adapter",
+                model=self.config.verification.tier3.backend,
+                routing_mode=RoutingMode.DIRECT,
+                notes=["Formal verification routing is handled by the orchestrator adapter boundary."],
+            )
+        return self.routing_plan.reviser
 
     def _tiers_applied(self, report: VerificationReport) -> list[int]:
         tiers = [1]

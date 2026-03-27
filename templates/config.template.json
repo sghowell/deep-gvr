@@ -26,6 +26,10 @@
     }
   },
   "models": {
+    "orchestrator": {
+      "provider": "default",
+      "model": ""
+    },
     "generator": {
       "provider": "openrouter",
       "model": ""
