@@ -5,6 +5,7 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 ## Current State
 
 The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the Python orchestration helper, append-only evidence logging, checkpoint-based resume, the same Hermes prompt execution path used by live evaluation, and a Hermes-MCP-backed Tier 3 transport path when Aristotle is configured.
+Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
 
 ## Intended Commands
 
@@ -21,7 +22,8 @@ When the user invokes `/deep-gvr`:
 3. For resume, run `uv run deep-gvr resume <session_id>`.
 4. If Tier 3 is expected, run `bash scripts/setup_mcp.sh --install --check` so `~/.hermes/config.yaml` has `mcp_servers.aristotle` and the local environment confirms `ARISTOTLE_API_KEY` plus Hermes MCP readiness.
 5. Report the returned session summary, including the session ID, verdict, and evidence/checkpoint paths.
-6. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
+6. If a live run needs debugging rather than throughput, rerun with `--prompt-profile full`.
+7. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
 
 ## Required Inputs
 
@@ -50,6 +52,7 @@ When the user invokes `/deep-gvr`:
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
+- Hermes-backed live execution supports `compact` and `full` prompt profiles. `compact` is the default runtime path; `full` is the debugging path when prompt scaffolding needs inspection.
 - Live evaluation bounds each `hermes chat` role call with a repo-local timeout so stalled model calls degrade into structured benchmark errors instead of hanging the run.
 - Tier 3 transport readiness is separate from subagent MCP inheritance. The verifier still does not assume direct MCP access; the orchestrator checks for `mcp_servers.aristotle` and mediates the proof attempt.
 

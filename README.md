@@ -75,10 +75,12 @@ The repo now exposes a console command through `uv run deep-gvr`:
 ```bash
 uv run deep-gvr --help
 uv run deep-gvr run "Explain why the surface code has a threshold."
+uv run deep-gvr run "Explain why the surface code has a threshold." --prompt-profile full
 uv run deep-gvr resume <session_id>
 ```
 
 The command loads `~/.hermes/deep-gvr/config.yaml`, injects domain context from `domain/`, runs the existing generator-verifier-reviser loop, and writes evidence to the configured session directory.
+Live Hermes calls now use the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you need the more verbose scaffolding for debugging prompt behavior.
 If Aristotle transport is configured in `~/.hermes/config.yaml`, Tier 3 requests are dispatched through `hermes chat` plus the discovered `mcp_aristotle_*` tools and the session records a `formal_transport` artifact alongside the formal request/results artifacts.
 
 ## Evaluation Baseline
@@ -89,6 +91,7 @@ The same runner now also supports live prompt-driven execution through `hermes c
 
 ```bash
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
+uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold --prompt-profile full
 ```
 
 Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.

@@ -17,16 +17,17 @@ Start from `main` and implement this slice on `codex/live-quality-tuning`. Merge
 ## Progress
 
 - [x] The new live-quality-tuning plan has been added.
-- [ ] Live execution supports an explicit prompt profile instead of one fixed verbose query shape.
-- [ ] The compact prompt profile is wired through both the live benchmark runner and the `deep-gvr` CLI path.
-- [ ] Tests prove the compact profile emits a smaller query while preserving the JSON contract shape.
-- [ ] Docs and operator guidance explain when to use `compact` versus `full`.
+- [x] Live execution supports an explicit prompt profile instead of one fixed verbose query shape.
+- [x] The compact prompt profile is wired through both the live benchmark runner and the `deep-gvr` CLI path.
+- [x] Tests prove the compact profile emits a smaller query while preserving the JSON contract shape.
+- [x] Docs and operator guidance explain when to use `compact` versus `full`.
 
 ## Surprises & Discoveries
 
 - The live prompts themselves are not unusually large, but the runtime scaffolding around them repeats JSON contracts and payloads with pretty-print formatting, which inflates token count for every Hermes role call.
 - The current live benchmark timeout evidence shows that end-to-end failures can happen before Tier 3, so prompt/runtime tuning needs to cover generator and verifier calls, not only the formal boundary.
 - Hermes exposes toolset and model selection flags, but the cleanest immediate throughput lever inside the repo is prompt-shape reduction because it requires no Hermes changes and no user-global config edits.
+- In the local transcript comparison, the compact generator query was about 200 characters shorter than the older full-profile live query, but the current Hermes default route still timed out at 20 to 30 seconds on simple known-correct cases.
 
 ## Decision Log
 
@@ -39,7 +40,7 @@ Start from `main` and implement this slice on `codex/live-quality-tuning`. Merge
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a documented, testable prompt-tuning lever for live runs, smaller Hermes query payloads by default, and enough operator guidance to compare compact versus full prompt behavior when diagnosing live benchmark latency or quality problems.
+This slice leaves the repo with a documented, testable prompt-tuning lever for live runs, smaller Hermes query payloads by default, and operator guidance for switching between compact and full prompt scaffolding. The compact profile now shortens live Hermes queries measurably, but the observed local smokes still timed out in the generator on the current `configured-by-hermes` default route, which means the next live-quality lever is model routing or timeout policy rather than additional prompt framing changes alone.
 
 ## Context and Orientation
 

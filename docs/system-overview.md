@@ -45,4 +45,5 @@
 - Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
+- Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
 - Local, Modal, and SSH backends represented from the start through the adapter interface
