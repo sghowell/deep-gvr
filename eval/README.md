@@ -52,6 +52,7 @@ When `--output` is omitted in live mode, the runner writes `report.json` into th
 - Per-case artifacts include `candidate_solution.json`, `verification_report.json`, `role_transcripts.json`, `case_result.json`, and the session evidence/checkpoint files.
 - A failed formalizable live case does not necessarily mean Tier 3 transport failed; generator or verifier timeouts are recorded separately in `live_error.json` and `role_transcripts.json`, while real Tier 3 attempts leave `formal_transport` and `formal_results` artifacts under the session directory.
 - When routing is in fallback mode, the harness records prompt separation plus the intended temperature values, but Hermes CLI does not expose a temperature flag. The live report records that limitation in case notes instead of pretending the override was applied.
+- The repo-local QEC anchors now explicitly separate the `~10.3%` independent-X/Z code-capacity figure from the `~10.9%` Nishimori-point bit-flip result and steer generic depolarizing-threshold answers toward the circuit-level Fowler/Stephens literature instead of overloaded mixed-regime summaries.
 
 ## Initial Categories
 

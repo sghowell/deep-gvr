@@ -12,21 +12,25 @@ Start from `main` and implement this slice on `codex/live-content-accuracy`. Mer
 
 - `add live content accuracy plan`
 - `tighten live threshold attribution guidance`
+- `refine live threshold scope guidance`
 - `document live content accuracy behavior`
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Tighten repo-local QEC anchor notes for the `~10.3%` versus `~10.9%` threshold semantics and citation-discipline rule.
-- [ ] Strengthen generator instructions so it avoids the Nishimori-point mis-attribution and body/reference drift.
-- [ ] Extend tests to pin the new live-domain guidance and any prompt/query behavior that should now hold.
-- [ ] Re-run targeted tests, repo-wide validation, and a narrow live smoke on the default route to see whether the remaining live failure persists or changes.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Tighten repo-local QEC anchor notes for the `~10.3%` versus `~10.9%` threshold semantics and citation-discipline rule.
+- [x] Strengthen generator instructions so it avoids the Nishimori-point mis-attribution and body/reference drift.
+- [x] Extend tests to pin the new live-domain guidance and any prompt/query behavior that should now hold.
+- [x] Re-run targeted tests, repo-wide validation, and a narrow live smoke on the default route to see whether the remaining live failure persists or changes.
 
 ## Surprises & Discoveries
 
 - The route-selection slice removed the route-blindness problem, so the current live failure is now traceable to the actual model output on the shared default route rather than to provider/model wiring.
 - The latest verifier report at `/tmp/deep-gvr-live-route-selection/cases/known-correct-surface-threshold/verification_report.json` isolates only two flaws, which makes this a prompt/domain-quality slice rather than a harness-control-flow slice.
 - The generator already includes a partial caveat about independent X/Z decoding, so the remaining threshold bug is not missing context entirely; it is a more precise attribution error that needs stronger anchor language.
+- A first follow-up live smoke at `/tmp/deep-gvr-live-content-accuracy-120/report.json` removed the original `~10.3%` and missing-reference flaws but exposed a wrong `Wang, Fowler, Hollenberg` year and an over-broad attribution to the generic threshold theorem.
+- A second follow-up live smoke at `/tmp/deep-gvr-live-content-accuracy-final/report.json` showed the next remaining issue was hypothesis scope: the generator was still overloading the main depolarizing claim with toric-code and bit-flip-only details.
+- The final live smoke at `/tmp/deep-gvr-live-content-accuracy-final-2/report.json` passed after the prompt/domain guidance told the generator to keep the main claim on circuit-level depolarizing thresholds and to prefer Fowler/Stephens for the sub-1% MWPM range.
 
 ## Decision Log
 
@@ -37,7 +41,7 @@ Start from `main` and implement this slice on `codex/live-content-accuracy`. Mer
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+This slice succeeded. The repo-local QEC anchors and generator prompt now encode three layers of live-content discipline that the earlier route-focused slices were missing: precise `~10.3%` versus `~10.9%` threshold semantics, explicit body/reference citation discipline, and scope control that keeps generic depolarizing threshold answers centered on the circuit-level surface-code regime instead of dragging in toric-code/bit-flip details. The final live smoke at `/tmp/deep-gvr-live-content-accuracy-final-2/report.json` returned `VERIFIED` for `known-correct-surface-threshold`, with the generator response in `/tmp/deep-gvr-live-content-accuracy-final-2/cases/known-correct-surface-threshold/candidate_solution.json` scoped to the depolarizing circuit-level claim and the verifier response in `/tmp/deep-gvr-live-content-accuracy-final-2/cases/known-correct-surface-threshold/verification_report.json` downgraded the remaining source-precision concerns to caveats instead of flaws.
 
 ## Context and Orientation
 
@@ -91,7 +95,7 @@ Acceptance evidence:
 
 - Live domain-context injection tests assert the query includes the new threshold-attribution guidance.
 - The generator prompt explicitly tells the model not to attribute `~10.3%` to the Nishimori-point mapping and to keep body citations aligned with `references`.
-- A fresh narrow live smoke either reaches `VERIFIED` for `known-correct-surface-threshold` or changes the remaining failure mode away from the current `~10.3%` mis-attribution and missing-reference issues, with the new artifact path recorded here.
+- A fresh narrow live smoke reaches `VERIFIED` for `known-correct-surface-threshold` or changes the remaining failure mode away from the current `~10.3%` mis-attribution and missing-reference issues, with the new artifact path recorded here.
 
 ## Merge, Push, and Cleanup
 

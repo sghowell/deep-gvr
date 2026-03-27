@@ -46,6 +46,7 @@
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - Live benchmark runs share the same repo-local domain-context loader as the CLI
+- The shared QEC domain-context loader now encodes threshold-regime and citation-scope guardrails for live depolarizing-threshold answers
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
 - Compact live verification uses a dedicated verifier prompt and tighter payload shape to reduce verifier-request bulk on the real Hermes route
 - Live CLI/eval can prefer explicit top-level role routes from config and fall back to the shared live route when a provider/model path is invalid

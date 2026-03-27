@@ -52,6 +52,7 @@ When the user invokes `/deep-gvr`:
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - Live eval now reads the same repo-local runtime config as the CLI when `--config` is provided, so route tuning should happen in one config file instead of through benchmark-only overrides.
 - Live eval now also injects the same repo-local domain context files as the CLI, so benchmark runs no longer start from an empty `literature_context`.
+- The shared QEC domain context now explicitly separates code-capacity, bit-flip, and circuit-level threshold regimes so live depolarizing-threshold answers stay scoped to the right literature.
 - Compact live verification now uses a dedicated verifier prompt/path so the adversarial verifier request is materially smaller than the generic compact prompt shape.
 - Live CLI/eval now treat concrete role-model pins as explicit top-level route intent and will fall back to the shared live route when Hermes rejects that provider/model path as a route-configuration error.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
