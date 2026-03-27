@@ -11,6 +11,7 @@
 - Prefer Fowler et al. (2012) or Stephens (2014) for the familiar sub-1% circuit-level MWPM threshold range unless you explicitly explain Wang et al.'s parameter convention and why it matches your quoted number.
 - Physical-qubit cost for distance-`d` planar or rotated surface-code constructions scales on the order of `d^2`.
 - Union-Find decoding is generally treated as near-linear in practice and in its core analysis.
+- For generic Union-Find scaling questions, prefer the total decode complexity `O(n alpha(n))` or near-linear wording; do not add threshold comparisons or claim a worst-case single-operation cost of `O(alpha(n))` unless the prompt explicitly asks for those details.
 - Avoid toric-specific homology language when a claim is about surface codes generically; use planar or rotated wording unless the topology is explicit.
 - Do not use Raussendorf-Harrington 2007 as the canonical citation for the standard 2D planar or rotated surface-code circuit-level threshold without qualifying that it is a different topological construction.
 - If a work is named in the body, list it in `references`; if you do not want it in `references`, do not cite it in the body.

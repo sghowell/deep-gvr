@@ -271,6 +271,55 @@ class EvaluationTests(unittest.TestCase):
             list(available_benchmark_subsets()["live-expansion"]),
         )
 
+    def test_available_benchmark_subsets_expose_breadth_groups(self) -> None:
+        subsets = available_benchmark_subsets()
+        self.assertIn("live-analytical-breadth", subsets)
+        self.assertIn("live-escalation-breadth", subsets)
+        self.assertIn("live-full", subsets)
+        self.assertEqual(
+            subsets["live-analytical-breadth"],
+            (
+                "known-correct-surface-threshold",
+                "known-correct-planar-qubits",
+                "known-correct-union-find",
+                "known-incorrect-surface-threshold-5pct",
+                "known-incorrect-color-codes-all-noise-models",
+            ),
+        )
+        self.assertEqual(
+            subsets["live-escalation-breadth"],
+            (
+                "simulation-verified-distance5",
+                "simulation-rejected-distance7",
+                "formal-proved-repetition-majority",
+                "formal-unavailable-repetition-scaling",
+            ),
+        )
+        self.assertEqual(
+            subsets["live-full"],
+            subsets["live-analytical-breadth"] + subsets["live-escalation-breadth"],
+        )
+
+    def test_load_benchmark_suite_filters_analytical_breadth_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="live-analytical-breadth",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["live-analytical-breadth"]),
+        )
+
+    def test_load_benchmark_suite_filters_escalation_breadth_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="live-escalation-breadth",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["live-escalation-breadth"]),
+        )
+
     def test_load_benchmark_suite_rejects_unknown_subset(self) -> None:
         with self.assertRaises(ValueError):
             load_benchmark_suite(ROOT / "eval" / "known_problems.json", subset="missing-subset")
@@ -306,6 +355,27 @@ class EvaluationTests(unittest.TestCase):
             approach="Reject the claim on literature grounds instead of fabricating support for it.",
             technical_details=["The circuit-level threshold remains well below 1% under standard depolarizing noise."],
             expected_results=["The verifier should accept the refutation as a correct rejection of the benchmark claim."],
+            assumptions=["Standard circuit-level depolarizing assumptions apply."],
+            limitations=["This is a benchmark refutation candidate."],
+            references=["Fowler et al. 2012", "Stephens 2014"],
+            revision_notes=[],
+        )
+
+        self.assertTrue(_accept_verified_refutation(case, VerificationVerdict.VERIFIED, candidate))
+
+    def test_accept_verified_refutation_for_simulation_rejected_case(self) -> None:
+        case = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            case_ids=["simulation-rejected-distance7"],
+        )[0]
+        candidate = CandidateSolution(
+            hypothesis=(
+                "The claim is false: a distance 7 rotated surface code at p=0.005 does not achieve a logical error rate "
+                "below 1e-4 under standard MWPM decoding."
+            ),
+            approach="Reject the target by comparing it against the simulation-backed logical error rate.",
+            technical_details=["At p=0.005 the logical error rate remains well above 1e-4 at d=7."],
+            expected_results=["Tier 2 should confirm the direct refutation of the 1e-4 claim."],
             assumptions=["Standard circuit-level depolarizing assumptions apply."],
             limitations=["This is a benchmark refutation candidate."],
             references=["Fowler et al. 2012", "Stephens 2014"],
@@ -369,7 +439,10 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("Available benchmark subsets:", completed.stdout)
+        self.assertIn("live-analytical-breadth", completed.stdout)
+        self.assertIn("live-escalation-breadth", completed.stdout)
         self.assertIn("live-expansion", completed.stdout)
+        self.assertIn("live-full", completed.stdout)
         self.assertIn("formal-proved-repetition-majority", completed.stdout)
 
     def test_eval_cli_prints_case_summary_for_named_subset(self) -> None:
@@ -833,6 +906,18 @@ class EvaluationTests(unittest.TestCase):
             compact_query,
         )
         self.assertIn(
+            "For literature-grounded threshold-understanding questions, keep `expected_results` on threshold existence, regime separation, or cited threshold ranges",
+            compact_query,
+        )
+        self.assertIn(
+            "For algorithmic scaling questions, keep the candidate on the asymptotic decode complexity the prompt actually asks for",
+            compact_query,
+        )
+        self.assertIn(
+            "For compact theorem or asymptotic proof claims, keep `expected_results` on the proof statement or derived asymptotic consequence",
+            compact_query,
+        )
+        self.assertIn(
             "For small-distance simulator-backed claims, keep the hypothesis on the ordering the prompt actually asks for",
             compact_query,
         )
@@ -1080,6 +1165,14 @@ class EvaluationTests(unittest.TestCase):
             verifier_query,
         )
         self.assertIn("If the main claim is a short formal theorem, request tier3", verifier_query)
+        self.assertIn(
+            "For compact theorem or asymptotic proof claims, do not request Tier 2 just because the candidate lists testable asymptotic consequences",
+            verifier_query,
+        )
+        self.assertIn(
+            "If the core theorem claim has attached Tier 3 results with status `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY`",
+            verifier_query,
+        )
 
     def test_live_mode_does_not_clip_formal_transport_to_live_role_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
