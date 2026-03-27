@@ -1,0 +1,18 @@
+[
+  {
+    "id": "known-correct-surface-threshold",
+    "category": "known_correct",
+    "prompt": "Explain why the surface code is understood to have a threshold under standard depolarizing noise assumptions.",
+    "scenario": "known_correct_surface_threshold",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1]
+  },
+  {
+    "id": "simulation-verified-distance5",
+    "category": "simulation_required",
+    "prompt": "Claim that the logical error rate decreases with code distance at physical error rate 0.001 in a rotated surface-code memory experiment.",
+    "scenario": "simulation_verified_distance5",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  }
+]

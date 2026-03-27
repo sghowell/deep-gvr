@@ -27,6 +27,16 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
+from .evaluation import (
+    BenchmarkCase,
+    BenchmarkCaseResult,
+    BenchmarkReport,
+    BenchmarkSummary,
+    benchmark_routing_probe,
+    load_benchmark_suite,
+    run_benchmark_suite,
+    write_benchmark_report,
+)
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .probes import run_capability_probes
 from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
@@ -46,6 +56,10 @@ __all__ = [
     "AnalyticalCheck",
     "AnalyticalStatus",
     "Backend",
+    "BenchmarkCase",
+    "BenchmarkCaseResult",
+    "BenchmarkReport",
+    "BenchmarkSummary",
     "CandidateSolution",
     "CapabilityProbeResult",
     "DeepGvrConfig",
@@ -75,7 +89,10 @@ __all__ = [
     "FormalVerifier",
     "AristotleFormalVerifier",
     "GenerationRequest",
+    "benchmark_routing_probe",
+    "load_benchmark_suite",
     "RevisionRequest",
+    "run_benchmark_suite",
     "SimulationRequest",
     "Simulator",
     "VerificationRequest",
@@ -84,4 +101,5 @@ __all__ = [
     "VerificationVerdict",
     "build_routing_plan",
     "run_capability_probes",
+    "write_benchmark_report",
 ]

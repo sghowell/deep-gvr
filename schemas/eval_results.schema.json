@@ -1,0 +1,77 @@
+{
+  "type": "object",
+  "required": ["generated_at", "suite_path", "routing_probe_status", "cases", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "generated_at": { "type": "string" },
+    "suite_path": { "type": "string", "minLength": 1 },
+    "routing_probe_status": { "type": "string", "enum": ["ready", "fallback", "blocked"] },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "scenario",
+          "expected_verdict",
+          "actual_verdict",
+          "expected_tiers",
+          "actual_tiers",
+          "iterations",
+          "passed",
+          "routing_mode",
+          "provider",
+          "model_used",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "scenario": { "type": "string", "minLength": 1 },
+          "expected_verdict": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] },
+          "actual_verdict": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] },
+          "expected_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
+          "actual_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
+          "iterations": { "type": "integer", "minimum": 1 },
+          "passed": { "type": "boolean" },
+          "routing_mode": { "type": "string", "enum": ["direct", "temperature_decorrelation"] },
+          "provider": { "type": "string" },
+          "model_used": { "type": "string" },
+          "notes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_cases",
+        "passed_cases",
+        "failed_cases",
+        "verdict_match_rate",
+        "true_positive_rate",
+        "true_negative_rate",
+        "false_positive_rate",
+        "tier_accuracy",
+        "iteration_efficiency",
+        "failure_admission_rate",
+        "meets_false_positive_bar"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_cases": { "type": "integer", "minimum": 0 },
+        "passed_cases": { "type": "integer", "minimum": 0 },
+        "failed_cases": { "type": "integer", "minimum": 0 },
+        "verdict_match_rate": { "type": "number" },
+        "true_positive_rate": { "type": "number" },
+        "true_negative_rate": { "type": "number" },
+        "false_positive_rate": { "type": "number" },
+        "tier_accuracy": { "type": "number" },
+        "iteration_efficiency": { "type": "number" },
+        "failure_admission_rate": { "type": "number" },
+        "meets_false_positive_bar": { "type": "boolean" }
+      }
+    }
+  }
+}

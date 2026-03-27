@@ -1,0 +1,26 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "category", "prompt", "scenario", "expected_verdict", "expected_tiers"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "minLength": 1 },
+      "category": {
+        "type": "string",
+        "enum": ["known_correct", "known_incorrect", "simulation_required", "formalizable"]
+      },
+      "prompt": { "type": "string", "minLength": 1 },
+      "scenario": { "type": "string", "minLength": 1 },
+      "expected_verdict": {
+        "type": "string",
+        "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"]
+      },
+      "expected_tiers": {
+        "type": "array",
+        "items": { "type": "integer", "enum": [1, 2, 3] },
+        "minItems": 1
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@ from deep_gvr.contracts import (
     Tier3ClaimResult,
     VerificationReport,
 )
+from deep_gvr.evaluation import BenchmarkCase, BenchmarkReport
 from deep_gvr.json_schema import validate
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,26 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_config_fixture_validates(self) -> None:
         schema = self._load_json("schemas/config.schema.json")
         fixture = self._load_json("templates/config.template.json")
+        validate(fixture, schema)
+
+    def test_benchmark_suite_round_trip(self) -> None:
+        payload = self._load_json("templates/benchmark_suite.template.json")
+        model = [BenchmarkCase.from_dict(item) for item in payload]
+        self.assertEqual([item.to_dict() for item in model], payload)
+
+    def test_eval_results_round_trip(self) -> None:
+        payload = self._load_json("templates/eval_results.template.json")
+        model = BenchmarkReport.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
+    def test_benchmark_suite_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/benchmark_suite.schema.json")
+        fixture = self._load_json("templates/benchmark_suite.template.json")
+        validate(fixture, schema)
+
+    def test_eval_results_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/eval_results.schema.json")
+        fixture = self._load_json("templates/eval_results.template.json")
         validate(fixture, schema)
 
     def test_session_checkpoint_fixture_validates(self) -> None:

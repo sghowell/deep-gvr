@@ -1,0 +1,199 @@
+{
+  "generated_at": "2026-03-26T00:00:00Z",
+  "suite_path": "eval/known_problems.json",
+  "routing_probe_status": "fallback",
+  "cases": [
+    {
+      "id": "known-correct-surface-threshold",
+      "category": "known_correct",
+      "scenario": "known_correct_surface_threshold",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [
+        1
+      ],
+      "actual_tiers": [
+        1
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "known-correct-planar-qubits",
+      "category": "known_correct",
+      "scenario": "known_correct_planar_qubits",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [
+        1
+      ],
+      "actual_tiers": [
+        1
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "known-correct-union-find",
+      "category": "known_correct",
+      "scenario": "known_correct_union_find",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [
+        1
+      ],
+      "actual_tiers": [
+        1
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "known-incorrect-surface-threshold-5pct",
+      "category": "known_incorrect",
+      "scenario": "known_incorrect_surface_threshold_5pct",
+      "expected_verdict": "FLAWS_FOUND",
+      "actual_verdict": "FLAWS_FOUND",
+      "expected_tiers": [
+        1
+      ],
+      "actual_tiers": [
+        1
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "known-incorrect-color-codes-all-noise-models",
+      "category": "known_incorrect",
+      "scenario": "known_incorrect_color_codes_all_noise_models",
+      "expected_verdict": "FLAWS_FOUND",
+      "actual_verdict": "FLAWS_FOUND",
+      "expected_tiers": [
+        1
+      ],
+      "actual_tiers": [
+        1
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "simulation-verified-distance5",
+      "category": "simulation_required",
+      "scenario": "simulation_verified_distance5",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [
+        1,
+        2
+      ],
+      "actual_tiers": [
+        1,
+        2
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "simulation-rejected-distance7",
+      "category": "simulation_required",
+      "scenario": "simulation_rejected_distance7",
+      "expected_verdict": "FLAWS_FOUND",
+      "actual_verdict": "FLAWS_FOUND",
+      "expected_tiers": [
+        1,
+        2
+      ],
+      "actual_tiers": [
+        1,
+        2
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "formal-proved-repetition-majority",
+      "category": "formalizable",
+      "scenario": "formal_proved_repetition_majority",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [
+        1,
+        3
+      ],
+      "actual_tiers": [
+        1,
+        3
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    },
+    {
+      "id": "formal-unavailable-repetition-scaling",
+      "category": "formalizable",
+      "scenario": "formal_unavailable_repetition_scaling",
+      "expected_verdict": "CANNOT_VERIFY",
+      "actual_verdict": "CANNOT_VERIFY",
+      "expected_tiers": [
+        1,
+        3
+      ],
+      "actual_tiers": [
+        1,
+        3
+      ],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    }
+  ],
+  "summary": {
+    "total_cases": 9,
+    "passed_cases": 9,
+    "failed_cases": 0,
+    "verdict_match_rate": 1.0,
+    "true_positive_rate": 1.0,
+    "true_negative_rate": 1.0,
+    "false_positive_rate": 0.0,
+    "tier_accuracy": 1.0,
+    "iteration_efficiency": 1.0,
+    "failure_admission_rate": 1.0,
+    "meets_false_positive_bar": true
+  }
+}

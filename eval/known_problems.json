@@ -3,24 +3,72 @@
     "id": "known-correct-surface-threshold",
     "category": "known_correct",
     "prompt": "Explain why the surface code is understood to have a threshold under standard depolarizing noise assumptions.",
-    "expected_verdict": "VERIFIED"
+    "scenario": "known_correct_surface_threshold",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1]
+  },
+  {
+    "id": "known-correct-planar-qubits",
+    "category": "known_correct",
+    "prompt": "State the asymptotic physical-qubit cost of a planar surface code of distance d.",
+    "scenario": "known_correct_planar_qubits",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1]
+  },
+  {
+    "id": "known-correct-union-find",
+    "category": "known_correct",
+    "prompt": "Summarize the expected scaling of Union-Find decoding for surface-code syndrome graphs.",
+    "scenario": "known_correct_union_find",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1]
   },
   {
     "id": "known-incorrect-surface-threshold-5pct",
     "category": "known_incorrect",
     "prompt": "Argue that the surface-code threshold under circuit-level noise is 5 percent.",
-    "expected_verdict": "FLAWS_FOUND"
+    "scenario": "known_incorrect_surface_threshold_5pct",
+    "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1]
   },
   {
-    "id": "simulation-trigger-distance-7",
+    "id": "known-incorrect-color-codes-all-noise-models",
+    "category": "known_incorrect",
+    "prompt": "Claim that color codes have higher thresholds than surface codes for all noise models.",
+    "scenario": "known_incorrect_color_codes_all_noise_models",
+    "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1]
+  },
+  {
+    "id": "simulation-verified-distance5",
     "category": "simulation_required",
-    "prompt": "Claim that a rotated surface-code memory task at distance 7 and physical error rate 0.005 has logical error below 1e-4.",
-    "expected_verdict": "FLAWS_FOUND"
+    "prompt": "Claim that the logical error rate decreases with code distance at physical error rate 0.001 in a rotated surface-code memory experiment.",
+    "scenario": "simulation_verified_distance5",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
   },
   {
-    "id": "formalizable-repetition-bound",
+    "id": "simulation-rejected-distance7",
+    "category": "simulation_required",
+    "prompt": "Claim that a rotated surface-code memory task at distance 7 and physical error rate 0.005 stays below 1e-4 logical error.",
+    "scenario": "simulation_rejected_distance7",
+    "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "formal-proved-repetition-majority",
     "category": "formalizable",
-    "prompt": "Sketch a proof for the repetition-code logical error scaling with odd distance d.",
-    "expected_verdict": "CANNOT_VERIFY"
+    "prompt": "Sketch a proof that majority decoding for odd repetition codes corrects up to (d-1)/2 bit flips.",
+    "scenario": "formal_proved_repetition_majority",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 3]
+  },
+  {
+    "id": "formal-unavailable-repetition-scaling",
+    "category": "formalizable",
+    "prompt": "Formalize the repetition-code logical error scaling statement O(p^((d+1)/2)) and admit failure if the proof transport is unavailable.",
+    "scenario": "formal_unavailable_repetition_scaling",
+    "expected_verdict": "CANNOT_VERIFY",
+    "expected_tiers": [1, 3]
   }
 ]

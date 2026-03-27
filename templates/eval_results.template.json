@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-26T00:00:00Z",
+  "suite_path": "eval/known_problems.json",
+  "routing_probe_status": "fallback",
+  "cases": [
+    {
+      "id": "known-correct-surface-threshold",
+      "category": "known_correct",
+      "scenario": "known_correct_surface_threshold",
+      "expected_verdict": "VERIFIED",
+      "actual_verdict": "VERIFIED",
+      "expected_tiers": [1],
+      "actual_tiers": [1],
+      "iterations": 1,
+      "passed": true,
+      "routing_mode": "temperature_decorrelation",
+      "provider": "default",
+      "model_used": "configured-by-hermes",
+      "notes": []
+    }
+  ],
+  "summary": {
+    "total_cases": 1,
+    "passed_cases": 1,
+    "failed_cases": 0,
+    "verdict_match_rate": 1.0,
+    "true_positive_rate": 1.0,
+    "true_negative_rate": 0.0,
+    "false_positive_rate": 0.0,
+    "tier_accuracy": 1.0,
+    "iteration_efficiency": 1.0,
+    "failure_admission_rate": 0.0,
+    "meets_false_positive_bar": true
+  }
+}
