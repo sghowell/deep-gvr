@@ -2,7 +2,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a runnable `deep-gvr` command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification with structured fallback behavior.
+The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a runnable `deep-gvr` command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification through Hermes MCP when Aristotle is configured, with structured fallback when it is not.
 
 ## What Exists Now
 
@@ -13,7 +13,7 @@ The repository is intentionally structured for Codex-driven implementation. The 
 - Typed Python contracts in `src/deep_gvr/`
 - Tier 1 loop helpers and session persistence in `src/deep_gvr/tier1.py`
 - Local Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
-- Orchestrator-mediated Aristotle Tier 3 fallback/client logic in `src/deep_gvr/formal.py`
+- Orchestrator-mediated Aristotle Tier 3 transport and fallback logic in `src/deep_gvr/formal.py`
 - JSON schemas in `schemas/`
 - Prompt and skill procedure in `prompts/` and `SKILL.md`
 - Capability probes and validation scripts in `scripts/`
@@ -66,6 +66,7 @@ scripts/setup_mcp.sh --check
 `scripts/install.sh` creates a symlink install under `~/.hermes/skills/deep-gvr` by default. Use `--copy` if you need a copied install or `--target` to choose a different skills directory.
 
 The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
+For Tier 3, `scripts/setup_mcp.sh --print-snippet` shows the expected `mcp_servers.aristotle` block for `~/.hermes/config.yaml`, and `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry.
 
 ## Command Surface
 
@@ -78,6 +79,7 @@ uv run deep-gvr resume <session_id>
 ```
 
 The command loads `~/.hermes/deep-gvr/config.yaml`, injects domain context from `domain/`, runs the existing generator-verifier-reviser loop, and writes evidence to the configured session directory.
+If Aristotle transport is configured in `~/.hermes/config.yaml`, Tier 3 requests are dispatched through `hermes chat` plus the discovered `mcp_aristotle_*` tools and the session records a `formal_transport` artifact alongside the formal request/results artifacts.
 
 ## Evaluation Baseline
 

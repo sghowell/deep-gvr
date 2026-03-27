@@ -36,7 +36,9 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `eval/results/live/<run_id>/sessions/<session_id>/checkpoint.json`: persisted Tier 1 state for a live benchmark session
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
-- `sessions/<session_id>/artifacts/iteration_<n>_formal_*.json`: persisted Tier 3 requests and returned formal results
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and Hermes MCP preflight details
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_results.json`: persisted Tier 3 returned formal results
 
 ## Alignment Rules
 

@@ -879,8 +879,16 @@ pip install stim pymatching --break-system-packages
 
 # (Optional) Configure Aristotle MCP for Tier 3 formal verification
 export ARISTOTLE_API_KEY="your-key-here"
-hermes mcp add aristotle -e ARISTOTLE_API_KEY=$ARISTOTLE_API_KEY -- \
-  uvx --from git+https://github.com/septract/lean-aristotle-mcp aristotle-mcp
+cat >> ~/.hermes/config.yaml <<'EOF'
+mcp_servers:
+  aristotle:
+    command: "uvx"
+    args: ["--from", "git+https://github.com/septract/lean-aristotle-mcp", "aristotle-mcp"]
+    env:
+      ARISTOTLE_API_KEY: "${ARISTOTLE_API_KEY}"
+    timeout: 300
+    connect_timeout: 60
+EOF
 
 # (Optional) Install OpenGauss for interactive proof engineering
 cd ~/.hermes/skills/

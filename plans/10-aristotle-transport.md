@@ -17,9 +17,9 @@ Start from `main` and implement this slice on `codex/aristotle-transport`. Merge
 ## Progress
 
 - [x] The new Aristotle transport plan has been added.
-- [ ] A real repo-local Tier 3 transport path is wired through Hermes CLI and the configured Aristotle MCP server.
-- [ ] Capability probes distinguish subagent MCP inheritance from orchestrator-mediated Aristotle transport readiness.
-- [ ] Tier 3 docs, setup guidance, tests, and live evaluation notes match the implemented transport behavior.
+- [x] A real repo-local Tier 3 transport path is wired through Hermes CLI and the configured Aristotle MCP server.
+- [x] Capability probes distinguish subagent MCP inheritance from orchestrator-mediated Aristotle transport readiness.
+- [x] Tier 3 docs, setup guidance, tests, and live evaluation notes match the implemented transport behavior.
 
 ## Surprises & Discoveries
 
@@ -41,7 +41,7 @@ Start from `main` and implement this slice on `codex/aristotle-transport`. Merge
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a real formal transport path for configured Aristotle environments, clearer capability reporting for transport readiness versus subagent inheritance, and operator docs/scripts that describe the current Hermes MCP setup model accurately.
+This slice leaves the repo with a real formal transport path for configured Aristotle environments, clearer capability reporting for transport readiness versus subagent inheritance, a persisted Tier 3 transport artifact, and operator docs/scripts that describe the current Hermes MCP setup model accurately.
 
 ## Context and Orientation
 
@@ -75,7 +75,7 @@ Add a Hermes-CLI-backed Aristotle transport implementation, expose transport rea
 - `python scripts/check_repo.py`
 - `python scripts/run_capability_probes.py`
 - `python -m unittest discover -s tests -v`
-- `python scripts/setup_mcp.sh --check`
+- `bash scripts/setup_mcp.sh --check`
 - `python eval/run_eval.py --mode live --routing-probe fallback --case-id formal-unavailable-repetition-scaling --command-timeout-seconds 5`
 
 Acceptance:

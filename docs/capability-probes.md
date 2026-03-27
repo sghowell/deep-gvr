@@ -20,6 +20,14 @@ The architecture document identifies several implementation unknowns that are im
 - Preferred outcome: verifier can call Aristotle directly.
 - Fallback: orchestrator mediates formal verification requests and passes results back into verification.
 
+### Aristotle transport
+
+- Question: can the orchestrator dispatch Aristotle proof attempts through the locally configured Hermes MCP transport?
+- Default until proven otherwise: assume Tier 3 falls back unless Hermes, `ARISTOTLE_API_KEY`, and `mcp_servers.aristotle` are all present.
+- Current baseline: the formal verifier checks the Hermes config, then dispatches Tier 3 through `hermes chat` plus the configured Aristotle MCP tools when available.
+- Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
+- Fallback: persist the formal request, record why transport was unavailable, and pass structured `unavailable` results back into verification.
+
 ### Session checkpoint and resume
 
 - Question: what minimal state is required to resume a run safely?
@@ -40,5 +48,6 @@ The architecture document identifies several implementation unknowns that are im
 
 - `scripts/run_capability_probes.py` runs the readiness probes.
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
+- `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.

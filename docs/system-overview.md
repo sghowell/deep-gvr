@@ -33,7 +33,7 @@
 - Any failed applicable tier is a failed candidate
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
 - The local Tier 2 baseline uses the Stim adapter with PyMatching decoding
-- The Tier 3 baseline is orchestrator-mediated Aristotle routing with structured unavailable/timeout results
+- The Tier 3 baseline is orchestrator-mediated Aristotle routing through Hermes MCP when `mcp_servers.aristotle` is configured, with structured unavailable/timeout results otherwise
 
 ## Early Defaults
 

@@ -4,7 +4,7 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 
 ## Current State
 
-The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the Python orchestration helper, append-only evidence logging, checkpoint-based resume, and the same Hermes prompt execution path used by live evaluation.
+The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the Python orchestration helper, append-only evidence logging, checkpoint-based resume, the same Hermes prompt execution path used by live evaluation, and a Hermes-MCP-backed Tier 3 transport path when Aristotle is configured.
 
 ## Intended Commands
 
@@ -19,8 +19,9 @@ When the user invokes `/deep-gvr`:
 1. Ensure `~/.hermes/deep-gvr/config.yaml` exists. If it does not, create it from the repo defaults.
 2. For a new question, run `uv run deep-gvr run "<question>"`.
 3. For resume, run `uv run deep-gvr resume <session_id>`.
-4. Report the returned session summary, including the session ID, verdict, and evidence/checkpoint paths.
-5. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
+4. If Tier 3 is expected, ensure `~/.hermes/config.yaml` defines `mcp_servers.aristotle` and that `ARISTOTLE_API_KEY` is exported.
+5. Report the returned session summary, including the session ID, verdict, and evidence/checkpoint paths.
+6. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
 
 ## Required Inputs
 
@@ -44,10 +45,11 @@ When the user invokes `/deep-gvr`:
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
-- The orchestrator mediates Tier 3 as verifier -> formal backend -> verifier, persisting both the formal request and returned results under the session artifacts directory.
+- The orchestrator mediates Tier 3 as verifier -> Hermes CLI -> configured Aristotle MCP tools -> verifier, persisting the formal request, transport trace, and returned results under the session artifacts directory.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
 - Live evaluation bounds each `hermes chat` role call with a repo-local timeout so stalled model calls degrade into structured benchmark errors instead of hanging the run.
+- Tier 3 transport readiness is separate from subagent MCP inheritance. The verifier still does not assume direct MCP access; the orchestrator checks for `mcp_servers.aristotle` and mediates the proof attempt.
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.
