@@ -25,6 +25,7 @@ The architecture document identifies several implementation unknowns that are im
 - Question: can the orchestrator dispatch Aristotle proof attempts through the locally configured Hermes MCP transport?
 - Default until proven otherwise: assume Tier 3 falls back unless Hermes, `ARISTOTLE_API_KEY`, and `mcp_servers.aristotle` are all present.
 - Current baseline: the formal verifier checks the Hermes config, then dispatches Tier 3 through `hermes chat` plus the configured Aristotle MCP tools when available.
+- Operator path: use `scripts/setup_mcp.sh --install --check` to install the Aristotle MCP stanza into `~/.hermes/config.yaml` and confirm the transport preflight before live Tier 3 runs.
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
 - Fallback: persist the formal request, record why transport was unavailable, and pass structured `unavailable` results back into verification.
 
@@ -49,5 +50,6 @@ The architecture document identifies several implementation unknowns that are im
 - `scripts/run_capability_probes.py` runs the readiness probes.
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
 - `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
+- `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.

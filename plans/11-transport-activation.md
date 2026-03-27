@@ -17,15 +17,16 @@ Start from `main` and implement this slice on `codex/transport-activation`. Merg
 ## Progress
 
 - [x] The new transport-activation plan has been added.
-- [ ] The setup helper can install the Aristotle MCP stanza into a Hermes config idempotently.
-- [ ] The local Hermes config is activated for Aristotle transport and the transport probe reports `ready`.
-- [ ] A bounded live formal run produces transport artifacts from the real configured environment.
-- [ ] Docs, tests, and the plan index match the activation workflow.
+- [x] The setup helper can install the Aristotle MCP stanza into a Hermes config idempotently.
+- [x] The local Hermes config is activated for Aristotle transport and the transport probe reports `ready`.
+- [x] A bounded live formal run produces transport artifacts from the real configured environment.
+- [x] Docs, tests, and the plan index match the activation workflow.
 
 ## Surprises & Discoveries
 
 - The current Hermes config already has the right model/tool defaults for local work, but it does not yet define `mcp_servers`, so Tier 3 still falls back even with `ARISTOTLE_API_KEY` present.
 - The existing repo-local setup guidance is accurate, but it still relies on a manual config edit; that is the last avoidable operator step in the Tier 3 path.
+- A full live benchmark case can still fail before Tier 3 if the generator prompt times out, so transport activation must be distinguished from end-to-end benchmark throughput.
 
 ## Decision Log
 
@@ -38,7 +39,7 @@ Start from `main` and implement this slice on `codex/transport-activation`. Merg
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a repeatable Aristotle activation helper, updated operator guidance, a locally verified `aristotle_transport` probe, and at least one live formal artifact set that reflects the real configured environment.
+This slice leaves the repo with a repeatable Aristotle activation helper, updated operator guidance, a locally verified `aristotle_transport` probe, and a real Tier 3 artifact set from the configured environment. In the observed local run, the direct harness Tier 3 smoke reached the formal boundary and persisted `formal_transport` plus `formal_results` artifacts with a structured timeout, which confirms transport activation even though the proof itself did not complete inside the bound.
 
 ## Context and Orientation
 
@@ -73,12 +74,13 @@ Add an idempotent Aristotle MCP installer path to the setup helper, activate the
 - `python -m unittest discover -s tests -v`
 - `bash scripts/setup_mcp.sh --install --check`
 - `python eval/run_eval.py --mode live --routing-probe fallback --case-id formal-proved-repetition-majority --command-timeout-seconds 10`
+- A direct Tier 3 harness smoke that persists `iteration_<n>_formal_transport.json` and `iteration_<n>_formal_results.json` from the configured local Hermes environment
 
 Acceptance:
 
 - `scripts/setup_mcp.sh --install` is idempotent and can create the expected Aristotle MCP entry in a target config.
 - The real local Hermes environment reports `aristotle_transport: ready`.
-- A live formal run produces Tier 3 transport artifacts from an attempted configured transport path, not the `missing_mcp_server` fallback.
+- A live formal run or direct harness Tier 3 smoke produces transport artifacts from an attempted configured transport path, not the `missing_mcp_server` fallback.
 - Docs and tests describe the actual activation workflow.
 
 ## Merge, Push, and Cleanup

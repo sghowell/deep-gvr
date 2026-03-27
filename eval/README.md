@@ -38,9 +38,11 @@ When `--output` is omitted in live mode, the runner writes `report.json` into th
 
 - Live mode drives the real Tier 1 loop plus Tier 2 and Tier 3 mediation paths.
 - Role prompts are loaded from `prompts/` and executed through `hermes chat`.
+- Before expecting live Tier 3 cases to run through Aristotle, use `bash scripts/setup_mcp.sh --install --check` to activate and verify the local Hermes MCP config.
 - When `~/.hermes/config.yaml` defines `mcp_servers.aristotle`, live Tier 3 requests are also dispatched through `hermes chat` plus the configured Aristotle MCP tools.
 - Each live role call uses a bounded subprocess timeout, configurable with `--command-timeout-seconds`, so stalled model calls fail into recorded error artifacts instead of hanging the whole run.
 - Per-case artifacts include `candidate_solution.json`, `verification_report.json`, `role_transcripts.json`, `case_result.json`, and the session evidence/checkpoint files.
+- A failed formalizable live case does not necessarily mean Tier 3 transport failed; generator or verifier timeouts are recorded separately in `live_error.json` and `role_transcripts.json`, while real Tier 3 attempts leave `formal_transport` and `formal_results` artifacts under the session directory.
 - When routing is in fallback mode, the harness records prompt separation plus the intended temperature values, but Hermes CLI does not expose a temperature flag. The live report records that limitation in case notes instead of pretending the override was applied.
 
 ## Initial Categories

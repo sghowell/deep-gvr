@@ -19,7 +19,7 @@ When the user invokes `/deep-gvr`:
 1. Ensure `~/.hermes/deep-gvr/config.yaml` exists. If it does not, create it from the repo defaults.
 2. For a new question, run `uv run deep-gvr run "<question>"`.
 3. For resume, run `uv run deep-gvr resume <session_id>`.
-4. If Tier 3 is expected, ensure `~/.hermes/config.yaml` defines `mcp_servers.aristotle` and that `ARISTOTLE_API_KEY` is exported.
+4. If Tier 3 is expected, run `bash scripts/setup_mcp.sh --install --check` so `~/.hermes/config.yaml` has `mcp_servers.aristotle` and the local environment confirms `ARISTOTLE_API_KEY` plus Hermes MCP readiness.
 5. Report the returned session summary, including the session ID, verdict, and evidence/checkpoint paths.
 6. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
 
@@ -46,6 +46,7 @@ When the user invokes `/deep-gvr`:
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
 - The orchestrator mediates Tier 3 as verifier -> Hermes CLI -> configured Aristotle MCP tools -> verifier, persisting the formal request, transport trace, and returned results under the session artifacts directory.
+- `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
