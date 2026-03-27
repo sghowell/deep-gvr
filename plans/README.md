@@ -14,3 +14,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [09-skill-integration.md](09-skill-integration.md)
 - [10-aristotle-transport.md](10-aristotle-transport.md)
 - [11-transport-activation.md](11-transport-activation.md)
+- [12-live-quality-tuning.md](12-live-quality-tuning.md)
