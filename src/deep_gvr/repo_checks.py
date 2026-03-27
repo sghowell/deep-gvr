@@ -143,6 +143,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "config.template.json": "config.schema.json",
         "benchmark_suite.template.json": "benchmark_suite.schema.json",
         "candidate_solution.template.json": "candidate_solution.schema.json",
+        "eval_consistency.template.json": "eval_consistency.schema.json",
         "eval_results.template.json": "eval_results.schema.json",
         "verification_report.template.json": "verification_report.schema.json",
         "sim_spec.template.json": "sim_spec.schema.json",

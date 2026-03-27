@@ -1,0 +1,153 @@
+{
+  "type": "object",
+  "required": [
+    "mode",
+    "repeat_count",
+    "run_id",
+    "output_root",
+    "generated_at",
+    "suite_path",
+    "routing_probe_status",
+    "subset",
+    "selected_case_ids",
+    "runs",
+    "cases",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "mode": { "type": "string", "enum": ["deterministic", "live"] },
+    "repeat_count": { "type": "integer", "minimum": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "output_root": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "suite_path": { "type": "string", "minLength": 1 },
+    "routing_probe_status": { "type": "string", "enum": ["ready", "fallback", "blocked"] },
+    "subset": { "type": ["string", "null"] },
+    "selected_case_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "run_index",
+          "run_id",
+          "output_root",
+          "report_path",
+          "passed_cases",
+          "failed_cases",
+          "failed_case_ids"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "run_index": { "type": "integer", "minimum": 1 },
+          "run_id": { "type": "string", "minLength": 1 },
+          "output_root": { "type": "string", "minLength": 1 },
+          "report_path": { "type": "string", "minLength": 1 },
+          "passed_cases": { "type": "integer", "minimum": 0 },
+          "failed_cases": { "type": "integer", "minimum": 0 },
+          "failed_case_ids": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "scenario",
+          "expected_verdict",
+          "expected_tiers",
+          "total_runs",
+          "passed_runs",
+          "failed_runs",
+          "direct_match_runs",
+          "accepted_refutation_runs",
+          "tier_mismatch_failures",
+          "verdict_mismatch_failures",
+          "execution_error_failures",
+          "pass_rate",
+          "actual_verdicts",
+          "actual_tier_signatures",
+          "outcomes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "scenario": { "type": "string", "minLength": 1 },
+          "expected_verdict": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] },
+          "expected_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
+          "total_runs": { "type": "integer", "minimum": 1 },
+          "passed_runs": { "type": "integer", "minimum": 0 },
+          "failed_runs": { "type": "integer", "minimum": 0 },
+          "direct_match_runs": { "type": "integer", "minimum": 0 },
+          "accepted_refutation_runs": { "type": "integer", "minimum": 0 },
+          "tier_mismatch_failures": { "type": "integer", "minimum": 0 },
+          "verdict_mismatch_failures": { "type": "integer", "minimum": 0 },
+          "execution_error_failures": { "type": "integer", "minimum": 0 },
+          "pass_rate": { "type": "number" },
+          "actual_verdicts": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] }
+          },
+          "actual_tier_signatures": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "direct_match",
+                "accepted_refutation",
+                "tier_mismatch",
+                "verdict_mismatch",
+                "execution_error"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "repeat_count",
+        "total_cases",
+        "total_case_runs",
+        "passed_case_runs",
+        "failed_case_runs",
+        "fully_passing_runs",
+        "stable_case_passes",
+        "unstable_cases",
+        "case_pass_rate",
+        "run_pass_rate",
+        "all_runs_passed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repeat_count": { "type": "integer", "minimum": 1 },
+        "total_cases": { "type": "integer", "minimum": 0 },
+        "total_case_runs": { "type": "integer", "minimum": 0 },
+        "passed_case_runs": { "type": "integer", "minimum": 0 },
+        "failed_case_runs": { "type": "integer", "minimum": 0 },
+        "fully_passing_runs": { "type": "integer", "minimum": 0 },
+        "stable_case_passes": { "type": "integer", "minimum": 0 },
+        "unstable_cases": { "type": "integer", "minimum": 0 },
+        "case_pass_rate": { "type": "number" },
+        "run_pass_rate": { "type": "number" },
+        "all_runs_passed": { "type": "boolean" }
+      }
+    }
+  }
+}

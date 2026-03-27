@@ -28,8 +28,10 @@ from deep_gvr.evaluation import (
     _accept_verified_refutation,
     available_benchmark_subsets,
     benchmark_routing_probe,
+    format_benchmark_consistency_overview,
     format_benchmark_report_overview,
     load_benchmark_suite,
+    run_repeated_benchmark_suite,
     run_benchmark_suite,
     write_benchmark_report,
 )
@@ -140,6 +142,103 @@ class EvaluationTests(unittest.TestCase):
             )
         return self._successful_live_executor(command, cwd)
 
+    def _accepted_refutation_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        del cwd
+        query = command[command.index("-q") + 1]
+        if "Role: generator" in query:
+            payload = {
+                "hypothesis": "A 5% circuit-level threshold claim for the surface code is not defensible under standard depolarizing assumptions.",
+                "approach": "Refute the 5% claim directly with literature-backed threshold ranges.",
+                "technical_details": ["Circuit-level MWPM thresholds remain well below 5%, in the sub-1% regime."],
+                "expected_results": ["The verifier should accept the refutation as the correct handling of the benchmark."],
+                "assumptions": ["Standard circuit-level depolarizing noise applies."],
+                "limitations": ["This is a test executor response."],
+                "references": ["Fowler et al. 2012", "Stephens 2014"],
+                "revision_notes": [],
+            }
+            return CommandExecutionResult(
+                returncode=0,
+                stdout=f"session: live-test\n{json.dumps(payload)}\n",
+                stderr="",
+            )
+        if "Role: verifier" in query:
+            payload = {
+                "verdict": "VERIFIED",
+                "tier1": {
+                    "checks": [
+                        {
+                            "check": "benchmark_refutation",
+                            "status": "pass",
+                            "detail": "The candidate correctly rejects the unsupported 5% threshold claim.",
+                        }
+                    ],
+                    "overall": "VERIFIED",
+                    "flaws": [],
+                    "caveats": [],
+                },
+                "tier2": None,
+                "tier3": [],
+                "flaws": [],
+                "caveats": [],
+                "cannot_verify_reason": None,
+            }
+            return CommandExecutionResult(
+                returncode=0,
+                stdout=f"{json.dumps(payload)}\nsession: live-test\n",
+                stderr="",
+            )
+        return CommandExecutionResult(returncode=1, stdout="", stderr=f"Unexpected command: {command}")
+
+    def _simulation_tier1_only_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        del cwd
+        query = command[command.index("-q") + 1]
+        if "Role: generator" in query:
+            payload = {
+                "hypothesis": "At physical error rate 0.001, the logical error rate decreases from distance 3 to 5 to 7 in a rotated surface-code memory experiment.",
+                "approach": "State the expected monotonic ordering directly.",
+                "technical_details": [
+                    "Use rotated surface-code memory with a depolarizing noise model and PyMatching decoding.",
+                    "Compare logical error ordering across distances 3, 5, and 7.",
+                ],
+                "expected_results": ["The verifier should request Tier 2 to test the ordering empirically."],
+                "assumptions": ["Standard rotated-memory Stim configuration applies."],
+                "limitations": ["This executor intentionally withholds simulation results."],
+                "references": ["Stim benchmark fixture"],
+                "revision_notes": [],
+            }
+            return CommandExecutionResult(
+                returncode=0,
+                stdout=f"session: live-test\n{json.dumps(payload)}\n",
+                stderr="",
+            )
+        if "Role: verifier" in query:
+            payload = {
+                "verdict": "VERIFIED",
+                "tier1": {
+                    "checks": [
+                        {
+                            "check": "literature_plausibility",
+                            "status": "pass",
+                            "detail": "The ordering looks plausible under standard threshold intuition.",
+                        }
+                    ],
+                    "overall": "VERIFIED",
+                    "flaws": [],
+                    "caveats": [],
+                },
+                "tier2": None,
+                "tier3": [],
+                "flaws": [],
+                "caveats": [],
+                "cannot_verify_reason": None,
+            }
+            return CommandExecutionResult(
+                returncode=0,
+                stdout=f"{json.dumps(payload)}\nsession: live-test\n",
+                stderr="",
+            )
+        return CommandExecutionResult(returncode=1, stdout="", stderr=f"Unexpected command: {command}")
+
     def test_load_benchmark_suite_reads_expected_cases(self) -> None:
         cases = load_benchmark_suite(ROOT / "eval" / "known_problems.json")
         self.assertGreaterEqual(len(cases), 8)
@@ -208,6 +307,8 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report.summary.failed_cases, 0)
         self.assertEqual(report.summary.false_positive_rate, 0.0)
         self.assertEqual(report.summary.tier_accuracy, 1.0)
+        self.assertEqual(report.summary.direct_match_cases, len(report.cases))
+        self.assertEqual(report.summary.accepted_refutation_cases, 0)
         self.assertTrue(report.summary.meets_false_positive_bar)
 
     def test_eval_cli_writes_results_file(self) -> None:
@@ -270,13 +371,59 @@ class EvaluationTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn("Case results:", completed.stdout)
             self.assertIn(
-                "PASS known-incorrect-surface-threshold-5pct [known_incorrect] expected=FLAWS_FOUND actual=FLAWS_FOUND",
+                "PASS known-incorrect-surface-threshold-5pct [known_incorrect] outcome=direct_match expected=FLAWS_FOUND actual=FLAWS_FOUND",
                 completed.stdout,
             )
             self.assertIn(
-                "PASS formal-proved-repetition-majority [formalizable] expected=VERIFIED actual=VERIFIED",
+                "PASS formal-proved-repetition-majority [formalizable] outcome=direct_match expected=VERIFIED actual=VERIFIED",
                 completed.stdout,
             )
+
+    def test_eval_cli_repeat_writes_consistency_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "repeat-results"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "eval" / "run_eval.py"),
+                    "--subset",
+                    "live-expansion",
+                    "--repeat",
+                    "2",
+                    "--output-root",
+                    str(output_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("Consistency summary:", completed.stdout)
+            self.assertIn("Case stability:", completed.stdout)
+            payload = json.loads((output_root / "consistency_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["repeat_count"], 2)
+            self.assertEqual(payload["summary"]["unstable_cases"], 0)
+            self.assertEqual(len(payload["runs"]), 2)
+            self.assertTrue((output_root / "runs" / "run-001" / "report.json").exists())
+
+    def test_repeated_suite_tracks_case_level_stability(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report = run_repeated_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                repeat_count=2,
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="deterministic",
+                subset="live-expansion",
+                output_root=Path(tmpdir) / "repeat-results",
+            )
+
+            self.assertEqual(report.summary.repeat_count, 2)
+            self.assertEqual(report.summary.fully_passing_runs, 2)
+            self.assertEqual(report.summary.unstable_cases, 0)
+            self.assertEqual(len(report.cases), 3)
+            lines = format_benchmark_consistency_overview(report)
+            self.assertTrue(any(line.startswith("STABLE known-incorrect-surface-threshold-5pct") for line in lines))
 
     def test_live_mode_records_artifacts_and_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -298,6 +445,10 @@ class EvaluationTests(unittest.TestCase):
             case = report.cases[0]
             self.assertTrue(case.passed)
             self.assertEqual(case.actual_verdict, VerificationVerdict.VERIFIED)
+            self.assertTrue(case.strict_verdict_match)
+            self.assertTrue(case.verdict_accepted)
+            self.assertTrue(case.tiers_matched_expected)
+            self.assertEqual(case.outcome, "direct_match")
             self.assertIsNone(case.error)
             self.assertGreaterEqual(case.runtime_seconds, 0.0)
             self.assertTrue(any("temperature overrides" in note for note in case.notes))
@@ -328,9 +479,59 @@ class EvaluationTests(unittest.TestCase):
             )
 
             lines = format_benchmark_report_overview(report)
-            self.assertTrue(any(line.startswith("PASS known-correct-surface-threshold") for line in lines))
+            self.assertTrue(
+                any(line.startswith("PASS known-correct-surface-threshold [known_correct] outcome=direct_match") for line in lines)
+            )
             self.assertTrue(any("temperature overrides" in line for line in lines))
             self.assertTrue(any(str(output_root / "cases" / "known-correct-surface-threshold") in line for line in lines))
+
+    def test_live_mode_accepted_refutation_counts_as_pass_without_false_positive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                output_root=output_root,
+                case_ids=["known-incorrect-surface-threshold-5pct"],
+                live_config=LiveEvalConfig(),
+                executor=self._accepted_refutation_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertFalse(case.strict_verdict_match)
+            self.assertTrue(case.verdict_accepted)
+            self.assertTrue(case.accepted_refutation)
+            self.assertEqual(case.outcome, "accepted_refutation")
+            self.assertEqual(report.summary.accepted_refutation_cases, 1)
+            self.assertEqual(report.summary.false_positive_rate, 0.0)
+            lines = format_benchmark_report_overview(report)
+            self.assertTrue(any("outcome=accepted_refutation" in line for line in lines))
+
+    def test_live_mode_records_tier_mismatch_for_simulation_case_without_tier2(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                output_root=output_root,
+                case_ids=["simulation-verified-distance5"],
+                live_config=LiveEvalConfig(),
+                executor=self._simulation_tier1_only_executor,
+            )
+
+            case = report.cases[0]
+            self.assertFalse(case.passed)
+            self.assertTrue(case.strict_verdict_match)
+            self.assertTrue(case.verdict_accepted)
+            self.assertFalse(case.tiers_matched_expected)
+            self.assertEqual(case.outcome, "tier_mismatch")
+            self.assertEqual(report.summary.tier_mismatch_failures, 1)
+            self.assertEqual(report.summary.verdict_match_rate, 1.0)
+            lines = format_benchmark_report_overview(report)
+            self.assertTrue(any("outcome=tier_mismatch" in line for line in lines))
 
     def test_live_mode_explicit_toolsets_override_restricted_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

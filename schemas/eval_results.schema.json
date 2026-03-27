@@ -41,6 +41,11 @@
           "actual_tiers",
           "iterations",
           "passed",
+          "strict_verdict_match",
+          "verdict_accepted",
+          "tiers_matched_expected",
+          "accepted_refutation",
+          "outcome",
           "routing_mode",
           "provider",
           "model_used",
@@ -62,6 +67,20 @@
           "actual_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
           "iterations": { "type": "integer", "minimum": 0 },
           "passed": { "type": "boolean" },
+          "strict_verdict_match": { "type": "boolean" },
+          "verdict_accepted": { "type": "boolean" },
+          "tiers_matched_expected": { "type": "boolean" },
+          "accepted_refutation": { "type": "boolean" },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "direct_match",
+              "accepted_refutation",
+              "tier_mismatch",
+              "verdict_mismatch",
+              "execution_error"
+            ]
+          },
           "routing_mode": { "type": "string", "enum": ["direct", "temperature_decorrelation"] },
           "provider": { "type": "string" },
           "model_used": { "type": "string" },
@@ -86,7 +105,12 @@
         "tier_accuracy",
         "iteration_efficiency",
         "failure_admission_rate",
-        "meets_false_positive_bar"
+        "meets_false_positive_bar",
+        "direct_match_cases",
+        "accepted_refutation_cases",
+        "tier_mismatch_failures",
+        "verdict_mismatch_failures",
+        "execution_error_failures"
       ],
       "additionalProperties": false,
       "properties": {
@@ -100,7 +124,12 @@
         "tier_accuracy": { "type": "number" },
         "iteration_efficiency": { "type": "number" },
         "failure_admission_rate": { "type": "number" },
-        "meets_false_positive_bar": { "type": "boolean" }
+        "meets_false_positive_bar": { "type": "boolean" },
+        "direct_match_cases": { "type": "integer", "minimum": 0 },
+        "accepted_refutation_cases": { "type": "integer", "minimum": 0 },
+        "tier_mismatch_failures": { "type": "integer", "minimum": 0 },
+        "verdict_mismatch_failures": { "type": "integer", "minimum": 0 },
+        "execution_error_failures": { "type": "integer", "minimum": 0 }
       }
     }
   }

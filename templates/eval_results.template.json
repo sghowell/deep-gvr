@@ -19,6 +19,11 @@
       "actual_tiers": [1],
       "iterations": 1,
       "passed": true,
+      "strict_verdict_match": true,
+      "verdict_accepted": true,
+      "tiers_matched_expected": true,
+      "accepted_refutation": false,
+      "outcome": "direct_match",
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
@@ -40,6 +45,11 @@
     "tier_accuracy": 1.0,
     "iteration_efficiency": 1.0,
     "failure_admission_rate": 0.0,
-    "meets_false_positive_bar": true
+    "meets_false_positive_bar": true,
+    "direct_match_cases": 1,
+    "accepted_refutation_cases": 0,
+    "tier_mismatch_failures": 0,
+    "verdict_mismatch_failures": 0,
+    "execution_error_failures": 0
   }
 }

@@ -112,6 +112,11 @@ class BenchmarkCaseResult:
     actual_tiers: list[int]
     iterations: int
     passed: bool
+    strict_verdict_match: bool
+    verdict_accepted: bool
+    tiers_matched_expected: bool
+    accepted_refutation: bool
+    outcome: str
     routing_mode: str
     provider: str
     model_used: str
@@ -123,6 +128,19 @@ class BenchmarkCaseResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkCaseResult":
+        strict_verdict_match = bool(data.get("strict_verdict_match", data["actual_verdict"] == data["expected_verdict"]))
+        accepted_refutation = bool(data.get("accepted_refutation", False))
+        verdict_accepted = bool(data.get("verdict_accepted", strict_verdict_match or accepted_refutation))
+        tiers_matched_expected = bool(
+            data.get("tiers_matched_expected", list(data.get("actual_tiers", [])) == list(data.get("expected_tiers", [])))
+        )
+        error = data.get("error")
+        outcome = data.get("outcome") or _classify_case_outcome(
+            error=error,
+            verdict_accepted=verdict_accepted,
+            tiers_matched_expected=tiers_matched_expected,
+            accepted_refutation=accepted_refutation,
+        )
         return cls(
             mode=data["mode"],
             id=data["id"],
@@ -134,13 +152,18 @@ class BenchmarkCaseResult:
             actual_tiers=[int(item) for item in data["actual_tiers"]],
             iterations=int(data["iterations"]),
             passed=bool(data["passed"]),
+            strict_verdict_match=strict_verdict_match,
+            verdict_accepted=verdict_accepted,
+            tiers_matched_expected=tiers_matched_expected,
+            accepted_refutation=accepted_refutation,
+            outcome=outcome,
             routing_mode=data["routing_mode"],
             provider=data["provider"],
             model_used=data["model_used"],
             session_id=data["session_id"],
             artifacts=list(data.get("artifacts", [])),
             runtime_seconds=float(data.get("runtime_seconds", 0.0)),
-            error=data.get("error"),
+            error=error,
             notes=list(data.get("notes", [])),
         )
 
@@ -161,6 +184,11 @@ class BenchmarkSummary:
     iteration_efficiency: float
     failure_admission_rate: float
     meets_false_positive_bar: bool
+    direct_match_cases: int = 0
+    accepted_refutation_cases: int = 0
+    tier_mismatch_failures: int = 0
+    verdict_mismatch_failures: int = 0
+    execution_error_failures: int = 0
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkSummary":
@@ -176,6 +204,11 @@ class BenchmarkSummary:
             iteration_efficiency=float(data["iteration_efficiency"]),
             failure_admission_rate=float(data["failure_admission_rate"]),
             meets_false_positive_bar=bool(data["meets_false_positive_bar"]),
+            direct_match_cases=int(data.get("direct_match_cases", 0)),
+            accepted_refutation_cases=int(data.get("accepted_refutation_cases", 0)),
+            tier_mismatch_failures=int(data.get("tier_mismatch_failures", 0)),
+            verdict_mismatch_failures=int(data.get("verdict_mismatch_failures", 0)),
+            execution_error_failures=int(data.get("execution_error_failures", 0)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -208,6 +241,148 @@ class BenchmarkReport:
             routing_probe_status=ProbeStatus(data["routing_probe_status"]),
             cases=[BenchmarkCaseResult.from_dict(item) for item in data["cases"]],
             summary=BenchmarkSummary.from_dict(data["summary"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class BenchmarkConsistencyRun:
+    run_index: int
+    run_id: str
+    output_root: str
+    report_path: str
+    passed_cases: int
+    failed_cases: int
+    failed_case_ids: list[str]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BenchmarkConsistencyRun":
+        return cls(
+            run_index=int(data["run_index"]),
+            run_id=data["run_id"],
+            output_root=data["output_root"],
+            report_path=data["report_path"],
+            passed_cases=int(data["passed_cases"]),
+            failed_cases=int(data["failed_cases"]),
+            failed_case_ids=list(data.get("failed_case_ids", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class BenchmarkConsistencyCase:
+    id: str
+    category: str
+    scenario: str
+    expected_verdict: VerificationVerdict
+    expected_tiers: list[int]
+    total_runs: int
+    passed_runs: int
+    failed_runs: int
+    direct_match_runs: int
+    accepted_refutation_runs: int
+    tier_mismatch_failures: int
+    verdict_mismatch_failures: int
+    execution_error_failures: int
+    pass_rate: float
+    actual_verdicts: list[VerificationVerdict]
+    actual_tier_signatures: list[str]
+    outcomes: list[str]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BenchmarkConsistencyCase":
+        return cls(
+            id=data["id"],
+            category=data["category"],
+            scenario=data["scenario"],
+            expected_verdict=VerificationVerdict(data["expected_verdict"]),
+            expected_tiers=[int(item) for item in data["expected_tiers"]],
+            total_runs=int(data["total_runs"]),
+            passed_runs=int(data["passed_runs"]),
+            failed_runs=int(data["failed_runs"]),
+            direct_match_runs=int(data["direct_match_runs"]),
+            accepted_refutation_runs=int(data["accepted_refutation_runs"]),
+            tier_mismatch_failures=int(data["tier_mismatch_failures"]),
+            verdict_mismatch_failures=int(data["verdict_mismatch_failures"]),
+            execution_error_failures=int(data["execution_error_failures"]),
+            pass_rate=float(data["pass_rate"]),
+            actual_verdicts=[VerificationVerdict(item) for item in data.get("actual_verdicts", [])],
+            actual_tier_signatures=list(data.get("actual_tier_signatures", [])),
+            outcomes=list(data.get("outcomes", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class BenchmarkConsistencySummary:
+    repeat_count: int
+    total_cases: int
+    total_case_runs: int
+    passed_case_runs: int
+    failed_case_runs: int
+    fully_passing_runs: int
+    stable_case_passes: int
+    unstable_cases: int
+    case_pass_rate: float
+    run_pass_rate: float
+    all_runs_passed: bool
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BenchmarkConsistencySummary":
+        return cls(
+            repeat_count=int(data["repeat_count"]),
+            total_cases=int(data["total_cases"]),
+            total_case_runs=int(data["total_case_runs"]),
+            passed_case_runs=int(data["passed_case_runs"]),
+            failed_case_runs=int(data["failed_case_runs"]),
+            fully_passing_runs=int(data["fully_passing_runs"]),
+            stable_case_passes=int(data["stable_case_passes"]),
+            unstable_cases=int(data["unstable_cases"]),
+            case_pass_rate=float(data["case_pass_rate"]),
+            run_pass_rate=float(data["run_pass_rate"]),
+            all_runs_passed=bool(data["all_runs_passed"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class BenchmarkConsistencyReport:
+    mode: str
+    repeat_count: int
+    run_id: str
+    output_root: str
+    generated_at: str
+    suite_path: str
+    routing_probe_status: ProbeStatus
+    subset: str | None
+    selected_case_ids: list[str]
+    runs: list[BenchmarkConsistencyRun]
+    cases: list[BenchmarkConsistencyCase]
+    summary: BenchmarkConsistencySummary
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BenchmarkConsistencyReport":
+        return cls(
+            mode=data["mode"],
+            repeat_count=int(data["repeat_count"]),
+            run_id=data["run_id"],
+            output_root=data["output_root"],
+            generated_at=data["generated_at"],
+            suite_path=data["suite_path"],
+            routing_probe_status=ProbeStatus(data["routing_probe_status"]),
+            subset=data.get("subset"),
+            selected_case_ids=list(data.get("selected_case_ids", [])),
+            runs=[BenchmarkConsistencyRun.from_dict(item) for item in data.get("runs", [])],
+            cases=[BenchmarkConsistencyCase.from_dict(item) for item in data.get("cases", [])],
+            summary=BenchmarkConsistencySummary.from_dict(data["summary"]),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -601,6 +776,7 @@ def run_benchmark_suite(
         summary=_summarize_results(results),
     )
 
+
 def write_benchmark_report(
     report: BenchmarkReport,
     path: str | Path,
@@ -615,6 +791,93 @@ def write_benchmark_report(
     _write_benchmark_report(report, output_path)
 
 
+def run_repeated_benchmark_suite(
+    suite_path: str | Path,
+    *,
+    repeat_count: int,
+    routing_probe: CapabilityProbeResult | None = None,
+    mode: str = "live",
+    config_path: str | Path | None = None,
+    output_root: str | Path | None = None,
+    run_id: str | None = None,
+    case_ids: list[str] | tuple[str, ...] = (),
+    categories: list[str] | tuple[str, ...] = (),
+    subset: str | None = None,
+    max_cases: int | None = None,
+    live_config: LiveEvalConfig | None = None,
+    executor: CommandExecutor | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> BenchmarkConsistencyReport:
+    if repeat_count < 1:
+        raise ValueError("repeat_count must be at least 1.")
+
+    probe = routing_probe or probe_model_routing()
+    clock = clock or _utc_now
+    now = clock()
+    suite_file = Path(suite_path)
+    resolved_run_id = run_id or (
+        now.strftime("%Y%m%dT%H%M%SZ") if mode == "live" else f"{_DETERMINISTIC_RUN_ID}-repeat"
+    )
+    resolved_output_root = _resolve_consistency_output_root(mode=mode, output_root=output_root, run_id=resolved_run_id)
+    reports: list[BenchmarkReport] = []
+    runs: list[BenchmarkConsistencyRun] = []
+
+    for run_index in range(1, repeat_count + 1):
+        run_label = f"run-{run_index:03d}"
+        run_output_root = resolved_output_root / "runs" / run_label
+        report = run_benchmark_suite(
+            suite_file,
+            routing_probe=probe,
+            mode=mode,
+            config_path=config_path,
+            output_root=run_output_root,
+            run_id=f"{resolved_run_id}-{run_label}",
+            case_ids=case_ids,
+            categories=categories,
+            subset=subset,
+            max_cases=max_cases,
+            live_config=live_config,
+            executor=executor,
+            clock=clock,
+        )
+        report_path = run_output_root / "report.json"
+        write_benchmark_report(report, report_path)
+        reports.append(report)
+        runs.append(
+            BenchmarkConsistencyRun(
+                run_index=run_index,
+                run_id=report.run_id,
+                output_root=_display_path(run_output_root),
+                report_path=_display_path(report_path),
+                passed_cases=report.summary.passed_cases,
+                failed_cases=report.summary.failed_cases,
+                failed_case_ids=[case.id for case in report.cases if not case.passed],
+            )
+        )
+
+    case_summaries = _summarize_consistency_cases(reports)
+    return BenchmarkConsistencyReport(
+        mode=mode,
+        repeat_count=repeat_count,
+        run_id=resolved_run_id,
+        output_root=_display_path(resolved_output_root),
+        generated_at=_isoformat(now),
+        suite_path=_display_path(suite_file),
+        routing_probe_status=probe.status,
+        subset=subset,
+        selected_case_ids=[case.id for case in reports[0].cases] if reports else [],
+        runs=runs,
+        cases=case_summaries,
+        summary=_summarize_consistency(runs, case_summaries),
+    )
+
+
+def write_benchmark_consistency_report(report: BenchmarkConsistencyReport, path: str | Path) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+
+
 def available_benchmark_subsets() -> dict[str, tuple[str, ...]]:
     return dict(_BENCHMARK_SUBSETS)
 
@@ -627,6 +890,7 @@ def format_benchmark_report_overview(report: BenchmarkReport) -> list[str]:
         actual_tiers = ",".join(str(item) for item in case.actual_tiers) or "-"
         lines.append(
             f"{status} {case.id} [{case.category}] "
+            f"outcome={case.outcome} "
             f"expected={case.expected_verdict.value} actual={case.actual_verdict.value} "
             f"tiers={actual_tiers}/{expected_tiers}"
         )
@@ -636,6 +900,24 @@ def format_benchmark_report_overview(report: BenchmarkReport) -> list[str]:
             lines.append(f"  error: {case.error}")
         if report.mode == "live":
             lines.append(f"  case_root: {Path(report.output_root) / 'cases' / case.id}")
+    return lines
+
+
+def format_benchmark_consistency_overview(report: BenchmarkConsistencyReport) -> list[str]:
+    lines: list[str] = []
+    for case in report.cases:
+        if case.pass_rate == 1.0:
+            status = "STABLE"
+        elif case.pass_rate == 0.0:
+            status = "FAIL"
+        else:
+            status = "UNSTABLE"
+        tier_signatures = ", ".join(case.actual_tier_signatures) or "-"
+        outcomes = ", ".join(case.outcomes) or "-"
+        lines.append(
+            f"{status} {case.id} [{case.category}] "
+            f"pass_rate={case.pass_rate:.3f} outcomes={outcomes} tiers={tier_signatures}"
+        )
     return lines
 
 
@@ -720,11 +1002,15 @@ def _run_fixture_case(
     evidence = session_store.read_evidence(result.session_id)
     verify_record = next(record for record in reversed(evidence) if record.phase == "verify")
     notes: list[str] = []
-    if result.final_report.verdict is not case.expected_verdict:
+    strict_verdict_match = result.final_report.verdict is case.expected_verdict
+    verdict_accepted = strict_verdict_match
+    tiers_matched_expected = verify_record.tiers_applied == case.expected_tiers
+    accepted_refutation = False
+    if not strict_verdict_match:
         notes.append(
             f"Expected verdict {case.expected_verdict.value}, got {result.final_report.verdict.value}."
         )
-    if verify_record.tiers_applied != case.expected_tiers:
+    if not tiers_matched_expected:
         notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
     return BenchmarkCaseResult(
         mode="deterministic",
@@ -737,6 +1023,16 @@ def _run_fixture_case(
         actual_tiers=list(verify_record.tiers_applied),
         iterations=len(result.checkpoint.verdict_history),
         passed=not notes,
+        strict_verdict_match=strict_verdict_match,
+        verdict_accepted=verdict_accepted,
+        tiers_matched_expected=tiers_matched_expected,
+        accepted_refutation=accepted_refutation,
+        outcome=_classify_case_outcome(
+            error=None,
+            verdict_accepted=verdict_accepted,
+            tiers_matched_expected=tiers_matched_expected,
+            accepted_refutation=accepted_refutation,
+        ),
         routing_mode=verify_record.routing_mode.value,
         provider=verify_record.provider,
         model_used=verify_record.model_used,
@@ -789,6 +1085,10 @@ def _run_live_case(
     actual_tiers: list[int] = []
     iterations = 0
     artifacts: list[str] = []
+    strict_verdict_match = False
+    verdict_accepted = False
+    tiers_matched_expected = False
+    accepted_refutation = False
     try:
         result = tier_runner.run(
             problem=case.prompt,
@@ -825,17 +1125,20 @@ def _run_live_case(
             session_store=session_store,
             transcripts=live_runner.transcripts,
         )
-        verdict_matches = result.final_report.verdict is case.expected_verdict
-        accepted_refutation = False
-        if not verdict_matches and _accept_verified_refutation(case, result.final_report.verdict, result.final_candidate):
-            verdict_matches = True
+        strict_verdict_match = result.final_report.verdict is case.expected_verdict
+        verdict_accepted = strict_verdict_match
+        if not strict_verdict_match and _accept_verified_refutation(
+            case, result.final_report.verdict, result.final_candidate
+        ):
+            verdict_accepted = True
             accepted_refutation = True
             notes.append("Accepted a verified refutation as success for this known-incorrect benchmark case.")
-        if not verdict_matches:
+        if not verdict_accepted:
             notes.append(
                 f"Expected verdict {case.expected_verdict.value}, got {result.final_report.verdict.value}."
             )
-        if verify_record.tiers_applied != case.expected_tiers:
+        tiers_matched_expected = verify_record.tiers_applied == case.expected_tiers
+        if not tiers_matched_expected:
             notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
         if verify_record.routing_temperature is not None:
             notes.append("Hermes CLI does not expose temperature overrides; prompt separation only was applied.")
@@ -857,9 +1160,7 @@ def _run_live_case(
             _display_path(transcript_path),
             *_session_artifact_paths(session_store.session_paths(session_id)),
         ]
-        verdict_matches = False
-        accepted_refutation = False
-    passed = error is None and verdict_matches and actual_tiers == case.expected_tiers
+    passed = error is None and verdict_accepted and tiers_matched_expected
     case_result = BenchmarkCaseResult(
         mode="live",
         id=case.id,
@@ -871,6 +1172,16 @@ def _run_live_case(
         actual_tiers=actual_tiers,
         iterations=iterations,
         passed=passed,
+        strict_verdict_match=strict_verdict_match,
+        verdict_accepted=verdict_accepted,
+        tiers_matched_expected=tiers_matched_expected,
+        accepted_refutation=accepted_refutation,
+        outcome=_classify_case_outcome(
+            error=error,
+            verdict_accepted=verdict_accepted,
+            tiers_matched_expected=tiers_matched_expected,
+            accepted_refutation=accepted_refutation,
+        ),
         routing_mode=routing_mode,
         provider=route_provider,
         model_used=route_model,
@@ -978,6 +1289,22 @@ def _benchmark_config(evidence_directory: str, *, base_config: DeepGvrConfig | N
     return config
 
 
+def _classify_case_outcome(
+    *,
+    error: str | None,
+    verdict_accepted: bool,
+    tiers_matched_expected: bool,
+    accepted_refutation: bool,
+) -> str:
+    if error is not None:
+        return "execution_error"
+    if verdict_accepted and tiers_matched_expected:
+        return "accepted_refutation" if accepted_refutation else "direct_match"
+    if verdict_accepted:
+        return "tier_mismatch"
+    return "verdict_mismatch"
+
+
 def _summarize_results(results: list[BenchmarkCaseResult]) -> BenchmarkSummary:
     total_cases = len(results)
     passed_cases = sum(1 for item in results if item.passed)
@@ -986,37 +1313,109 @@ def _summarize_results(results: list[BenchmarkCaseResult]) -> BenchmarkSummary:
     negative_cases = [item for item in results if item.expected_verdict is VerificationVerdict.FLAWS_FOUND]
     non_verified_cases = [item for item in results if item.expected_verdict is not VerificationVerdict.VERIFIED]
     cannot_verify_cases = [item for item in results if item.expected_verdict is VerificationVerdict.CANNOT_VERIFY]
+    direct_match_cases = sum(1 for item in results if item.outcome == "direct_match")
+    accepted_refutation_cases = sum(1 for item in results if item.outcome == "accepted_refutation")
+    tier_mismatch_failures = sum(1 for item in results if item.outcome == "tier_mismatch")
+    verdict_mismatch_failures = sum(1 for item in results if item.outcome == "verdict_mismatch")
+    execution_error_failures = sum(1 for item in results if item.outcome == "execution_error")
+    true_negative_hits = sum(1 for item in negative_cases if item.verdict_accepted)
+    strict_false_positives = sum(
+        1 for item in non_verified_cases if item.actual_verdict is VerificationVerdict.VERIFIED and not item.accepted_refutation
+    )
     return BenchmarkSummary(
         total_cases=total_cases,
         passed_cases=passed_cases,
         failed_cases=failed_cases,
-        verdict_match_rate=_ratio(passed_cases, total_cases),
+        verdict_match_rate=_ratio(sum(1 for item in results if item.verdict_accepted), total_cases),
         true_positive_rate=_ratio(
-            sum(1 for item in verified_cases if item.actual_verdict is VerificationVerdict.VERIFIED),
+            sum(1 for item in verified_cases if item.verdict_accepted),
             len(verified_cases),
         ),
-        true_negative_rate=_ratio(
-            sum(1 for item in negative_cases if item.actual_verdict is VerificationVerdict.FLAWS_FOUND),
-            len(negative_cases),
-        ),
-        false_positive_rate=_ratio(
-            sum(1 for item in non_verified_cases if item.actual_verdict is VerificationVerdict.VERIFIED),
-            len(non_verified_cases),
-        ),
-        tier_accuracy=_ratio(
-            sum(1 for item in results if item.expected_tiers == item.actual_tiers),
-            total_cases,
-        ),
+        true_negative_rate=_ratio(true_negative_hits, len(negative_cases)),
+        false_positive_rate=_ratio(strict_false_positives, len(non_verified_cases)),
+        tier_accuracy=_ratio(sum(1 for item in results if item.tiers_matched_expected), total_cases),
         iteration_efficiency=round(sum(item.iterations for item in results) / total_cases, 3) if total_cases else 0.0,
         failure_admission_rate=_ratio(
             sum(1 for item in cannot_verify_cases if item.actual_verdict is VerificationVerdict.CANNOT_VERIFY),
             len(cannot_verify_cases),
         ),
-        meets_false_positive_bar=_ratio(
-            sum(1 for item in non_verified_cases if item.actual_verdict is VerificationVerdict.VERIFIED),
-            len(non_verified_cases),
+        meets_false_positive_bar=_ratio(strict_false_positives, len(non_verified_cases)) < 0.2,
+        direct_match_cases=direct_match_cases,
+        accepted_refutation_cases=accepted_refutation_cases,
+        tier_mismatch_failures=tier_mismatch_failures,
+        verdict_mismatch_failures=verdict_mismatch_failures,
+        execution_error_failures=execution_error_failures,
+    )
+
+
+def _summarize_consistency_cases(reports: list[BenchmarkReport]) -> list[BenchmarkConsistencyCase]:
+    if not reports:
+        return []
+    ordered_ids = [case.id for case in reports[0].cases]
+    case_groups = {case_id: [] for case_id in ordered_ids}
+    for report in reports:
+        for case in report.cases:
+            case_groups.setdefault(case.id, []).append(case)
+
+    summaries: list[BenchmarkConsistencyCase] = []
+    for case_id in ordered_ids:
+        group = case_groups[case_id]
+        first = group[0]
+        actual_verdicts = _dedupe_preserve_order([item.actual_verdict for item in group])
+        actual_tier_signatures = _dedupe_preserve_order([_tier_signature(item.actual_tiers) for item in group])
+        outcomes = _dedupe_preserve_order([item.outcome for item in group])
+        summaries.append(
+            BenchmarkConsistencyCase(
+                id=first.id,
+                category=first.category,
+                scenario=first.scenario,
+                expected_verdict=first.expected_verdict,
+                expected_tiers=list(first.expected_tiers),
+                total_runs=len(group),
+                passed_runs=sum(1 for item in group if item.passed),
+                failed_runs=sum(1 for item in group if not item.passed),
+                direct_match_runs=sum(1 for item in group if item.outcome == "direct_match"),
+                accepted_refutation_runs=sum(1 for item in group if item.outcome == "accepted_refutation"),
+                tier_mismatch_failures=sum(1 for item in group if item.outcome == "tier_mismatch"),
+                verdict_mismatch_failures=sum(1 for item in group if item.outcome == "verdict_mismatch"),
+                execution_error_failures=sum(1 for item in group if item.outcome == "execution_error"),
+                pass_rate=_ratio(sum(1 for item in group if item.passed), len(group)),
+                actual_verdicts=actual_verdicts,
+                actual_tier_signatures=actual_tier_signatures,
+                outcomes=outcomes,
+            )
         )
-        < 0.2,
+    return summaries
+
+
+def _summarize_consistency(
+    runs: list[BenchmarkConsistencyRun],
+    cases: list[BenchmarkConsistencyCase],
+) -> BenchmarkConsistencySummary:
+    total_case_runs = sum(case.total_runs for case in cases)
+    passed_case_runs = sum(case.passed_runs for case in cases)
+    failed_case_runs = total_case_runs - passed_case_runs
+    unstable_cases = sum(
+        1
+        for case in cases
+        if case.pass_rate not in {0.0, 1.0}
+        or len(case.outcomes) > 1
+        or len(case.actual_tier_signatures) > 1
+        or len(case.actual_verdicts) > 1
+    )
+    repeat_count = runs[-1].run_index if runs else 0
+    return BenchmarkConsistencySummary(
+        repeat_count=repeat_count,
+        total_cases=len(cases),
+        total_case_runs=total_case_runs,
+        passed_case_runs=passed_case_runs,
+        failed_case_runs=failed_case_runs,
+        fully_passing_runs=sum(1 for run in runs if run.failed_cases == 0),
+        stable_case_passes=sum(1 for case in cases if case.pass_rate == 1.0),
+        unstable_cases=unstable_cases,
+        case_pass_rate=_ratio(passed_case_runs, total_case_runs),
+        run_pass_rate=_ratio(sum(1 for run in runs if run.failed_cases == 0), len(runs)),
+        all_runs_passed=all(run.failed_cases == 0 for run in runs),
     )
 
 
@@ -1024,6 +1423,26 @@ def _ratio(numerator: int, denominator: int) -> float:
     if denominator == 0:
         return 0.0
     return round(numerator / denominator, 3)
+
+
+def _dedupe_preserve_order(items: list[Any]) -> list[Any]:
+    seen: list[Any] = []
+    for item in items:
+        if item not in seen:
+            seen.append(item)
+    return seen
+
+
+def _tier_signature(tiers: list[int]) -> str:
+    return ",".join(str(item) for item in tiers) or "-"
+
+
+def _resolve_consistency_output_root(*, mode: str, output_root: str | Path | None, run_id: str) -> Path:
+    if output_root is not None:
+        return Path(output_root)
+    if mode == "live":
+        return Path("eval/results/live") / f"{run_id}-repeat"
+    return Path("eval/results/repeated") / run_id
 
 
 def _display_path(path: str | Path) -> str:

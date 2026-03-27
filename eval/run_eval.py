@@ -16,8 +16,11 @@ from deep_gvr.evaluation import (
     LiveEvalConfig,
     available_benchmark_subsets,
     benchmark_routing_probe,
+    format_benchmark_consistency_overview,
     format_benchmark_report_overview,
+    run_repeated_benchmark_suite,
     run_benchmark_suite,
+    write_benchmark_consistency_report,
     write_benchmark_report,
 )
 from deep_gvr.prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
@@ -86,6 +89,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional limit on the number of selected cases to run.",
     )
     parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Run the selected suite repeatedly and write per-run reports under <output-root>/runs/.",
+    )
+    parser.add_argument(
         "--run-id",
         default="",
         help="Optional stable run identifier. Live mode uses a UTC timestamp when omitted.",
@@ -146,6 +155,8 @@ def _materialize_path(value: str) -> Path:
 
 def main() -> int:
     args = parse_args()
+    if args.repeat < 1:
+        raise SystemExit("--repeat must be at least 1.")
     if args.list_subsets:
         print("Available benchmark subsets:")
         for name, case_ids in sorted(available_benchmark_subsets().items()):
@@ -163,6 +174,38 @@ def main() -> int:
             toolsets=_split_csv_flags(args.toolsets),
             skills=_split_csv_flags(args.skills),
         )
+    if args.repeat > 1:
+        report = run_repeated_benchmark_suite(
+            args.suite,
+            repeat_count=args.repeat,
+            routing_probe=routing_probe,
+            mode=args.mode,
+            config_path=args.config or None,
+            output_root=args.output_root or None,
+            run_id=args.run_id or None,
+            case_ids=args.case_id,
+            categories=args.category,
+            subset=args.subset or None,
+            max_cases=args.max_cases,
+            live_config=live_config,
+        )
+        output_path = Path(args.output) if args.output else _materialize_path(report.output_root) / "consistency_report.json"
+        write_benchmark_consistency_report(report, output_path)
+        print(f"Wrote consistency report to {output_path}")
+        print(f"Repeated run root: {_materialize_path(report.output_root)}")
+        print(
+            "Consistency summary: "
+            f"{report.summary.passed_case_runs}/{report.summary.total_case_runs} case-runs passed, "
+            f"fully_passing_runs={report.summary.fully_passing_runs}/{report.summary.repeat_count}, "
+            f"unstable_cases={report.summary.unstable_cases}"
+        )
+        overview_lines = format_benchmark_consistency_overview(report)
+        if overview_lines:
+            print("Case stability:")
+            for line in overview_lines:
+                print(line)
+        return 0 if report.summary.all_runs_passed else 1
+
     report = run_benchmark_suite(
         args.suite,
         routing_probe=routing_probe,
