@@ -16,21 +16,27 @@ Start from the integration branch and work on `codex/tier1-loop`. Merge back loc
 
 ## Progress
 
-- [ ] Tier 1 loop is planned but not implemented.
+- [x] Tier 1 session initialization, checkpoint persistence, and append-only evidence logging are implemented.
+- [x] Generator, verifier, and reviser orchestration runs through a repo-local Tier 1 runner.
+- [x] Resume continues from the last complete checkpoint and is covered by automated tests.
 
 ## Surprises & Discoveries
 
-- None yet.
+- Resume safety needed an explicit `checkpoint.json` artifact instead of trying to overload the session index.
+- The Tier 1 slice can stay Hermes-agnostic by injecting role callables while still enforcing the verifier isolation boundary.
 
 ## Decision Log
 
 - Decision: ship the analytical loop before simulator or formal integration.
   Rationale: Tier 1 is mandatory and defines the baseline harness behavior.
   Date/Author: 2026-03-26 / Codex
+- Decision: persist resume state in a dedicated checkpoint artifact under the session directory.
+  Rationale: the session index is a summary view, not enough state to restart from the last complete phase safely.
+  Date/Author: 2026-03-26 / Codex
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+The repo now has a working Tier 1 control loop in Python, with session bootstrap, append-only evidence records, checkpoint-based resume, and tests covering verification success, revision loops, inability to verify, interruption recovery, and iteration-budget failure admission.
 
 ## Context and Orientation
 

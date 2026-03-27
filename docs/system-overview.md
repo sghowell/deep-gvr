@@ -8,12 +8,14 @@
 - `/deep-gvr resume <session_id>` resumes a session
 - Config path: `~/.hermes/deep-gvr/config.yaml`
 - Evidence path: `~/.hermes/deep-gvr/sessions/<session_id>/`
+- Checkpoint path: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
 
 ## Core Components
 
 - Orchestrator procedure in `SKILL.md`
 - Role prompts in `prompts/`
 - Typed contracts and helper code in `src/deep_gvr/`
+- Tier 1 session runner and persistence helpers in `src/deep_gvr/tier1.py`
 - Adapters in `adapters/`
 - Schemas in `schemas/`
 - Fixtures in `templates/`
@@ -32,5 +34,6 @@
 - No Hermes fork
 - Python 3.12 and `uv`
 - Sequential GVR loop first
+- Resume from the last complete checkpoint instead of replaying partial phases
 - Cross-model verification preferred, with prompt/temperature decorrelation as the fallback
 - Local, Modal, and SSH backends represented from the start through the adapter interface

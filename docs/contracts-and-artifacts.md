@@ -10,6 +10,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `SimSpec`: normalized simulation request
 - `SimResults`: normalized simulation output
 - `EvidenceRecord`: append-only record for one GVR phase transition
+- `SessionCheckpoint`: resume-safe loop state for the last complete phase
 - `SessionIndex`: summary view of known sessions
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
 
@@ -19,9 +20,11 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `templates/*.json`: sample artifacts used in tests
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
+- `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 
 ## Alignment Rules
 
 - Field names must match across prompts, Python models, schemas, and fixtures.
 - Sample artifacts should be realistic enough to support smoke tests and contract review.
 - Prompt changes that affect artifacts must update schemas and fixtures in the same branch.
+- New public artifacts, including resume state, must have schema, template, and tests in the same branch.

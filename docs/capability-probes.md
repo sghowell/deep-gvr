@@ -21,7 +21,7 @@ The architecture document identifies several implementation unknowns that are im
 ### Session checkpoint and resume
 
 - Question: what minimal state is required to resume a run safely?
-- Default until proven otherwise: persist loop state, verdict history, and artifact references in the session directory.
+- Implemented baseline: persist loop state, verdict history, and artifact references in `sessions/<session_id>/checkpoint.json`.
 - Preferred outcome: `/deep-gvr resume <session_id>` can reconstruct the next orchestrator step without hidden memory.
 - Fallback: resume from the last complete checkpoint and require a fresh verification pass for any incomplete step.
 
@@ -36,4 +36,5 @@ The architecture document identifies several implementation unknowns that are im
 
 - `scripts/run_capability_probes.py` runs the readiness probes.
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
+- `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.
