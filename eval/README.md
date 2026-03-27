@@ -40,6 +40,7 @@ When `--output` is omitted in live mode, the runner writes `report.json` into th
 - Live mode drives the real Tier 1 loop plus Tier 2 and Tier 3 mediation paths.
 - Role prompts are loaded from `prompts/` and executed through `hermes chat`.
 - Live mode uses the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you want the more verbose scaffolding in transcripts for debugging.
+- In compact mode, the verifier uses `prompts/verifier_compact.md` plus a tighter payload/contract shape so the live adversarial pass stays smaller than the generic compact prompt path.
 - Live mode accepts `--config` and uses the same `models.*` routing settings as `uv run deep-gvr`, while still writing benchmark artifacts to the selected live output root instead of the config's evidence directory.
 - Live mode also injects the same domain context loader as `uv run deep-gvr`, so the generator receives the repo-local QEC anchor notes instead of an empty `literature_context`.
 - When `--toolsets` is omitted, live generator/verifier/reviser calls use a constrained default Hermes tool surface so they do not inherit the full interactive CLI tool policy by default.

@@ -16,17 +16,19 @@ Start from `main` and implement this slice on `codex/live-verifier-throughput`. 
 
 ## Progress
 
-- [ ] Added the new plan and indexed it from `plans/README.md`.
-- [ ] Added a verifier-specific compact live query builder that trims prompt and contract overhead without changing the runtime contract shape.
-- [ ] Reduced verifier payload noise in compact mode while keeping the parser-compatible verification report structure.
-- [ ] Added tests that prove the compact verifier query is smaller than the current generic compact form and still parses into a `VerificationReport`.
-- [ ] Re-ran a narrow live smoke and recorded whether verifier throughput improved on the real route.
+- [x] Added the new plan and indexed it from `plans/README.md`.
+- [x] Added a verifier-specific compact live query builder that trims prompt and contract overhead without changing the runtime contract shape.
+- [x] Reduced verifier payload noise in compact mode while keeping the parser-compatible verification report structure.
+- [x] Added tests that prove the compact verifier query is smaller than the current generic compact form and still parses into a `VerificationReport`.
+- [x] Re-ran narrow live smokes and recorded whether verifier throughput improved on the real route.
 
 ## Surprises & Discoveries
 
 - `/tmp/deep-gvr-live-runtime-policy-2/cases/known-correct-surface-threshold/role_transcripts.json` shows a successful verifier run with a query length of about 6928 characters.
 - `/tmp/deep-gvr-live-domain-context-2/cases/known-correct-surface-threshold/role_transcripts.json` shows the verifier timing out after the compact query grew to about 8161 characters.
 - The added domain context improved generator quality, but the resulting longer candidate artifact now pushes the verifier query past the apparent throughput cliff on the default route.
+- Rebuilding the same timeout payload through the new compact verifier path reduced the verifier query from 8161 characters to about 6189 characters before any live rerun.
+- The first live smoke with the new compact verifier path at `/tmp/deep-gvr-live-verifier-throughput/report.json` completed verifier successfully with a 5922-character verifier query, but a follow-up smoke at `/tmp/deep-gvr-live-verifier-throughput-2/report.json` still timed out at 6091 characters. The throughput cliff moved materially, but route/model variance still matters.
 
 ## Decision Log
 
@@ -36,7 +38,7 @@ Start from `main` and implement this slice on `codex/live-verifier-throughput`. 
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a smaller verifier-specific compact live request path, new tests around the compact verifier builder, and at least one fresh live artifact that shows whether verifier throughput improved. If the verifier still times out after the request is narrowed, the next slice should move to route selection or timeout policy rather than more prompt reshaping.
+This slice leaves the repo with a verifier-specific compact live request path, new tests around the compact verifier builder, and fresh live artifacts showing that the verifier can complete on the same route with a materially smaller query. The remaining gap is no longer basic verifier prompt bulk; it is route-level latency variance and live content quality on the real model path.
 
 ## Context and Orientation
 
@@ -85,7 +87,7 @@ Acceptance evidence:
 
 - A targeted test proves the compact verifier query is shorter than the previous generic compact form.
 - Live verifier JSON still parses into `VerificationReport`.
-- A fresh live smoke on `known-correct-surface-threshold` either completes verifier successfully or records a materially smaller verifier query in the transcript for the next slice.
+- Fresh live smokes on `known-correct-surface-threshold` record verifier queries in the low-6k range instead of the previous 8k-range timeout case, and at least one smoke completes verifier successfully on that smaller path.
 
 ## Merge, Push, and Cleanup
 
