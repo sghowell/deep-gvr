@@ -293,6 +293,27 @@ class EvaluationTests(unittest.TestCase):
 
         self.assertTrue(_accept_verified_refutation(case, VerificationVerdict.VERIFIED, candidate))
 
+    def test_accept_verified_refutation_for_known_incorrect_case_with_conservative_range_language(self) -> None:
+        case = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            case_ids=["known-incorrect-surface-threshold-5pct"],
+        )[0]
+        candidate = CandidateSolution(
+            hypothesis=(
+                "The claim that the circuit-level threshold is 5% is false; the established circuit-level threshold "
+                "is in the ~0.6-0.8% range, roughly an order of magnitude lower."
+            ),
+            approach="Reject the claim on literature grounds instead of fabricating support for it.",
+            technical_details=["The circuit-level threshold remains well below 1% under standard depolarizing noise."],
+            expected_results=["The verifier should accept the refutation as a correct rejection of the benchmark claim."],
+            assumptions=["Standard circuit-level depolarizing assumptions apply."],
+            limitations=["This is a benchmark refutation candidate."],
+            references=["Fowler et al. 2012", "Stephens 2014"],
+            revision_notes=[],
+        )
+
+        self.assertTrue(_accept_verified_refutation(case, VerificationVerdict.VERIFIED, candidate))
+
     def test_run_benchmark_suite_matches_expected_baseline(self) -> None:
         report = run_benchmark_suite(
             ROOT / "eval" / "known_problems.json",
@@ -820,7 +841,23 @@ class EvaluationTests(unittest.TestCase):
             compact_query,
         )
         self.assertIn(
+            "keep `expected_results` scoped to the exact basis, decoder, and noise-model configuration actually under discussion",
+            compact_query,
+        )
+        self.assertIn(
+            "prefer the generic label `standard circuit-level depolarizing noise`",
+            compact_query,
+        )
+        self.assertIn(
             "When refuting a known-false claim, keep `expected_results` to the minimal literature-backed consequences",
+            compact_query,
+        )
+        self.assertIn(
+            "keep the whole candidate short: one central contradiction",
+            compact_query,
+        )
+        self.assertIn(
+            "Do not include CLI/runtime execution limitations in the scientific candidate",
             compact_query,
         )
         self.assertIn(
@@ -876,7 +913,7 @@ class EvaluationTests(unittest.TestCase):
             report = runner.verifier(request)
 
         self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
-        self.assertEqual(mocked_executor.call_args.args[2], 90)
+        self.assertEqual(mocked_executor.call_args.args[2], 120)
 
     def test_verifier_with_simulation_results_uses_followup_timeout_floor(self) -> None:
         runner = HermesPromptRoleRunner(
@@ -1036,6 +1073,10 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn("Do not request Tier 2 or Tier 3 just to polish a verdict that Tier 1 already settles", verifier_query)
         self.assertIn(
             "Keep known-false literature-grounded contradictions at Tier 1 unless simulation is needed for the core contradiction itself",
+            verifier_query,
+        )
+        self.assertIn(
+            "treat auxiliary scope drift or over-detailed noise-model wording as caveats",
             verifier_query,
         )
         self.assertIn("If the main claim is a short formal theorem, request tier3", verifier_query)

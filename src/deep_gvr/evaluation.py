@@ -1218,9 +1218,26 @@ def _accept_verified_refutation(
 
     match case.scenario:
         case "known_incorrect_surface_threshold_5pct":
+            explicit_rejection_markers = (
+                "false",
+                "not defensible",
+                "indefensible",
+                "unsupported",
+                "incorrect",
+            )
+            threshold_refutation_markers = (
+                "sub-1%",
+                "sub 1%",
+                "well below 5%",
+                "well below 1%",
+                "order of magnitude lower",
+                "~0.6-0.8%",
+                "0.6-0.8%",
+            )
             return (
                 "5%" in text
-                and any(marker in text for marker in ("not defensible", "indefensible", "sub-1%", "well below 5%"))
+                and any(marker in text for marker in explicit_rejection_markers)
+                and any(marker in text for marker in threshold_refutation_markers)
             )
         case "known_incorrect_color_codes_all_noise_models":
             return (

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 
 _DEFAULT_ROLE_TOOLSETS = ("clarify",)
-_VERIFIER_TIMEOUT_FLOOR_SECONDS = 90
+_VERIFIER_TIMEOUT_FLOOR_SECONDS = 120
 _VERIFIER_EVIDENCE_TIMEOUT_FLOOR_SECONDS = 180
 
 
