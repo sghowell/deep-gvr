@@ -16,19 +16,21 @@ Start from `main` and implement this slice on `codex/live-route-selection`. Merg
 
 ## Progress
 
-- [ ] Added the new plan and indexed it from `plans/README.md`.
-- [ ] Added a live-specific routing helper that prefers explicit top-level role routes while keeping a shared-route fallback for invalid live provider/model paths.
-- [ ] Wired CLI and live eval to use the live-specific routing helper instead of the generic subagent fallback plan.
-- [ ] Ensured evidence records and transcripts reflect the actual route used after any live fallback.
-- [ ] Tightened repo-local QEC anchors and generator guidance for the threshold/content issues now identified by live verification.
-- [ ] Added tests for live-route fallback and actual-route evidence recording.
-- [ ] Re-ran a narrow live smoke and recorded whether explicit-route fallback behaved as intended on this machine.
+- [x] Added the new plan and indexed it from `plans/README.md`.
+- [x] Added a live-specific routing helper that prefers explicit top-level role routes while keeping a shared-route fallback for invalid live provider/model paths.
+- [x] Wired CLI and live eval to use the live-specific routing helper instead of the generic subagent fallback plan.
+- [x] Ensured evidence records and transcripts reflect the actual route used after any live fallback.
+- [x] Tightened repo-local QEC anchors and generator guidance for the threshold/content issues now identified by live verification.
+- [x] Added tests for live-route fallback and actual-route evidence recording.
+- [x] Re-ran a narrow live smoke and recorded whether explicit-route fallback behaved as intended on this machine.
 
 ## Surprises & Discoveries
 
 - The current live runner makes separate top-level `hermes chat` calls, so the `per_subagent_model_routing` probe is too conservative if applied directly to live role routing.
 - A direct probe of `hermes chat --provider openrouter --model deepseek-r1` on this machine failed quickly with a provider-side `400`, so simply forcing configured role routes would be brittle.
 - The latest verifier findings are now narrower and more content-specific: the main recurring issues are independent-X/Z-vs-depolarizing threshold language and citation drift around Raussendorf-Harrington versus standard 2D planar/rotated surface-code threshold references.
+- The live-specific routing helper is safest when it treats only concrete role-model pins as explicit live route intent. Blank role models should continue to use the shared live route instead of auto-promoting template defaults.
+- The live smoke at `/tmp/deep-gvr-live-route-selection/report.json` did exactly what this slice intended: it tried broken explicit `openrouter` generator/verifier routes, fell back to the shared default route, and recorded the full route sequence in `/tmp/deep-gvr-live-route-selection/cases/known-correct-surface-threshold/role_transcripts.json`.
 
 ## Decision Log
 
@@ -39,7 +41,7 @@ Start from `main` and implement this slice on `codex/live-route-selection`. Merg
 
 ## Outcomes & Retrospective
 
-This slice should leave the repo with a live-specific routing path that can try explicit role routes first, fall back when those routes are invalid, and still record the actual provider/model used in evidence. It should also leave the QEC benchmark anchors more specific about code-capacity noise semantics and standard circuit-level citations so the generator stops repeating the same threshold-language mistakes.
+This slice leaves the repo with a live-specific routing path that can try explicit role routes first, fall back when those routes are invalid, and still record the actual provider/model used in evidence. It also leaves the QEC benchmark anchors more specific about code-capacity noise semantics and standard circuit-level citations. The remaining live quality gap is now mostly content accuracy on the shared default route, not route-selection blind spots.
 
 ## Context and Orientation
 
@@ -92,7 +94,7 @@ Acceptance evidence:
 - A targeted test proves a live run can fall back from an invalid explicit provider/model route to the shared route and still succeed.
 - Evidence and transcript artifacts record the actual fallback route used.
 - Repo-local QEC anchor notes explicitly distinguish independent-X/Z code-capacity thresholds from full depolarizing threshold language and warn against misusing Raussendorf-Harrington 2007 as the standard 2D surface-code circuit-level citation.
-- A fresh live smoke records either successful explicit-route fallback or a clear structured transcript showing which route failed and which route was used next.
+- A fresh live smoke records successful explicit-route fallback with the failed and fallback route sequence visible in the transcript artifacts.
 
 ## Merge, Push, and Cleanup
 

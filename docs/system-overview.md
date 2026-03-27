@@ -48,6 +48,7 @@
 - Live benchmark runs share the same repo-local domain-context loader as the CLI
 - Live Hermes prompt execution defaults to a compact prompt profile, with a full profile reserved for debugging prompt behavior
 - Compact live verification uses a dedicated verifier prompt and tighter payload shape to reduce verifier-request bulk on the real Hermes route
+- Live CLI/eval can prefer explicit top-level role routes from config and fall back to the shared live route when a provider/model path is invalid
 - Live generator/verifier/reviser calls default to a constrained Hermes tool surface instead of inheriting the full interactive CLI tool policy
 - The live role timeout is role-aware: verifier gets a higher floor, while Tier 3 transport keeps its own proof timeout
 - Local, Modal, and SSH backends represented from the start through the adapter interface

@@ -99,6 +99,7 @@ uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id kn
 
 Live runs record `report.json`, per-case candidate and verification artifacts, role transcripts, and the session evidence/checkpoint files used by the Tier 1 loop. The live eval path now accepts `--config`, uses the same repo-local route settings as `uv run deep-gvr`, and injects the same domain context files that the CLI uses. Compact live verification also uses a dedicated compact verifier prompt/path to keep the verifier request smaller on the real Hermes route. See [eval/README.md](eval/README.md) for the full workflow and artifact layout.
 Live eval also uses the constrained default live runtime policy when `--toolsets` is omitted, so generator/verifier/reviser runs do not inherit the full Hermes CLI tool surface by default.
+When `models.generator.model`, `models.verifier.model`, or `models.reviser.model` are set concretely in the runtime config, live CLI/eval runs now prefer those top-level role routes and fall back to the shared live route if Hermes returns a route-configuration error for the explicit provider/model path.
 
 ## Reference Docs
 
