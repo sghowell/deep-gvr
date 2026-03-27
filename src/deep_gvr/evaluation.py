@@ -649,6 +649,13 @@ class HermesPromptRoleRunner:
             )
             self.transcripts.append(transcript)
             if result.returncode == 0:
+                if _looks_like_live_route_configuration_error(result.stdout.strip()):
+                    if index + 1 < len(candidates):
+                        prior_route = candidate
+                        continue
+                    raise RuntimeError(
+                        f"Hermes role {role!r} emitted a live route configuration error: {result.stdout.strip()}"
+                    )
                 return result.stdout, candidate
             if index + 1 < len(candidates) and _looks_like_live_route_configuration_error(
                 result.stderr.strip() or result.stdout.strip()
@@ -1279,10 +1286,14 @@ def _looks_like_live_route_configuration_error(message: str) -> bool:
         return False
     patterns = (
         "badrequesterror",
+        "authenticationerror",
         "error code: 400",
+        "error code: 401",
         "unknown model",
         "unsupported model",
         "invalid model",
+        "your api key is invalid",
+        "out of funds",
         "model not found",
         "no such provider",
         "provider unavailable",

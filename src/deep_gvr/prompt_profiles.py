@@ -117,23 +117,6 @@ def _build_compact_verifier_query(
             "- Keep each check detail to one short sentence.",
             "- List only the flaws or caveats needed for the verdict.",
             "- Request Tier 2 or Tier 3 only when the candidate truly requires it.",
-            "Tier 2 spec keys:",
-            (
-                '- If simulation_requested is true, use '
-                '{"simulator":"stim","task":{"code":"surface_code","task_type":"rotated_memory_z",'
-                '"distance":[...],"rounds_per_distance":"d|2d|<int>","noise_model":"depolarizing",'
-                '"error_rates":[...],"decoder":"pymatching","shots_per_point":...},'
-                '"resources":{"timeout_seconds":...,"max_parallel":...}}.'
-            ),
-            "Tier 2 normalization:",
-            "- Use the canonical noise model string `depolarizing`, not `uniform_depolarizing` or `iid_depolarizing`.",
-            "- Keep `shots_per_point` at or below 100000 and `max_parallel` at or below 4.",
-            "Tier discipline:",
-            "- Do not request Tier 2 or Tier 3 just to polish a verdict that Tier 1 already settles.",
-            "- If the candidate predicts threshold behavior, logical-error ordering across named distances, or a specific logical-error level at a named physical error rate/decoder/noise model and no simulation_results are attached, request Tier 2 by default.",
-            "- Keep known-false literature-grounded contradictions at Tier 1 unless simulation is needed for the core contradiction itself.",
-            "Tier 3 trigger:",
-            "- If the main claim is a short formal theorem, request tier3 even when Tier 1 already suggests it is correct.",
             "JSON shape:",
             (
                 '{"verdict":"VERIFIED|FLAWS_FOUND|CANNOT_VERIFY",'

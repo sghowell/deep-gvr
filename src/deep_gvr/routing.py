@@ -96,7 +96,7 @@ def build_live_routing_plan(
     )
 
     generator_route = shared_plan.generator
-    if _selection_has_concrete_model(config.models.generator):
+    if _selection_has_live_route_intent(config.models.generator):
         generator_route = _live_route(
             _resolve_route("generator", config.models.generator),
             fallback_route=shared_plan.generator,
@@ -104,7 +104,7 @@ def build_live_routing_plan(
         )
 
     verifier_route = shared_plan.verifier
-    if _selection_has_concrete_model(config.models.verifier):
+    if _selection_has_live_route_intent(config.models.verifier):
         verifier_route = _live_route(
             _resolve_route("verifier", config.models.verifier),
             fallback_route=shared_plan.verifier,
@@ -112,15 +112,15 @@ def build_live_routing_plan(
         )
 
     reviser_route = shared_plan.reviser
-    reviser_selection_is_explicit = _selection_has_concrete_model(config.models.reviser) or (
-        _selection_has_concrete_model(config.models.generator)
+    reviser_selection_is_explicit = _selection_has_live_route_intent(config.models.reviser) or (
+        _selection_has_live_route_intent(config.models.generator)
         and config.models.reviser.provider == "default"
         and not config.models.reviser.model.strip()
     )
     if reviser_selection_is_explicit:
         generator_preference = (
             _resolve_route("generator", config.models.generator)
-            if _selection_has_concrete_model(config.models.generator)
+            if _selection_has_live_route_intent(config.models.generator)
             else shared_plan.generator
         )
         reviser_route = _live_route(
@@ -199,6 +199,10 @@ def _same_model_path(left: EffectiveModelRoute, right: EffectiveModelRoute) -> b
 
 def _selection_has_concrete_model(selection: ModelSelection) -> bool:
     return bool(selection.model.strip())
+
+
+def _selection_has_live_route_intent(selection: ModelSelection) -> bool:
+    return selection.provider != "default" or _selection_has_concrete_model(selection)
 
 
 def _live_route(

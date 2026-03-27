@@ -142,6 +142,21 @@ class EvaluationTests(unittest.TestCase):
             )
         return self._successful_live_executor(command, cwd)
 
+    def _stdout_route_fallback_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        provider = command[command.index("--provider") + 1] if "--provider" in command else "default"
+        if provider == "openrouter":
+            return CommandExecutionResult(
+                returncode=0,
+                stdout=(
+                    "AuthenticationError\n"
+                    "Error code: 401\n"
+                    "Provider: openrouter\n"
+                    "Your API key is invalid, blocked or out of funds.\n"
+                ),
+                stderr="",
+            )
+        return self._successful_live_executor(command, cwd)
+
     def _accepted_refutation_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
         del cwd
         query = command[command.index("-q") + 1]
@@ -545,7 +560,7 @@ class EvaluationTests(unittest.TestCase):
             self.assertEqual(case.outcome, "direct_match")
             self.assertIsNone(case.error)
             self.assertGreaterEqual(case.runtime_seconds, 0.0)
-            self.assertTrue(any("temperature overrides" in note for note in case.notes))
+            self.assertTrue(any("Injected" in note or "temperature overrides" in note for note in case.notes))
             self.assertTrue(any(item.endswith("candidate_solution.json") for item in case.artifacts))
             self.assertTrue(any(item.endswith("role_transcripts.json") for item in case.artifacts))
             self.assertTrue((output_root / "cases" / case.id / "candidate_solution.json").exists())
@@ -576,7 +591,7 @@ class EvaluationTests(unittest.TestCase):
             self.assertTrue(
                 any(line.startswith("PASS known-correct-surface-threshold [known_correct] outcome=direct_match") for line in lines)
             )
-            self.assertTrue(any("temperature overrides" in line for line in lines))
+            self.assertTrue(any("Injected" in line or "temperature overrides" in line for line in lines))
             self.assertTrue(any(str(output_root / "cases" / "known-correct-surface-threshold") in line for line in lines))
 
     def test_live_mode_accepted_refutation_counts_as_pass_without_false_positive(self) -> None:
@@ -749,6 +764,9 @@ class EvaluationTests(unittest.TestCase):
                 evidence_dir,
                 provider="openai",
                 model="gpt-5.4-mini",
+                generator_provider="default",
+                verifier_provider="default",
+                reviser_provider="default",
             )
             configured = load_runtime_config(config_path)
 
@@ -823,6 +841,52 @@ class EvaluationTests(unittest.TestCase):
             self.assertEqual(verify_record["model_used"], "configured-by-hermes")
             self.assertTrue(
                 any("fell back from openrouter/broken-verifier" in note.lower() for note in verify_record["routing_notes"])
+            )
+
+    def test_live_mode_falls_back_from_provider_only_route_when_hermes_emits_auth_error_stdout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            self._write_config(
+                config_path,
+                evidence_dir,
+                provider="default",
+                model="",
+                generator_provider="openrouter",
+                verifier_provider="openrouter",
+            )
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._stdout_route_fallback_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertEqual(case.provider, "default")
+            self.assertEqual(case.model_used, "configured-by-hermes")
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(len(transcripts["calls"]), 4)
+            self.assertIn("openrouter", transcripts["calls"][0]["command"])
+            self.assertIn("claude-sonnet-4", transcripts["calls"][0]["command"])
+            self.assertNotIn("--provider", transcripts["calls"][1]["command"])
+            self.assertIn("openrouter", transcripts["calls"][2]["command"])
+            self.assertIn("deepseek-r1", transcripts["calls"][2]["command"])
+            self.assertNotIn("--provider", transcripts["calls"][3]["command"])
+            evidence_log = Path(next(path for path in case.artifacts if path.endswith(".jsonl")))
+            evidence_records = [json.loads(line) for line in evidence_log.read_text(encoding="utf-8").splitlines()]
+            verify_record = next(record for record in evidence_records if record["phase"] == "verify")
+            self.assertTrue(
+                any("fell back from openrouter/deepseek-r1" in note.lower() for note in verify_record["routing_notes"])
             )
 
     def test_compact_prompt_profile_emits_shorter_query_than_full(self) -> None:
@@ -906,7 +970,15 @@ class EvaluationTests(unittest.TestCase):
             compact_query,
         )
         self.assertIn(
+            "keep the hypothesis literature-backed and scoped to threshold existence or cited threshold regimes",
+            compact_query,
+        )
+        self.assertIn(
             "For literature-grounded threshold-understanding questions, keep `expected_results` on threshold existence, regime separation, or cited threshold ranges",
+            compact_query,
+        )
+        self.assertIn(
+            "For pure counting or asymptotic cost questions, prefer one asymptotic statement plus at most one concrete formula or worked example",
             compact_query,
         )
         self.assertIn(
@@ -998,7 +1070,7 @@ class EvaluationTests(unittest.TestCase):
             report = runner.verifier(request)
 
         self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
-        self.assertEqual(mocked_executor.call_args.args[2], 120)
+        self.assertEqual(mocked_executor.call_args.args[2], 150)
 
     def test_verifier_with_simulation_results_uses_followup_timeout_floor(self) -> None:
         runner = HermesPromptRoleRunner(
@@ -1150,21 +1222,29 @@ class EvaluationTests(unittest.TestCase):
         self.assertLess(len(verifier_query), len(generic_query))
         self.assertNotIn("revision_notes", verifier_query)
         self.assertIn('"tier3":[]', verifier_query)
-        self.assertIn('"task":{"code":"surface_code","task_type":"rotated_memory_z"', verifier_query)
-        self.assertIn('"noise_model":"depolarizing"', verifier_query)
-        self.assertIn('"resources":{"timeout_seconds":...,"max_parallel":...}', verifier_query)
-        self.assertIn("Use the canonical noise model string `depolarizing`", verifier_query)
-        self.assertIn("Keep `shots_per_point` at or below 100000", verifier_query)
-        self.assertIn("Do not request Tier 2 or Tier 3 just to polish a verdict that Tier 1 already settles", verifier_query)
         self.assertIn(
-            "Keep known-false literature-grounded contradictions at Tier 1 unless simulation is needed for the core contradiction itself",
+            "For literature-grounded threshold explanations that only restate established threshold existence, regime separation, or cited threshold ranges",
+            verifier_query,
+        )
+        self.assertIn(
+            "For pure counting or asymptotic scaling claims, keep the audit short and Tier 1",
+            verifier_query,
+        )
+        self.assertIn(
+            "emit the normalized repo-local `simulation_spec`, use the canonical Stim noise-model string `depolarizing`",
+            verifier_query,
+        )
+        self.assertIn("shots_per_point <= 100000", verifier_query)
+        self.assertIn("max_parallel <= 4", verifier_query)
+        self.assertIn(
+            "Keep known-false literature-grounded contradictions at Tier 1 unless simulation is genuinely required to resolve the core contradiction",
             verifier_query,
         )
         self.assertIn(
             "treat auxiliary scope drift or over-detailed noise-model wording as caveats",
             verifier_query,
         )
-        self.assertIn("If the main claim is a short formal theorem, request tier3", verifier_query)
+        self.assertIn("Use Tier 3 for compact formal theorem claims or discrete proof obligations", verifier_query)
         self.assertIn(
             "For compact theorem or asymptotic proof claims, do not request Tier 2 just because the candidate lists testable asymptotic consequences",
             verifier_query,

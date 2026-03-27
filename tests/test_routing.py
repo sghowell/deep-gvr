@@ -90,6 +90,25 @@ class RoutingPlanTests(unittest.TestCase):
         self.assertEqual(plan.verifier.fallback_routes[0].model, "configured-by-hermes")
         self.assertTrue(any("top-level live role routing" in note.lower() for note in plan.verifier.notes))
 
+    def test_live_fallback_probe_treats_provider_only_routes_as_explicit_live_intent(self) -> None:
+        config = DeepGvrConfig()
+        config.models.generator.provider = "openrouter"
+        config.models.generator.model = ""
+        config.models.verifier.provider = "openrouter"
+        config.models.verifier.model = ""
+
+        plan = build_live_routing_plan(config, routing_probe=_probe(ProbeStatus.FALLBACK))
+
+        self.assertEqual(plan.strategy, RoutingMode.DIRECT)
+        self.assertEqual(plan.generator.provider, "openrouter")
+        self.assertEqual(plan.generator.model, "claude-sonnet-4")
+        self.assertEqual(plan.verifier.provider, "openrouter")
+        self.assertEqual(plan.verifier.model, "deepseek-r1")
+        self.assertEqual(plan.generator.fallback_routes[0].provider, "default")
+        self.assertEqual(plan.generator.fallback_routes[0].model, "configured-by-hermes")
+        self.assertEqual(plan.verifier.fallback_routes[0].provider, "default")
+        self.assertEqual(plan.verifier.fallback_routes[0].model, "configured-by-hermes")
+
 
 if __name__ == "__main__":
     unittest.main()
