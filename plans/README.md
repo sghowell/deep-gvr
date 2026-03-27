@@ -10,3 +10,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [05-tier3-aristotle.md](05-tier3-aristotle.md)
 - [06-cross-model-routing.md](06-cross-model-routing.md)
 - [07-eval-release.md](07-eval-release.md)
+- [08-live-eval.md](08-live-eval.md)

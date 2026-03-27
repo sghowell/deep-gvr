@@ -22,6 +22,8 @@ uv run python eval/run_eval.py --routing-probe fallback --output eval/results/lo
 
 The current runner uses fixture agents instead of live Hermes subagents. That keeps the benchmark repeatable while still exercising the Tier 1 loop, Tier 2 mediation, Tier 3 mediation, checkpointing, and routing evidence behavior.
 
+The next implementation slice is tracked in [plans/08-live-eval.md](../plans/08-live-eval.md). That plan covers adding a live prompt-driven evaluation mode while preserving the deterministic baseline as the CI-safe release floor.
+
 ## Initial Categories
 
 - known-correct claims that should verify

@@ -66,6 +66,8 @@ scripts/setup_mcp.sh --check
 
 The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. The current committed baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
 
+The next planned implementation step is live prompt-driven benchmark execution, tracked in [plans/08-live-eval.md](plans/08-live-eval.md).
+
 ## Reference Docs
 
 - [docs/README.md](docs/README.md)
