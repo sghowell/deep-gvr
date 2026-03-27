@@ -180,7 +180,7 @@ class AristotleFormalVerifier:
                 artifact_status="missing_api_key",
                 transport=transport,
             )
-        if not transport.hermes_available:
+        if not transport.hermes_available and self.command_executor is None:
             return self._result_set(
                 request,
                 status=ProofStatus.UNAVAILABLE,

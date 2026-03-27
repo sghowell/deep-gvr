@@ -53,7 +53,10 @@ class AristotleFormalVerifierTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}):
             config_path = Path(tmpdir) / "config.yaml"
             config_path.write_text("model:\n  default: test\n", encoding="utf-8")
-            result_set = AristotleFormalVerifier(hermes_config_path=config_path)(request)
+            result_set = AristotleFormalVerifier(
+                hermes_config_path=config_path,
+                hermes_binary="python3",
+            )(request)
 
         self.assertEqual(result_set.results[0].proof_status, ProofStatus.UNAVAILABLE)
         self.assertIn("mcp_servers.aristotle", result_set.results[0].details)
@@ -160,7 +163,7 @@ class AristotleTransportInspectionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            status = inspect_aristotle_transport(hermes_config_path=config_path)
+            status = inspect_aristotle_transport(hermes_config_path=config_path, hermes_binary="python3")
 
         self.assertTrue(status.ready)
         self.assertTrue(status.mcp_server_configured)

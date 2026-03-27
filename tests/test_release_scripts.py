@@ -50,12 +50,18 @@ class ReleaseScriptTests(unittest.TestCase):
     def test_setup_mcp_script_passes_with_configured_aristotle_server(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            hermes_path = bin_dir / "hermes"
+            hermes_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            hermes_path.chmod(0o755)
             config_path.write_text(
                 "mcp_servers:\n  aristotle:\n    command: uvx\n    args:\n      - aristotle-mcp\n",
                 encoding="utf-8",
             )
             env = dict(os.environ)
             env["ARISTOTLE_API_KEY"] = "configured"
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
             completed = subprocess.run(
                 [
                     "bash",
