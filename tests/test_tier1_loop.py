@@ -559,6 +559,8 @@ class Tier1LoopTests(unittest.TestCase):
                 self._config(tmpdir, enable_tier3=True),
                 routing_probe=self._routing_probe(ProbeStatus.READY),
             )
+            hermes_config_path = Path(tmpdir) / "hermes.yaml"
+            hermes_config_path.write_text("model:\n  default: test\n", encoding="utf-8")
 
             def generator(request: GenerationRequest):
                 return _candidate("Formal fallback hypothesis")
@@ -621,14 +623,18 @@ class Tier1LoopTests(unittest.TestCase):
             def reviser(request: RevisionRequest):
                 return _candidate("Unexpected revision")
 
-            result = runner.run(
-                problem="Check Tier 3 fallback",
-                generator=generator,
-                verifier=verifier,
-                reviser=reviser,
-                formal_verifier=AristotleFormalVerifier(),
-                session_id="session_tier3_fallback",
-            )
+            with patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}, clear=False):
+                result = runner.run(
+                    problem="Check Tier 3 fallback",
+                    generator=generator,
+                    verifier=verifier,
+                    reviser=reviser,
+                    formal_verifier=AristotleFormalVerifier(
+                        hermes_config_path=hermes_config_path,
+                        hermes_binary="python3",
+                    ),
+                    session_id="session_tier3_fallback",
+                )
 
             self.assertEqual(result.final_report.verdict, VerificationVerdict.VERIFIED)
             self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.UNAVAILABLE)
