@@ -2,7 +2,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is an early working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a repo-local loop helper with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification with structured fallback behavior.
+The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a runnable `deep-gvr` command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification with structured fallback behavior.
 
 ## What Exists Now
 
@@ -15,8 +15,9 @@ The repository is intentionally structured for Codex-driven implementation. The 
 - Local Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
 - Orchestrator-mediated Aristotle Tier 3 fallback/client logic in `src/deep_gvr/formal.py`
 - JSON schemas in `schemas/`
-- Prompt and skill scaffolding in `prompts/` and `SKILL.md`
+- Prompt and skill procedure in `prompts/` and `SKILL.md`
 - Capability probes and validation scripts in `scripts/`
+- Runnable CLI surface in `src/deep_gvr/cli.py`
 - Initial implementation backlog in `plans/`
 - Deterministic benchmark runner and recorded release baseline in `eval/`
 
@@ -43,6 +44,8 @@ The repo is pinned to Python 3.12 and `uv`.
 
 ```bash
 uv sync
+uv run deep-gvr init-config
+uv run deep-gvr run "Explain why the surface code is understood to have a threshold."
 uv run python scripts/check_repo.py
 uv run python scripts/run_capability_probes.py
 uv run python -m unittest discover -s tests -v
@@ -61,6 +64,20 @@ scripts/setup_mcp.sh --check
 ```
 
 `scripts/install.sh` creates a symlink install under `~/.hermes/skills/deep-gvr` by default. Use `--copy` if you need a copied install or `--target` to choose a different skills directory.
+
+The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
+
+## Command Surface
+
+The repo now exposes a console command through `uv run deep-gvr`:
+
+```bash
+uv run deep-gvr --help
+uv run deep-gvr run "Explain why the surface code has a threshold."
+uv run deep-gvr resume <session_id>
+```
+
+The command loads `~/.hermes/deep-gvr/config.yaml`, injects domain context from `domain/`, runs the existing generator-verifier-reviser loop, and writes evidence to the configured session directory.
 
 ## Evaluation Baseline
 

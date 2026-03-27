@@ -16,16 +16,17 @@ Start from `main` and implement this slice on `codex/skill-integration`. Merge b
 
 ## Progress
 
-- [ ] The plan for skill integration has not yet been added.
-- [ ] The repo has no runnable `deep-gvr` command surface for starting or resuming sessions.
-- [ ] Config is documented at `~/.hermes/deep-gvr/config.yaml` but is not yet loaded by a repo-local command helper.
-- [ ] The skill scaffold and install flow do not yet point to a concrete command runner.
+- [x] The plan for skill integration has been added.
+- [x] The repo now has a runnable `deep-gvr` command surface for starting or resuming sessions.
+- [x] Config at `~/.hermes/deep-gvr/config.yaml` is loaded by the repo-local command helper, with default creation when missing.
+- [x] The skill procedure and install flow now point to a concrete command runner.
 
 ## Surprises & Discoveries
 
 - The repo already has a complete Python orchestration loop in `src/deep_gvr/tier1.py`, so the missing work is the operator-facing command boundary rather than the loop internals.
 - `hermes chat` is already used safely by the live evaluation harness, which provides the natural role-execution boundary for the skill command surface.
 - The documented config path is YAML, but the repo currently only has JSON templates and no YAML loader.
+- Re-exporting the CLI module from `deep_gvr.__init__` causes noisy `runpy` warnings for `python -m deep_gvr.cli`, so the command module should stay separate from the package convenience exports.
 
 ## Decision Log
 
@@ -41,7 +42,7 @@ Start from `main` and implement this slice on `codex/skill-integration`. Merge b
 
 ## Outcomes & Retrospective
 
-Pending implementation.
+The repo now has a real session command boundary instead of a skill-only promise: `uv run deep-gvr run ...` and `uv run deep-gvr resume ...` load the documented config path, reuse the existing harness, and persist role transcripts as session artifacts. Install now creates a usable default config without overwriting an existing one, and the docs/tests/checks all point at the same command surface.
 
 ## Context and Orientation
 

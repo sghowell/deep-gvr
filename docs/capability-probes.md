@@ -24,6 +24,7 @@ The architecture document identifies several implementation unknowns that are im
 
 - Question: what minimal state is required to resume a run safely?
 - Implemented baseline: persist loop state, verdict history, and artifact references in `sessions/<session_id>/checkpoint.json`.
+- Current command surface: `uv run deep-gvr resume <session_id>` loads the same configured evidence directory and resumes from that checkpoint.
 - Preferred outcome: `/deep-gvr resume <session_id>` can reconstruct the next orchestrator step without hidden memory.
 - Fallback: resume from the last complete checkpoint and require a fresh verification pass for any incomplete step.
 

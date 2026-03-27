@@ -1,16 +1,26 @@
 # deep-gvr
 
-deep-gvr is a Hermes skill scaffold for agentic scientific research with a generator-verifier-reviser loop.
+deep-gvr is a Hermes skill procedure for agentic scientific research with a generator-verifier-reviser loop.
 
 ## Current State
 
-The repo now includes a Python Tier 1 orchestration helper with append-only evidence logging and checkpoint-based resume, plus a live evaluation path that executes the real generator, verifier, and reviser prompts through `hermes chat`. The top-level `/deep-gvr` slash command wiring is still scaffolded; this file remains the operating contract for the future parent-agent procedure.
+The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the Python orchestration helper, append-only evidence logging, checkpoint-based resume, and the same Hermes prompt execution path used by live evaluation.
 
 ## Intended Commands
 
 - `/deep-gvr <question>` starts a new session
 - `/deep-gvr resume <session_id>` resumes a prior session
 - `python eval/run_eval.py --mode live ...` runs the prompt stack against the benchmark corpus and records live artifacts under `eval/results/live/`
+
+## Procedure
+
+When the user invokes `/deep-gvr`:
+
+1. Ensure `~/.hermes/deep-gvr/config.yaml` exists. If it does not, create it from the repo defaults.
+2. For a new question, run `uv run deep-gvr run "<question>"`.
+3. For resume, run `uv run deep-gvr resume <session_id>`.
+4. Report the returned session summary, including the session ID, verdict, and evidence/checkpoint paths.
+5. If the command fails because a Hermes role call times out or a backend is unavailable, surface the structured failure clearly instead of inventing a result.
 
 ## Required Inputs
 

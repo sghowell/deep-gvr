@@ -6,6 +6,8 @@
 
 - `/deep-gvr <question>` starts a session
 - `/deep-gvr resume <session_id>` resumes a session
+- `uv run deep-gvr run "<question>"` is the repo-local command boundary that backs the skill procedure
+- `uv run deep-gvr resume <session_id>` resumes a prior session through the same runtime
 - Config path: `~/.hermes/deep-gvr/config.yaml`
 - Evidence path: `~/.hermes/deep-gvr/sessions/<session_id>/`
 - Checkpoint path: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
@@ -13,6 +15,7 @@
 ## Core Components
 
 - Orchestrator procedure in `SKILL.md`
+- Command runtime in `src/deep_gvr/cli.py`
 - Role prompts in `prompts/`
 - Typed contracts and helper code in `src/deep_gvr/`
 - Tier 1 session runner and persistence helpers in `src/deep_gvr/tier1.py`

@@ -5,6 +5,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 ## Core Contracts
 
 - `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, and domain defaults
+- `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface
 - `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
 - `CandidateSolution`: generator or reviser output
@@ -21,8 +22,10 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 
 - `schemas/*.json`: canonical JSON Schemas
 - `templates/*.json`: sample artifacts used in tests
+- `templates/config.template.yaml`: YAML form of the default runtime config written by install and CLI helpers
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
+- `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
 - `eval/known_problems.json`: deterministic release benchmark corpus
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report
