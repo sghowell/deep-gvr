@@ -47,6 +47,32 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("ARISTOTLE_API_KEY", completed.stderr)
 
+    def test_setup_mcp_script_passes_with_configured_aristotle_server(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            config_path.write_text(
+                "mcp_servers:\n  aristotle:\n    command: uvx\n    args:\n      - aristotle-mcp\n",
+                encoding="utf-8",
+            )
+            env = dict(os.environ)
+            env["ARISTOTLE_API_KEY"] = "configured"
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "setup_mcp.sh"),
+                    "--check",
+                    "--config",
+                    str(config_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("mcp_servers.aristotle", completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

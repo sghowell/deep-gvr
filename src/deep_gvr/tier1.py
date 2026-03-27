@@ -27,7 +27,12 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
-from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .formal import (
+    AristotleFormalVerifier,
+    FormalVerificationRequest,
+    FormalVerificationResultSet,
+    FormalVerifier,
+)
 from .routing import EffectiveModelRoute, build_routing_plan
 
 
@@ -703,7 +708,13 @@ class Tier1LoopRunner:
             timeout_seconds=self.config.verification.tier3.timeout_seconds,
         )
         verifier = formal_verifier or AristotleFormalVerifier()
-        results = verifier(request)
+        outcome = verifier(request)
+        if isinstance(outcome, FormalVerificationResultSet):
+            results = outcome.results
+            transport_artifact = outcome.transport_artifact
+        else:
+            results = list(outcome)
+            transport_artifact = None
 
         request_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
@@ -722,7 +733,16 @@ class Tier1LoopRunner:
                 "results": [item.to_dict() for item in results],
             },
         )
-        checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, [request_artifact, results_artifact])
+        artifact_paths = [request_artifact, results_artifact]
+        if transport_artifact is not None:
+            artifact_paths.append(
+                self.session_store.write_artifact_json(
+                    checkpoint.session_id,
+                    f"iteration_{checkpoint.current_iteration}_formal_transport.json",
+                    transport_artifact,
+                )
+            )
+        checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, artifact_paths)
         checkpoint.last_updated = self._timestamp()
         checkpoint.result_summary = f"Completed Tier 3 formal mediation for candidate {checkpoint.current_iteration}."
 

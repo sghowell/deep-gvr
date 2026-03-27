@@ -6,10 +6,11 @@ usage() {
 Check or print the Aristotle MCP setup expectations for deep-gvr.
 
 Usage:
-  scripts/setup_mcp.sh [--check] [--print-snippet]
+  scripts/setup_mcp.sh [--check] [--print-snippet] [--config PATH]
 
 Options:
-  --check          Verify that the required Tier 3 environment variables are present.
+  --check          Verify the Tier 3 environment and Hermes MCP config entry.
+  --config PATH    Hermes config path. Default: ~/.hermes/config.yaml
   --print-snippet  Print a shell snippet showing the expected environment setup.
   --help           Show this help text.
 EOF
@@ -17,12 +18,27 @@ EOF
 
 print_snippet() {
   cat <<'EOF'
-Export the Aristotle credentials before using Tier 3:
+Add the Aristotle MCP server to ~/.hermes/config.yaml:
+
+  mcp_servers:
+    aristotle:
+      command: "uvx"
+      args:
+        - "--from"
+        - "git+https://github.com/septract/lean-aristotle-mcp"
+        - "aristotle-mcp"
+      env:
+        ARISTOTLE_API_KEY: "${ARISTOTLE_API_KEY}"
+      timeout: 300
+      connect_timeout: 60
+
+Export the Aristotle credentials before starting Hermes:
 
   export ARISTOTLE_API_KEY="your-api-key"
 
-deep-gvr currently uses orchestrator-mediated formal verification. Aristotle transport
-configuration remains environment-specific to your Hermes installation.
+Then restart Hermes so it can discover the MCP tools from mcp_servers.aristotle.
+If the Aristotle tools still do not appear, ensure the Hermes environment has the
+Python `mcp` package installed.
 EOF
 }
 
@@ -32,19 +48,90 @@ run_check() {
     return 1
   fi
 
+  if ! command -v hermes >/dev/null 2>&1; then
+    echo "Hermes CLI is not installed or not on PATH." >&2
+    return 1
+  fi
+
+  if [[ ! -f "${config_path}" ]]; then
+    echo "Hermes config file not found at ${config_path}. Add mcp_servers.aristotle before using Tier 3." >&2
+    return 1
+  fi
+
+  if ! python3 - "${config_path}" <<'PY'
+import sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1]).expanduser()
+lines = config_path.read_text(encoding="utf-8").splitlines()
+in_mcp_servers = False
+mcp_indent = None
+in_aristotle = False
+aristotle_indent = None
+has_transport = False
+
+for raw_line in lines:
+    stripped = raw_line.strip()
+    if not stripped or stripped.startswith("#"):
+        continue
+    indent = len(raw_line) - len(raw_line.lstrip(" "))
+
+    if stripped == "mcp_servers:":
+        in_mcp_servers = True
+        mcp_indent = indent
+        in_aristotle = False
+        aristotle_indent = None
+        continue
+
+    if in_mcp_servers and mcp_indent is not None and indent <= mcp_indent:
+        in_mcp_servers = False
+        in_aristotle = False
+        aristotle_indent = None
+
+    if in_mcp_servers and stripped.startswith("aristotle:") and mcp_indent is not None and indent > mcp_indent:
+        in_aristotle = True
+        aristotle_indent = indent
+        continue
+
+    if in_aristotle and aristotle_indent is not None and indent <= aristotle_indent:
+        in_aristotle = False
+        aristotle_indent = None
+
+    if in_aristotle and aristotle_indent is not None and indent > aristotle_indent:
+        if stripped.startswith("command:") or stripped.startswith("url:"):
+            has_transport = True
+            break
+
+if not has_transport:
+    sys.stderr.write(
+        f"{config_path} does not define a usable mcp_servers.aristotle transport. "
+        "Tier 3 will fall back to structured unavailability.\n"
+    )
+    raise SystemExit(1)
+PY
+  then
+    return 1
+  fi
+
   echo "ARISTOTLE_API_KEY is set."
+  echo "Hermes config defines mcp_servers.aristotle at ${config_path}."
   echo "Tier 3 can proceed to the repo's orchestrator-mediated Aristotle boundary."
   return 0
 }
 
 check_only="false"
 show_snippet="false"
+config_path="${HOME}/.hermes/config.yaml"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --check)
       check_only="true"
       shift
+      ;;
+    --config)
+      config_path="$2"
+      shift 2
       ;;
     --print-snippet)
       show_snippet="true"

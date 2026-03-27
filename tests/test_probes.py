@@ -16,6 +16,7 @@ class ProbeTests(unittest.TestCase):
             [
                 "per_subagent_model_routing",
                 "subagent_mcp_inheritance",
+                "aristotle_transport",
                 "session_checkpoint_resume",
                 "backend_dispatch",
             ],

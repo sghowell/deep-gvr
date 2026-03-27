@@ -697,7 +697,18 @@ def _run_live_case(
             verifier=live_runner.verifier,
             reviser=live_runner.reviser,
             simulator=None,
-            formal_verifier=AristotleFormalVerifier(),
+            formal_verifier=AristotleFormalVerifier(
+                command_executor=executor,
+                hermes_binary=live_config.hermes_binary,
+                hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
+                prompt_root=prompt_root,
+                cwd=_repo_root(),
+                command_timeout_seconds=live_config.command_timeout_seconds,
+                provider=config.models.orchestrator.provider,
+                model=config.models.orchestrator.model,
+                toolsets=list(live_config.toolsets),
+                skills=list(live_config.skills),
+            ),
             session_id=session_id,
         )
         evidence = session_store.read_evidence(result.session_id)

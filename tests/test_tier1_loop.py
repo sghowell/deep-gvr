@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests import _path_setup  # noqa: F401
 
@@ -24,7 +26,7 @@ from deep_gvr.contracts import (
     VerificationReport,
     VerificationVerdict,
 )
-from deep_gvr.formal import AristotleFormalVerifier, FormalVerificationRequest
+from deep_gvr.formal import AristotleFormalVerifier, CommandExecutionResult, FormalVerificationRequest
 from deep_gvr.tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -632,6 +634,113 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.UNAVAILABLE)
             evidence = runner.session_store.read_evidence("session_tier3_fallback")
             self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "verify"])
+
+    def test_formal_transport_artifact_is_persisted_when_transport_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(
+                self._config(tmpdir, enable_tier3=True),
+                routing_probe=self._routing_probe(ProbeStatus.READY),
+            )
+            hermes_config_path = Path(tmpdir) / "hermes.yaml"
+            hermes_config_path.write_text(
+                "mcp_servers:\n  aristotle:\n    command: uvx\n    args:\n      - aristotle-mcp\n",
+                encoding="utf-8",
+            )
+
+            def generator(request: GenerationRequest):
+                return _candidate("Formal transport hypothesis")
+
+            def verifier(request: VerificationRequest):
+                if request.formal_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="Formal confirmation is required.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Formal confirmation is required."],
+                            caveats=[],
+                        ),
+                        tier2=None,
+                        tier3=[
+                            Tier3ClaimResult(
+                                claim="For every repetition-code distance d >= 1, the code distance is d.",
+                                backend="aristotle",
+                                proof_status=ProofStatus.REQUESTED,
+                                details="A formal check is requested.",
+                                lean_code="",
+                                proof_time_seconds=None,
+                            )
+                        ],
+                        flaws=["Formal confirmation is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                return VerificationReport(
+                    verdict=VerificationVerdict.VERIFIED,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.PASS,
+                                detail="The formal transport returned a proof result.",
+                            )
+                        ],
+                        overall=VerificationVerdict.VERIFIED,
+                        flaws=[],
+                        caveats=[],
+                    ),
+                    tier2=None,
+                    tier3=list(request.formal_results),
+                    flaws=[],
+                    caveats=[],
+                    cannot_verify_reason=None,
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                payload = {
+                    "results": [
+                        {
+                            "claim": "For every repetition-code distance d >= 1, the code distance is d.",
+                            "backend": "aristotle",
+                            "proof_status": "proved",
+                            "details": "Aristotle completed the proof.",
+                            "lean_code": "theorem repetition_distance : True := by trivial",
+                            "proof_time_seconds": 1.0,
+                        }
+                    ]
+                }
+                return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
+
+            with patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}, clear=False):
+                result = runner.run(
+                    problem="Check Tier 3 transport artifacts",
+                    generator=generator,
+                    verifier=verifier,
+                    reviser=reviser,
+                    formal_verifier=AristotleFormalVerifier(
+                        command_executor=command_executor,
+                        hermes_config_path=hermes_config_path,
+                    ),
+                    session_id="session_tier3_transport",
+                )
+
+            self.assertEqual(result.final_report.tier3[0].proof_status, ProofStatus.PROVED)
+            checkpoint = runner.session_store.load_checkpoint("session_tier3_transport")
+            transport_artifacts = [path for path in checkpoint.artifacts if path.endswith("_formal_transport.json")]
+            self.assertEqual(len(transport_artifacts), 1)
+            transport_payload = json.loads((Path(tmpdir) / transport_artifacts[0]).read_text(encoding="utf-8"))
+            self.assertEqual(transport_payload["status"], "completed")
+            self.assertEqual(transport_payload["mcp_server_name"], "aristotle")
 
     def test_fallback_routing_uses_orchestrator_model_with_temperatures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -62,6 +62,7 @@ REQUIRED_PROMPT_MARKERS = {
     "generator.md": ["## Candidate Solution", "### Hypothesis", "### References"],
     "verifier.md": ["## Verification Report", "### Verdict:", "### Tier 1: Analytical Verification"],
     "reviser.md": ["### Revision Notes", "candidate solution", "specific flaws"],
+    "formalizer.md": ["## Formal Verification Results", "Aristotle MCP", "Do not fabricate proof success"],
     "simulator.md": ["python adapters/<simulator>_adapter.py", "confidence assessment", "If the simulation fails"],
 }
 

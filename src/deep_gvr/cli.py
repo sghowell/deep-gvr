@@ -249,7 +249,17 @@ def _execute_command(
         cwd=_repo_root(),
     )
 
-    verifier = formal_verifier or AristotleFormalVerifier()
+    verifier = formal_verifier or AristotleFormalVerifier(
+        command_executor=executor,
+        hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
+        prompt_root=prompt_root,
+        cwd=_repo_root(),
+        command_timeout_seconds=command_timeout_seconds,
+        provider=config.models.orchestrator.provider,
+        model=config.models.orchestrator.model,
+        toolsets=list(toolsets),
+        skills=list(skills),
+    )
     session_id = run_session_id if command == "run" else resume_session_id
     try:
         if command == "run":

@@ -39,7 +39,14 @@ from .evaluation import (
     run_benchmark_suite,
     write_benchmark_report,
 )
-from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .formal import (
+    AristotleFormalVerifier,
+    AristotleTransportStatus,
+    FormalVerificationRequest,
+    FormalVerificationResultSet,
+    FormalVerifier,
+    inspect_aristotle_transport,
+)
 from .probes import run_capability_probes
 from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
 from .tier1 import (
@@ -92,9 +99,12 @@ __all__ = [
     "FormalVerificationRequest",
     "FormalVerifier",
     "AristotleFormalVerifier",
+    "AristotleTransportStatus",
     "GenerationRequest",
+    "inspect_aristotle_transport",
     "benchmark_routing_probe",
     "load_benchmark_suite",
+    "FormalVerificationResultSet",
     "RevisionRequest",
     "run_benchmark_suite",
     "SimulationRequest",
