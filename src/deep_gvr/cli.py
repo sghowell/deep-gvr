@@ -225,7 +225,6 @@ def _execute_command(
         hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
         prompt_root=prompt_root,
         cwd=_repo_root(),
-        command_timeout_seconds=command_timeout_seconds,
         provider=config.models.orchestrator.provider,
         model=config.models.orchestrator.model,
         toolsets=list(toolsets),
@@ -498,7 +497,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--command-timeout-seconds",
         type=int,
         default=120,
-        help="Per-role Hermes command timeout.",
+        help="Base Hermes command timeout for live role calls. The verifier may use a higher repo-local floor.",
     )
     common_parent.add_argument(
         "--toolsets",

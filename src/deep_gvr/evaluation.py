@@ -27,6 +27,7 @@ from .contracts import (
     VerificationVerdict,
 )
 from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .live_runtime import resolve_live_role_timeout_seconds, resolve_live_role_toolsets
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
 from .runtime_config import load_runtime_config
@@ -275,9 +276,7 @@ class HermesPromptRoleRunner:
     ) -> None:
         self.config = config
         self.prompt_root = prompt_root
-        self.executor = executor or (
-            lambda command, cwd: _default_executor(command, cwd, config.command_timeout_seconds)
-        )
+        self.executor = executor
         self.cwd = cwd or Path.cwd()
         self.transcripts: list[LiveRoleTranscript] = []
 
@@ -413,12 +412,20 @@ class HermesPromptRoleRunner:
             command.extend(["--provider", route_provider])
         if route_model not in {"", "configured-by-hermes", "provider-default"}:
             command.extend(["--model", route_model])
-        if self.config.toolsets:
-            command.extend(["--toolsets", ",".join(self.config.toolsets)])
+        role_toolsets = resolve_live_role_toolsets(role, self.config.toolsets)
+        if role_toolsets:
+            command.extend(["--toolsets", ",".join(role_toolsets)])
         if self.config.skills:
             command.extend(["--skills", ",".join(self.config.skills)])
 
-        result = self.executor(command, self.cwd)
+        if self.executor is not None:
+            result = self.executor(command, self.cwd)
+        else:
+            result = _default_executor(
+                command,
+                self.cwd,
+                resolve_live_role_timeout_seconds(role, self.config.command_timeout_seconds),
+            )
         transcript = LiveRoleTranscript(
             role=role,
             provider=route_provider,
@@ -700,7 +707,6 @@ def _run_live_case(
                 prompt_root=prompt_root,
                 cwd=_repo_root(),
                 prompt_profile=live_config.prompt_profile,
-                command_timeout_seconds=live_config.command_timeout_seconds,
                 provider=config.models.orchestrator.provider,
                 model=config.models.orchestrator.model,
                 toolsets=list(live_config.toolsets),

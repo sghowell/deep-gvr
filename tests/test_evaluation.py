@@ -5,13 +5,14 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.cli import load_runtime_config
-from deep_gvr.contracts import DeepGvrConfig, ProbeStatus, VerificationVerdict
+from deep_gvr.contracts import CandidateSolution, DeepGvrConfig, ProbeStatus, VerificationVerdict
 from deep_gvr.evaluation import (
     CommandExecutionResult,
     HermesPromptRoleRunner,
@@ -21,6 +22,8 @@ from deep_gvr.evaluation import (
     run_benchmark_suite,
     write_benchmark_report,
 )
+from deep_gvr.routing import EffectiveModelRoute
+from deep_gvr.tier1 import VerificationRequest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -169,6 +172,30 @@ class EvaluationTests(unittest.TestCase):
             )
             self.assertEqual(len(transcripts["calls"]), 2)
             self.assertIn("Response budget:", transcripts["calls"][0]["query"])
+            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
+            self.assertIn("clarify", transcripts["calls"][0]["command"])
+
+    def test_live_mode_explicit_toolsets_override_restricted_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(toolsets=["search"]),
+                executor=self._successful_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
+            self.assertIn("search", transcripts["calls"][0]["command"])
+            self.assertNotIn("clarify", transcripts["calls"][0]["command"])
 
     def test_live_mode_uses_configured_orchestrator_route(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -257,6 +284,73 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn("Response budget:", compact_query)
         self.assertNotIn("Response budget:", full_query)
         self.assertLess(len(compact_query), len(full_query))
+
+    def test_verifier_uses_timeout_floor_with_default_executor(self) -> None:
+        runner = HermesPromptRoleRunner(
+            LiveEvalConfig(command_timeout_seconds=5),
+            prompt_root=ROOT / "prompts",
+        )
+        request = VerificationRequest(
+            session_id="session_eval",
+            iteration=1,
+            candidate=CandidateSolution(
+                hypothesis="Hypothesis",
+                approach="Approach",
+                technical_details=["Detail"],
+                expected_results=["Result"],
+                assumptions=["Assumption"],
+                limitations=["Limitation"],
+                references=["Reference"],
+            ),
+            route=EffectiveModelRoute(provider="default", model="configured-by-hermes"),
+        )
+        payload = {
+            "verdict": "VERIFIED",
+            "tier1": {
+                "checks": [
+                    {
+                        "check": "benchmark_ground_truth",
+                        "status": "pass",
+                        "detail": "The claim matches the benchmark ground truth.",
+                    }
+                ],
+                "overall": "VERIFIED",
+                "flaws": [],
+                "caveats": [],
+            },
+            "tier2": None,
+            "tier3": [],
+            "flaws": [],
+            "caveats": [],
+            "cannot_verify_reason": None,
+        }
+
+        with patch(
+            "deep_gvr.evaluation._default_executor",
+            return_value=CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr=""),
+        ) as mocked_executor:
+            report = runner.verifier(request)
+
+        self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
+        self.assertEqual(mocked_executor.call_args.args[2], 90)
+
+    def test_live_mode_does_not_clip_formal_transport_to_live_role_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            with patch("deep_gvr.evaluation.AristotleFormalVerifier") as verifier_ctor:
+                verifier_ctor.return_value = object()
+                report = run_benchmark_suite(
+                    ROOT / "eval" / "known_problems.json",
+                    routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                    mode="live",
+                    output_root=output_root,
+                    case_ids=["known-correct-surface-threshold"],
+                    live_config=LiveEvalConfig(command_timeout_seconds=5),
+                    executor=self._successful_live_executor,
+                )
+
+        self.assertTrue(report.cases[0].passed)
+        self.assertNotIn("command_timeout_seconds", verifier_ctor.call_args.kwargs)
 
     def test_live_mode_records_error_artifact_on_executor_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

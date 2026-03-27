@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
@@ -98,8 +99,31 @@ class SkillCliTests(unittest.TestCase):
             self.assertTrue(transcript_path.exists())
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
             self.assertIn("Response budget:", transcripts["calls"][0]["query"])
+            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
+            self.assertIn("clarify", transcripts["calls"][0]["command"])
             checkpoint = json.loads(Path(summary.checkpoint_file).read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(checkpoint["literature_context"]), 1)
+
+    def test_run_session_command_explicit_toolsets_override_default_restriction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            self._write_config(config_path, evidence_dir)
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_run_toolsets",
+                executor=self._successful_executor,
+                command_timeout_seconds=5,
+                toolsets=["search"],
+            )
+
+            transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
+            self.assertIn("search", transcripts["calls"][0]["command"])
+            self.assertNotIn("clarify", transcripts["calls"][0]["command"])
 
     def test_run_session_command_supports_full_prompt_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -164,6 +188,25 @@ class SkillCliTests(unittest.TestCase):
             self.assertIsNotNone(summary.error)
             self.assertEqual(summary.final_verdict, "PENDING")
             self.assertTrue(any(path.endswith("_run_error.json") for path in summary.artifacts))
+
+    def test_run_session_command_does_not_clip_formal_timeout_to_live_role_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            self._write_config(config_path, evidence_dir)
+
+            with patch("deep_gvr.cli.AristotleFormalVerifier") as verifier_ctor:
+                verifier_ctor.return_value = object()
+                summary = run_session_command(
+                    "Explain why the surface code has a threshold.",
+                    config_path=config_path,
+                    session_id="session_cli_formal_timeout",
+                    executor=self._successful_executor,
+                    command_timeout_seconds=5,
+                )
+
+        self.assertEqual(summary.final_verdict, "VERIFIED")
+        self.assertNotIn("command_timeout_seconds", verifier_ctor.call_args.kwargs)
 
     def test_console_script_help(self) -> None:
         completed = subprocess.run(

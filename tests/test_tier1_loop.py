@@ -447,6 +447,107 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
             self.assertIsNotNone(evidence[1].simulation_results)
 
+    def test_invalid_simulation_spec_becomes_structured_simulation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
+            verify_calls = 0
+
+            def generator(request: GenerationRequest):
+                return _candidate("Quantitative hypothesis")
+
+            def verifier(request: VerificationRequest):
+                nonlocal verify_calls
+                verify_calls += 1
+                if request.simulation_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="Quantitative claim needs empirical support.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Empirical evidence is required."],
+                            caveats=[],
+                        ),
+                        tier2=Tier2Report(
+                            simulation_requested=True,
+                            reason="The claim predicts a logical error rate.",
+                            simulation_spec={
+                                "type": "monte_carlo_threshold",
+                                "code": "toric_code",
+                                "distances": [8, 12],
+                                "noise_model": "iid_depolarizing",
+                            },
+                            results=None,
+                            interpretation=None,
+                        ),
+                        tier3=[],
+                        flaws=["Empirical evidence is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                self.assertIsNotNone(request.simulation_results)
+                self.assertTrue(request.simulation_results.errors)
+                return VerificationReport(
+                    verdict=VerificationVerdict.CANNOT_VERIFY,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.UNCERTAIN,
+                                detail="The orchestrator could not execute the requested simulation spec.",
+                            )
+                        ],
+                        overall=VerificationVerdict.CANNOT_VERIFY,
+                        flaws=[],
+                        caveats=["Simulation request payload was invalid."],
+                    ),
+                    tier2=Tier2Report(
+                        simulation_requested=True,
+                        reason="The claim predicts a logical error rate.",
+                        simulation_spec=None,
+                        results=request.simulation_results.to_dict(),
+                        interpretation="The verifier-provided simulation spec was invalid.",
+                    ),
+                    tier3=[],
+                    flaws=[],
+                    caveats=["Simulation request payload was invalid."],
+                    cannot_verify_reason="The simulation request payload was invalid.",
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            result = runner.run(
+                problem="Check malformed Tier 2 mediation",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                simulator=None,
+                session_id="session_tier2_invalid_spec",
+            )
+
+            self.assertEqual(result.final_report.verdict, VerificationVerdict.CANNOT_VERIFY)
+            self.assertEqual(verify_calls, 2)
+            self.assertIsNotNone(result.final_report.tier2)
+            self.assertIsNotNone(result.final_report.tier2.results)
+            self.assertIn(
+                "Verifier returned an invalid simulation_spec",
+                result.final_report.tier2.results["errors"][0],
+            )
+            evidence = runner.session_store.read_evidence("session_tier2_invalid_spec")
+            self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
+            self.assertIsNotNone(evidence[1].simulation_results)
+            self.assertIn(
+                "Verifier returned an invalid simulation_spec",
+                evidence[1].simulation_results["errors"][0],
+            )
+
     def test_formal_request_runs_mediator_and_reverifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             runner = Tier1LoopRunner(

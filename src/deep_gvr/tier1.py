@@ -621,19 +621,36 @@ class Tier1LoopRunner:
         if tier2 is None or tier2.simulation_spec is None:
             raise ValueError("Simulation mediation requires a Tier 2 spec.")
 
-        sim_spec = SimSpec.from_dict(tier2.simulation_spec)
-        request = SimulationRequest(
-            session_id=checkpoint.session_id,
-            iteration=checkpoint.current_iteration,
-            sim_spec=sim_spec,
-            backend=self.config.verification.tier2.default_backend,
-        )
-        sim_results = simulator(request) if simulator is not None else self._run_simulation_request(request)
+        sim_spec_payload = dict(tier2.simulation_spec)
+        try:
+            sim_spec = SimSpec.from_dict(sim_spec_payload)
+        except (KeyError, TypeError, ValueError) as exc:
+            sim_results = SimResults(
+                simulator=str(sim_spec_payload.get("simulator", self.config.verification.tier2.default_simulator)),
+                adapter_version="0.1.0",
+                timestamp=self._timestamp(),
+                runtime_seconds=0.0,
+                backend=self.config.verification.tier2.default_backend,
+                data=[],
+                analysis=_empty_sim_analysis("invalid_spec"),
+                errors=[
+                    f"Verifier returned an invalid simulation_spec: {type(exc).__name__}: {exc}",
+                ],
+            )
+        else:
+            request = SimulationRequest(
+                session_id=checkpoint.session_id,
+                iteration=checkpoint.current_iteration,
+                sim_spec=sim_spec,
+                backend=self.config.verification.tier2.default_backend,
+            )
+            sim_results = simulator(request) if simulator is not None else self._run_simulation_request(request)
+            sim_spec_payload = sim_spec.to_dict()
 
         spec_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
             f"iteration_{checkpoint.current_iteration}_simulation_spec.json",
-            sim_spec.to_dict(),
+            sim_spec_payload,
         )
         results_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
