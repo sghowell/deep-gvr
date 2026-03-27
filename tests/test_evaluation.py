@@ -37,6 +37,12 @@ class EvaluationTests(unittest.TestCase):
         *,
         provider: str = "default",
         model: str = "",
+        generator_provider: str | None = None,
+        generator_model: str | None = None,
+        verifier_provider: str | None = None,
+        verifier_model: str | None = None,
+        reviser_provider: str | None = None,
+        reviser_model: str | None = None,
         context_file: str = "",
         domain_default: str = "qec",
     ) -> None:
@@ -44,6 +50,18 @@ class EvaluationTests(unittest.TestCase):
         payload["evidence"]["directory"] = str(evidence_dir)
         payload["models"]["orchestrator"]["provider"] = provider
         payload["models"]["orchestrator"]["model"] = model
+        if generator_provider is not None:
+            payload["models"]["generator"]["provider"] = generator_provider
+        if generator_model is not None:
+            payload["models"]["generator"]["model"] = generator_model
+        if verifier_provider is not None:
+            payload["models"]["verifier"]["provider"] = verifier_provider
+        if verifier_model is not None:
+            payload["models"]["verifier"]["model"] = verifier_model
+        if reviser_provider is not None:
+            payload["models"]["reviser"]["provider"] = reviser_provider
+        if reviser_model is not None:
+            payload["models"]["reviser"]["model"] = reviser_model
         payload["domain"]["default"] = domain_default
         payload["domain"]["context_file"] = context_file
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,6 +117,17 @@ class EvaluationTests(unittest.TestCase):
     def _failing_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
         del command, cwd
         return CommandExecutionResult(returncode=1, stdout="", stderr="simulated hermes failure")
+
+    def _route_fallback_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        provider = command[command.index("--provider") + 1] if "--provider" in command else "default"
+        model = command[command.index("--model") + 1] if "--model" in command else "configured-by-hermes"
+        if provider == "openrouter" and model.startswith("broken-"):
+            return CommandExecutionResult(
+                returncode=1,
+                stdout="",
+                stderr="BadRequestError\nError code: 400\nProvider: openrouter\nModel rejected.",
+            )
+        return self._successful_live_executor(command, cwd)
 
     def test_load_benchmark_suite_reads_expected_cases(self) -> None:
         cases = load_benchmark_suite(ROOT / "eval" / "known_problems.json")
@@ -232,6 +261,10 @@ class EvaluationTests(unittest.TestCase):
                 "Surface-code threshold under standard depolarizing assumptions is commonly reported around the sub-1% regime",
                 transcripts["calls"][0]["query"],
             )
+            self.assertIn(
+                "the familiar ~10.3% number is tied to independent X/Z decoding assumptions",
+                transcripts["calls"][0]["query"],
+            )
 
     def test_live_mode_uses_custom_domain_context_file_from_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -304,6 +337,54 @@ class EvaluationTests(unittest.TestCase):
             self.assertIn("--model", command)
             self.assertIn("openai", command)
             self.assertIn("gpt-5.4-mini", command)
+
+    def test_live_mode_falls_back_from_invalid_explicit_role_route_and_records_actual_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            self._write_config(
+                config_path,
+                evidence_dir,
+                provider="default",
+                model="",
+                generator_provider="openrouter",
+                generator_model="broken-generator",
+                verifier_provider="openrouter",
+                verifier_model="broken-verifier",
+            )
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._route_fallback_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertEqual(case.provider, "default")
+            self.assertEqual(case.model_used, "configured-by-hermes")
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(len(transcripts["calls"]), 4)
+            self.assertIn("broken-generator", transcripts["calls"][0]["command"])
+            self.assertNotIn("--provider", transcripts["calls"][1]["command"])
+            self.assertIn("broken-verifier", transcripts["calls"][2]["command"])
+            self.assertNotIn("--provider", transcripts["calls"][3]["command"])
+            evidence_log = Path(next(path for path in case.artifacts if path.endswith(".jsonl")))
+            evidence_records = [json.loads(line) for line in evidence_log.read_text(encoding="utf-8").splitlines()]
+            verify_record = next(record for record in evidence_records if record["phase"] == "verify")
+            self.assertEqual(verify_record["provider"], "default")
+            self.assertEqual(verify_record["model_used"], "configured-by-hermes")
+            self.assertTrue(
+                any("fell back from openrouter/broken-verifier" in note.lower() for note in verify_record["routing_notes"])
+            )
 
     def test_compact_prompt_profile_emits_shorter_query_than_full(self) -> None:
         prompt_root = ROOT / "prompts"

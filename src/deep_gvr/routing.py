@@ -25,6 +25,7 @@ class EffectiveModelRoute:
     routing_mode: RoutingMode = RoutingMode.DIRECT
     temperature: float | None = None
     notes: list[str] = field(default_factory=list)
+    fallback_routes: list["EffectiveModelRoute"] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -83,6 +84,77 @@ def build_routing_plan(
     )
 
 
+def build_live_routing_plan(
+    config: DeepGvrConfig,
+    routing_probe: CapabilityProbeResult | None = None,
+) -> RoutingPlan:
+    probe = routing_probe or probe_model_routing()
+    shared_plan = build_routing_plan(config, routing_probe=probe)
+    live_note = (
+        "Using configured top-level live role routing; the subagent routing probe does not block "
+        "separate Hermes chat calls."
+    )
+
+    generator_route = shared_plan.generator
+    if _selection_has_concrete_model(config.models.generator):
+        generator_route = _live_route(
+            _resolve_route("generator", config.models.generator),
+            fallback_route=shared_plan.generator,
+            live_note=live_note,
+        )
+
+    verifier_route = shared_plan.verifier
+    if _selection_has_concrete_model(config.models.verifier):
+        verifier_route = _live_route(
+            _resolve_route("verifier", config.models.verifier),
+            fallback_route=shared_plan.verifier,
+            live_note=live_note,
+        )
+
+    reviser_route = shared_plan.reviser
+    reviser_selection_is_explicit = _selection_has_concrete_model(config.models.reviser) or (
+        _selection_has_concrete_model(config.models.generator)
+        and config.models.reviser.provider == "default"
+        and not config.models.reviser.model.strip()
+    )
+    if reviser_selection_is_explicit:
+        generator_preference = (
+            _resolve_route("generator", config.models.generator)
+            if _selection_has_concrete_model(config.models.generator)
+            else shared_plan.generator
+        )
+        reviser_route = _live_route(
+            _resolve_route("reviser", config.models.reviser, generator_route=generator_preference),
+            fallback_route=shared_plan.reviser,
+            live_note=live_note,
+        )
+
+    uses_explicit_live_routes = any(
+        not _same_model_path(primary, fallback)
+        for primary, fallback in (
+            (generator_route, shared_plan.generator),
+            (verifier_route, shared_plan.verifier),
+            (reviser_route, shared_plan.reviser),
+        )
+    )
+    limitations = list(shared_plan.limitations)
+    if uses_explicit_live_routes and probe.status is not ProbeStatus.READY:
+        limitations.append(
+            "Live top-level role calls can prefer explicit configured provider/model paths even while "
+            "Hermes subagent routing remains fallback-only."
+        )
+
+    return RoutingPlan(
+        strategy=RoutingMode.DIRECT if uses_explicit_live_routes else shared_plan.strategy,
+        probe=probe,
+        orchestrator=shared_plan.orchestrator,
+        generator=generator_route,
+        verifier=verifier_route,
+        reviser=reviser_route,
+        limitations=limitations,
+    )
+
+
 def _resolve_route(
     role: str,
     selection: ModelSelection,
@@ -123,6 +195,39 @@ def _role_default_model(provider: str, role: str) -> str | None:
 
 def _same_model_path(left: EffectiveModelRoute, right: EffectiveModelRoute) -> bool:
     return left.provider == right.provider and left.model == right.model
+
+
+def _selection_has_concrete_model(selection: ModelSelection) -> bool:
+    return bool(selection.model.strip())
+
+
+def _live_route(
+    primary_route: EffectiveModelRoute,
+    *,
+    fallback_route: EffectiveModelRoute,
+    live_note: str,
+) -> EffectiveModelRoute:
+    notes = list(primary_route.notes)
+    fallback_routes: list[EffectiveModelRoute] = []
+    if not _same_model_path(primary_route, fallback_route):
+        notes.append(live_note)
+        fallback_routes.append(
+            EffectiveModelRoute(
+                provider=fallback_route.provider,
+                model=fallback_route.model,
+                routing_mode=fallback_route.routing_mode,
+                temperature=fallback_route.temperature,
+                notes=list(fallback_route.notes),
+            )
+        )
+    return EffectiveModelRoute(
+        provider=primary_route.provider,
+        model=primary_route.model,
+        routing_mode=primary_route.routing_mode,
+        temperature=primary_route.temperature,
+        notes=notes,
+        fallback_routes=fallback_routes,
+    )
 
 
 def _temperature_route(base: EffectiveModelRoute, role: str, reason: str) -> EffectiveModelRoute:

@@ -13,6 +13,7 @@ from .domain_context import load_domain_context
 from .evaluation import CommandExecutor, HermesPromptRoleRunner, LiveEvalConfig, benchmark_routing_probe
 from .formal import AristotleFormalVerifier, FormalVerifier
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
+from .routing import build_live_routing_plan
 from .runtime_config import (
     default_config_path,
     default_config_payload,
@@ -163,10 +164,12 @@ def _execute_command(
     resume_session_id: str | None = None,
 ) -> SkillSessionSummary:
     session_store = SessionStore(config.evidence.directory)
+    routing_probe = _resolve_routing_probe(routing_probe_mode)
     runner = Tier1LoopRunner(
         config,
         session_store=session_store,
-        routing_probe=_resolve_routing_probe(routing_probe_mode),
+        routing_probe=routing_probe,
+        routing_plan=build_live_routing_plan(config, routing_probe=routing_probe),
     )
     role_runner = HermesPromptRoleRunner(
         LiveEvalConfig(

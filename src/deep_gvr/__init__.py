@@ -48,7 +48,7 @@ from .formal import (
     inspect_aristotle_transport,
 )
 from .probes import run_capability_probes
-from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
+from .routing import EffectiveModelRoute, RoutingPlan, build_live_routing_plan, build_routing_plan
 from .tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -114,6 +114,7 @@ __all__ = [
     "VerificationReport",
     "VerificationVerdict",
     "build_routing_plan",
+    "build_live_routing_plan",
     "run_capability_probes",
     "write_benchmark_report",
 ]

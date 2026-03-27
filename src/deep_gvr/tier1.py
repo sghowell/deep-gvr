@@ -33,7 +33,7 @@ from .formal import (
     FormalVerificationResultSet,
     FormalVerifier,
 )
-from .routing import EffectiveModelRoute, build_routing_plan
+from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
 
 
 def _utc_now() -> datetime:
@@ -250,11 +250,12 @@ class Tier1LoopRunner:
         session_store: SessionStore | None = None,
         clock: Callable[[], datetime] | None = None,
         routing_probe: CapabilityProbeResult | None = None,
+        routing_plan: RoutingPlan | None = None,
     ) -> None:
         self.config = config
         self.clock = clock or _utc_now
         self.session_store = session_store or SessionStore(config.evidence.directory, clock=self.clock)
-        self.routing_plan = build_routing_plan(config, routing_probe=routing_probe)
+        self.routing_plan = routing_plan or build_routing_plan(config, routing_probe=routing_probe)
 
     def run(
         self,
@@ -364,6 +365,7 @@ class Tier1LoopRunner:
                 flaws=[],
                 input_summary=f"Research problem: {checkpoint.problem}",
                 output_summary=f"Hypothesis: {candidate.hypothesis}",
+                route=request.route,
             ),
         )
         self.session_store.save_checkpoint(checkpoint)
@@ -427,6 +429,7 @@ class Tier1LoopRunner:
                 output_summary=self._verification_summary(report),
                 simulation_results=simulation_results,
                 formal_results=formal_results,
+                route=request.route,
             ),
         )
 
@@ -485,6 +488,7 @@ class Tier1LoopRunner:
                 flaws=list(report.flaws),
                 input_summary=f"Applying verifier flaws: {self._flaw_summary(report.flaws)}",
                 output_summary=f"Revised hypothesis: {revised_candidate.hypothesis}",
+                route=request.route,
             ),
         )
         self.session_store.save_checkpoint(checkpoint)

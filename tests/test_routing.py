@@ -5,7 +5,7 @@ import unittest
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus, RoutingMode
-from deep_gvr.routing import build_routing_plan
+from deep_gvr.routing import build_live_routing_plan, build_routing_plan
 
 
 def _probe(status: ProbeStatus) -> CapabilityProbeResult:
@@ -69,6 +69,26 @@ class RoutingPlanTests(unittest.TestCase):
         self.assertEqual(plan.verifier.temperature, 0.2)
         self.assertEqual(plan.reviser.temperature, 0.4)
         self.assertEqual(plan.limitations, ["Test routing probe result."])
+
+    def test_live_fallback_probe_prefers_explicit_role_routes_with_shared_fallback(self) -> None:
+        config = DeepGvrConfig()
+        config.models.generator.provider = "openrouter"
+        config.models.generator.model = "claude-3.7-sonnet"
+        config.models.verifier.provider = "openrouter"
+        config.models.verifier.model = "deepseek-r1"
+
+        plan = build_live_routing_plan(config, routing_probe=_probe(ProbeStatus.FALLBACK))
+
+        self.assertEqual(plan.strategy, RoutingMode.DIRECT)
+        self.assertEqual(plan.generator.provider, "openrouter")
+        self.assertEqual(plan.generator.model, "claude-3.7-sonnet")
+        self.assertEqual(plan.verifier.provider, "openrouter")
+        self.assertEqual(plan.verifier.model, "deepseek-r1")
+        self.assertEqual(plan.generator.fallback_routes[0].provider, "default")
+        self.assertEqual(plan.generator.fallback_routes[0].model, "configured-by-hermes")
+        self.assertEqual(plan.verifier.fallback_routes[0].provider, "default")
+        self.assertEqual(plan.verifier.fallback_routes[0].model, "configured-by-hermes")
+        self.assertTrue(any("top-level live role routing" in note.lower() for note in plan.verifier.notes))
 
 
 if __name__ == "__main__":
