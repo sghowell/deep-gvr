@@ -262,7 +262,15 @@ class EvaluationTests(unittest.TestCase):
                 transcripts["calls"][0]["query"],
             )
             self.assertIn(
-                "the familiar ~10.3% number is tied to independent X/Z decoding assumptions",
+                "the familiar ~10.3% number is tied to independent X/Z decoding under code-capacity depolarizing assumptions",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "reserve it for the higher ~10.9% maximum-likelihood bit-flip threshold",
+                transcripts["calls"][0]["query"],
+            )
+            self.assertIn(
+                "If a work is named in the body, list it in `references`",
                 transcripts["calls"][0]["query"],
             )
 
@@ -434,6 +442,14 @@ class EvaluationTests(unittest.TestCase):
 
         self.assertIn("Response budget:", compact_query)
         self.assertNotIn("Response budget:", full_query)
+        self.assertIn(
+            "If you invoke the 2D RBIM or Nishimori-point mapping, reserve it for the higher ~10.9% maximum-likelihood bit-flip threshold",
+            compact_query,
+        )
+        self.assertIn(
+            "If a citation is not important enough to list in `references`, do not name it in the body.",
+            compact_query,
+        )
         self.assertLess(len(compact_query), len(full_query))
 
     def test_verifier_uses_timeout_floor_with_default_executor(self) -> None:
