@@ -1,9 +1,15 @@
 {
+  "mode": "deterministic",
+  "run_id": "baseline",
+  "runner_backend": "fixture",
+  "output_root": "eval/results",
+  "enabled_tiers": [1, 2, 3],
   "generated_at": "2026-03-26T00:00:00Z",
   "suite_path": "eval/known_problems.json",
   "routing_probe_status": "fallback",
   "cases": [
     {
+      "mode": "deterministic",
       "id": "known-correct-surface-threshold",
       "category": "known_correct",
       "scenario": "known_correct_surface_threshold",
@@ -16,6 +22,10 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-correct-surface-threshold",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     }
   ],

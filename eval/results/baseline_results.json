@@ -1,9 +1,19 @@
 {
+  "mode": "deterministic",
+  "run_id": "baseline",
+  "runner_backend": "fixture",
+  "output_root": "eval/results",
+  "enabled_tiers": [
+    1,
+    2,
+    3
+  ],
   "generated_at": "2026-03-26T00:00:00Z",
   "suite_path": "eval/known_problems.json",
   "routing_probe_status": "fallback",
   "cases": [
     {
+      "mode": "deterministic",
       "id": "known-correct-surface-threshold",
       "category": "known_correct",
       "scenario": "known_correct_surface_threshold",
@@ -20,9 +30,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-correct-surface-threshold",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "known-correct-planar-qubits",
       "category": "known_correct",
       "scenario": "known_correct_planar_qubits",
@@ -39,9 +54,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-correct-planar-qubits",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "known-correct-union-find",
       "category": "known_correct",
       "scenario": "known_correct_union_find",
@@ -58,9 +78,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-correct-union-find",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "known-incorrect-surface-threshold-5pct",
       "category": "known_incorrect",
       "scenario": "known_incorrect_surface_threshold_5pct",
@@ -77,9 +102,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-incorrect-surface-threshold-5pct",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "known-incorrect-color-codes-all-noise-models",
       "category": "known_incorrect",
       "scenario": "known_incorrect_color_codes_all_noise_models",
@@ -96,9 +126,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_known-incorrect-color-codes-all-noise-models",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "simulation-verified-distance5",
       "category": "simulation_required",
       "scenario": "simulation_verified_distance5",
@@ -117,9 +152,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_simulation-verified-distance5",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "simulation-rejected-distance7",
       "category": "simulation_required",
       "scenario": "simulation_rejected_distance7",
@@ -138,9 +178,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_simulation-rejected-distance7",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "formal-proved-repetition-majority",
       "category": "formalizable",
       "scenario": "formal_proved_repetition_majority",
@@ -159,9 +204,14 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_formal-proved-repetition-majority",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     },
     {
+      "mode": "deterministic",
       "id": "formal-unavailable-repetition-scaling",
       "category": "formalizable",
       "scenario": "formal_unavailable_repetition_scaling",
@@ -180,6 +230,10 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
+      "session_id": "eval_formal-unavailable-repetition-scaling",
+      "artifacts": [],
+      "runtime_seconds": 0.0,
+      "error": null,
       "notes": []
     }
   ],

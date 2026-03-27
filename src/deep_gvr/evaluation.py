@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import time
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .contracts import (
     AnalyticalCheck,
@@ -23,16 +26,22 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
-from .formal import FormalVerificationRequest, FormalVerifier
+from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
 from .probes import probe_model_routing
 from .tier1 import (
     GenerationRequest,
     RevisionRequest,
+    SessionPaths,
     SessionStore,
     SimulationRequest,
     Tier1LoopRunner,
     VerificationRequest,
 )
+
+_DETERMINISTIC_TIMESTAMP = "2026-03-26T00:00:00Z"
+_DETERMINISTIC_RUN_ID = "baseline"
+_ENABLED_TIERS = [1, 2, 3]
+_BASELINE_REPORT_PATH = Path("eval/results/baseline_results.json")
 
 
 def _serialize(value: Any) -> Any:
@@ -45,6 +54,14 @@ def _serialize(value: Any) -> Any:
     if isinstance(value, list):
         return [_serialize(item) for item in value]
     return value
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _isoformat(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass(slots=True)
@@ -73,6 +90,7 @@ class BenchmarkCase:
 
 @dataclass(slots=True)
 class BenchmarkCaseResult:
+    mode: str
     id: str
     category: str
     scenario: str
@@ -85,11 +103,16 @@ class BenchmarkCaseResult:
     routing_mode: str
     provider: str
     model_used: str
+    session_id: str
+    artifacts: list[str]
+    runtime_seconds: float
+    error: str | None = None
     notes: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkCaseResult":
         return cls(
+            mode=data["mode"],
             id=data["id"],
             category=data["category"],
             scenario=data["scenario"],
@@ -102,6 +125,10 @@ class BenchmarkCaseResult:
             routing_mode=data["routing_mode"],
             provider=data["provider"],
             model_used=data["model_used"],
+            session_id=data["session_id"],
+            artifacts=list(data.get("artifacts", [])),
+            runtime_seconds=float(data.get("runtime_seconds", 0.0)),
+            error=data.get("error"),
             notes=list(data.get("notes", [])),
         )
 
@@ -145,6 +172,11 @@ class BenchmarkSummary:
 
 @dataclass(slots=True)
 class BenchmarkReport:
+    mode: str
+    run_id: str
+    runner_backend: str
+    output_root: str
+    enabled_tiers: list[int]
     generated_at: str
     suite_path: str
     routing_probe_status: ProbeStatus
@@ -154,6 +186,11 @@ class BenchmarkReport:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkReport":
         return cls(
+            mode=data["mode"],
+            run_id=data["run_id"],
+            runner_backend=data["runner_backend"],
+            output_root=data["output_root"],
+            enabled_tiers=[int(item) for item in data["enabled_tiers"]],
             generated_at=data["generated_at"],
             suite_path=data["suite_path"],
             routing_probe_status=ProbeStatus(data["routing_probe_status"]),
@@ -189,51 +226,393 @@ class FixtureAgents:
     formal_verifier: FormalVerifier | None = None
 
 
-def load_benchmark_suite(path: str | Path) -> list[BenchmarkCase]:
+@dataclass(slots=True)
+class LiveEvalConfig:
+    hermes_binary: str = "hermes"
+    prompt_root: str | Path = "prompts"
+    command_timeout_seconds: int = 120
+    toolsets: list[str] = field(default_factory=list)
+    skills: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class CommandExecutionResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+class CommandExecutor(Protocol):
+    def __call__(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        ...
+
+
+@dataclass(slots=True)
+class LiveRoleTranscript:
+    role: str
+    provider: str
+    model: str
+    command: list[str]
+    prompt_path: str
+    query: str
+    response: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+class HermesPromptRoleRunner:
+    def __init__(
+        self,
+        config: LiveEvalConfig,
+        *,
+        prompt_root: Path,
+        executor: CommandExecutor | None = None,
+        cwd: Path | None = None,
+    ) -> None:
+        self.config = config
+        self.prompt_root = prompt_root
+        self.executor = executor or (
+            lambda command, cwd: _default_executor(command, cwd, config.command_timeout_seconds)
+        )
+        self.cwd = cwd or Path.cwd()
+        self.transcripts: list[LiveRoleTranscript] = []
+
+    def generator(self, request: GenerationRequest) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "problem": request.problem,
+            "domain": request.domain,
+            "literature_context": request.literature_context,
+            "prior_verdicts": [item.to_dict() for item in request.prior_verdicts],
+        }
+        response = self._run_role(
+            role="generator",
+            prompt_file="generator.md",
+            route_provider=request.route.provider,
+            route_model=request.route.model,
+            response_contract={
+                "hypothesis": "string",
+                "approach": "string",
+                "technical_details": ["string"],
+                "expected_results": ["string"],
+                "assumptions": ["string"],
+                "limitations": ["string"],
+                "references": ["string"],
+                "revision_notes": ["string"],
+            },
+            payload=payload,
+            route_notes=request.route.notes,
+            route_temperature=request.route.temperature,
+        )
+        return CandidateSolution.from_dict(_extract_json_object(response))
+
+    def verifier(self, request: VerificationRequest) -> VerificationReport:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "simulation_results": request.simulation_results.to_dict() if request.simulation_results else None,
+            "formal_results": [item.to_dict() for item in request.formal_results] if request.formal_results else None,
+        }
+        response = self._run_role(
+            role="verifier",
+            prompt_file="verifier.md",
+            route_provider=request.route.provider,
+            route_model=request.route.model,
+            response_contract={
+                "verdict": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+                "tier1": {
+                    "checks": [{"check": "string", "status": "pass|fail|uncertain", "detail": "string"}],
+                    "overall": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+                    "flaws": ["string"],
+                    "caveats": ["string"],
+                },
+                "tier2": {
+                    "simulation_requested": "boolean",
+                    "reason": "string",
+                    "simulation_spec": "object | null",
+                    "results": "object | null",
+                    "interpretation": "string | null",
+                },
+                "tier3": [
+                    {
+                        "claim": "string",
+                        "backend": "string",
+                        "proof_status": "requested|proved|disproved|timeout|error|unavailable",
+                        "details": "string",
+                        "lean_code": "string",
+                        "proof_time_seconds": "number | null",
+                    }
+                ],
+                "flaws": ["string"],
+                "caveats": ["string"],
+                "cannot_verify_reason": "string | null",
+            },
+            payload=payload,
+            route_notes=request.route.notes,
+            route_temperature=request.route.temperature,
+        )
+        return VerificationReport.from_dict(_extract_json_object(response))
+
+    def reviser(self, request: RevisionRequest) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "verification_report": request.verification_report.to_dict(),
+        }
+        response = self._run_role(
+            role="reviser",
+            prompt_file="reviser.md",
+            route_provider=request.route.provider,
+            route_model=request.route.model,
+            response_contract={
+                "hypothesis": "string",
+                "approach": "string",
+                "technical_details": ["string"],
+                "expected_results": ["string"],
+                "assumptions": ["string"],
+                "limitations": ["string"],
+                "references": ["string"],
+                "revision_notes": ["string"],
+            },
+            payload=payload,
+            route_notes=request.route.notes,
+            route_temperature=request.route.temperature,
+        )
+        return CandidateSolution.from_dict(_extract_json_object(response))
+
+    def _run_role(
+        self,
+        *,
+        role: str,
+        prompt_file: str,
+        route_provider: str,
+        route_model: str,
+        response_contract: dict[str, Any],
+        payload: dict[str, Any],
+        route_notes: list[str],
+        route_temperature: float | None,
+    ) -> str:
+        prompt_path = self.prompt_root / prompt_file
+        prompt_text = prompt_path.read_text(encoding="utf-8")
+        query = self._build_query(
+            role=role,
+            prompt_text=prompt_text,
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=route_notes,
+            route_temperature=route_temperature,
+        )
+        command = [self.config.hermes_binary, "chat", "-Q", "-q", query]
+        if route_provider not in {"", "default", "adapter"}:
+            command.extend(["--provider", route_provider])
+        if route_model not in {"", "configured-by-hermes", "provider-default"}:
+            command.extend(["--model", route_model])
+        if self.config.toolsets:
+            command.extend(["--toolsets", ",".join(self.config.toolsets)])
+        if self.config.skills:
+            command.extend(["--skills", ",".join(self.config.skills)])
+
+        result = self.executor(command, self.cwd)
+        transcript = LiveRoleTranscript(
+            role=role,
+            provider=route_provider,
+            model=route_model,
+            command=list(command),
+            prompt_path=_display_path(prompt_path),
+            query=query,
+            response=result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip(),
+        )
+        self.transcripts.append(transcript)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Hermes role {role!r} failed with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
+            )
+        return result.stdout
+
+    def _build_query(
+        self,
+        *,
+        role: str,
+        prompt_text: str,
+        payload: dict[str, Any],
+        response_contract: dict[str, Any],
+        route_notes: list[str],
+        route_temperature: float | None,
+    ) -> str:
+        route_lines = [f"- Role: {role}"]
+        if route_notes:
+            route_lines.extend(f"- Routing note: {note}" for note in route_notes)
+        if route_temperature is not None:
+            route_lines.append(
+                "- Requested temperature fallback is recorded by the harness, but Hermes CLI does not expose a temperature flag; rely on prompt separation only."
+            )
+
+        return (
+            "# deep-gvr live benchmark\n\n"
+            f"Role: {role}\n\n"
+            "Follow the role prompt below exactly when producing your answer.\n\n"
+            f"{prompt_text}\n\n"
+            "Return ONLY one JSON object. Do not wrap it in markdown fences. Do not add commentary.\n\n"
+            "JSON contract:\n"
+            f"{json.dumps(response_contract, indent=2)}\n\n"
+            "Routing context:\n"
+            f"{chr(10).join(route_lines)}\n\n"
+            "Request payload:\n"
+            f"{json.dumps(payload, indent=2)}\n"
+        )
+
+
+def load_benchmark_suite(
+    path: str | Path,
+    *,
+    case_ids: list[str] | tuple[str, ...] = (),
+    max_cases: int | None = None,
+) -> list[BenchmarkCase]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [BenchmarkCase.from_dict(item) for item in payload]
+    cases = [BenchmarkCase.from_dict(item) for item in payload]
+    if case_ids:
+        allowed = set(case_ids)
+        cases = [item for item in cases if item.id in allowed]
+    if max_cases is not None:
+        cases = cases[:max_cases]
+    return cases
 
 
 def run_benchmark_suite(
     suite_path: str | Path,
     *,
     routing_probe: CapabilityProbeResult | None = None,
+    mode: str = "deterministic",
+    output_root: str | Path | None = None,
+    run_id: str | None = None,
+    case_ids: list[str] | tuple[str, ...] = (),
+    max_cases: int | None = None,
+    live_config: LiveEvalConfig | None = None,
+    executor: CommandExecutor | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> BenchmarkReport:
     suite_file = Path(suite_path)
-    benchmark_cases = load_benchmark_suite(suite_file)
+    benchmark_cases = load_benchmark_suite(suite_file, case_ids=case_ids, max_cases=max_cases)
+    if not benchmark_cases:
+        raise ValueError(f"No benchmark cases selected from {suite_file}.")
     probe = routing_probe or probe_model_routing()
-    with TemporaryDirectory() as tmpdir:
-        evidence_root = Path(tmpdir) / "sessions"
-        results = [
-            _run_benchmark_case(case, evidence_root=evidence_root, routing_probe=probe)
-            for case in benchmark_cases
-        ]
+    clock = clock or _utc_now
+    now = clock()
+
+    if mode == "deterministic":
+        resolved_run_id = run_id or _DETERMINISTIC_RUN_ID
+        resolved_output_root = Path(output_root) if output_root is not None else Path("eval/results")
+        results = _run_deterministic_suite(benchmark_cases, probe)
+        generated_at = _DETERMINISTIC_TIMESTAMP
+        runner_backend = "fixture"
+    elif mode == "live":
+        resolved_run_id = run_id or now.strftime("%Y%m%dT%H%M%SZ")
+        resolved_output_root = (
+            Path(output_root) if output_root is not None else Path("eval/results/live") / resolved_run_id
+        )
+        results = _run_live_suite(
+            benchmark_cases,
+            routing_probe=probe,
+            output_root=resolved_output_root,
+            run_id=resolved_run_id,
+            live_config=live_config or LiveEvalConfig(),
+            executor=executor,
+        )
+        generated_at = _isoformat(now)
+        runner_backend = "hermes_chat"
+    else:
+        raise ValueError(f"Unsupported benchmark mode {mode!r}.")
 
     return BenchmarkReport(
-        generated_at="2026-03-26T00:00:00Z",
+        mode=mode,
+        run_id=resolved_run_id,
+        runner_backend=runner_backend,
+        output_root=_display_path(resolved_output_root),
+        enabled_tiers=list(_ENABLED_TIERS),
+        generated_at=generated_at,
         suite_path=_display_path(suite_file),
         routing_probe_status=probe.status,
         cases=results,
         summary=_summarize_results(results),
     )
 
-
-def write_benchmark_report(report: BenchmarkReport, path: str | Path) -> None:
+def write_benchmark_report(
+    report: BenchmarkReport,
+    path: str | Path,
+    *,
+    allow_baseline_overwrite: bool = False,
+) -> None:
     output_path = Path(path)
+    if report.mode == "live" and not allow_baseline_overwrite and _is_baseline_report_path(output_path):
+        raise ValueError(
+            "Live benchmark results must not overwrite eval/results/baseline_results.json without explicit approval."
+        )
+    _write_benchmark_report(report, output_path)
+
+
+def _write_benchmark_report(report: BenchmarkReport, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
 
 
-def _run_benchmark_case(
+def benchmark_routing_probe(status: ProbeStatus) -> CapabilityProbeResult:
+    return CapabilityProbeResult(
+        name="per_subagent_model_routing",
+        status=status,
+        summary="Benchmark routing probe override.",
+        preferred_outcome="Route generator and verifier to distinct providers or models.",
+        fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
+        details={"source": "benchmark_fixture"},
+    )
+
+
+def _run_deterministic_suite(
+    benchmark_cases: list[BenchmarkCase],
+    routing_probe: CapabilityProbeResult,
+) -> list[BenchmarkCaseResult]:
+    with TemporaryDirectory() as tmpdir:
+        evidence_root = Path(tmpdir) / "sessions"
+        return [
+            _run_fixture_case(case, evidence_root=evidence_root, routing_probe=routing_probe)
+            for case in benchmark_cases
+        ]
+
+
+def _run_live_suite(
+    benchmark_cases: list[BenchmarkCase],
+    *,
+    routing_probe: CapabilityProbeResult,
+    output_root: Path,
+    run_id: str,
+    live_config: LiveEvalConfig,
+    executor: CommandExecutor | None,
+) -> list[BenchmarkCaseResult]:
+    output_root.mkdir(parents=True, exist_ok=True)
+    results: list[BenchmarkCaseResult] = []
+    for case in benchmark_cases:
+        results.append(
+            _run_live_case(
+                case,
+                routing_probe=routing_probe,
+                output_root=output_root,
+                run_id=run_id,
+                live_config=live_config,
+                executor=executor,
+            )
+        )
+    return results
+
+
+def _run_fixture_case(
     case: BenchmarkCase,
     *,
     evidence_root: Path,
     routing_probe: CapabilityProbeResult,
 ) -> BenchmarkCaseResult:
-    config = DeepGvrConfig()
-    config.evidence.directory = str(evidence_root / case.id)
-    config.loop.max_iterations = 1
-    config.verification.tier3.enabled = True
+    config = _benchmark_config(str(evidence_root / case.id))
     session_store = SessionStore(config.evidence.directory)
     tier_runner = Tier1LoopRunner(config, session_store=session_store, routing_probe=routing_probe)
     agents = _fixture_agents(case)
@@ -256,6 +635,7 @@ def _run_benchmark_case(
     if verify_record.tiers_applied != case.expected_tiers:
         notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
     return BenchmarkCaseResult(
+        mode="deterministic",
         id=case.id,
         category=case.category,
         scenario=case.scenario,
@@ -268,8 +648,160 @@ def _run_benchmark_case(
         routing_mode=verify_record.routing_mode.value,
         provider=verify_record.provider,
         model_used=verify_record.model_used,
+        session_id=result.session_id,
+        artifacts=[],
+        runtime_seconds=0.0,
+        error=None,
         notes=notes,
     )
+
+
+def _run_live_case(
+    case: BenchmarkCase,
+    *,
+    routing_probe: CapabilityProbeResult,
+    output_root: Path,
+    run_id: str,
+    live_config: LiveEvalConfig,
+    executor: CommandExecutor | None,
+) -> BenchmarkCaseResult:
+    started = time.perf_counter()
+    prompt_root = Path(live_config.prompt_root)
+    if not prompt_root.is_absolute():
+        prompt_root = _repo_root() / prompt_root
+    case_root = output_root / "cases" / case.id
+    sessions_root = output_root / "sessions"
+    case_root.mkdir(parents=True, exist_ok=True)
+    config = _benchmark_config(str(sessions_root))
+    session_store = SessionStore(config.evidence.directory)
+    tier_runner = Tier1LoopRunner(config, session_store=session_store, routing_probe=routing_probe)
+    live_runner = HermesPromptRoleRunner(
+        live_config,
+        prompt_root=prompt_root,
+        executor=executor,
+        cwd=_repo_root(),
+    )
+    session_id = f"{run_id}_{case.id}"
+    route_provider = tier_runner.routing_plan.verifier.provider
+    route_model = tier_runner.routing_plan.verifier.model
+    notes: list[str] = []
+    error: str | None = None
+    actual_verdict = VerificationVerdict.CANNOT_VERIFY
+    actual_tiers: list[int] = []
+    iterations = 0
+    artifacts: list[str] = []
+    try:
+        result = tier_runner.run(
+            problem=case.prompt,
+            generator=live_runner.generator,
+            verifier=live_runner.verifier,
+            reviser=live_runner.reviser,
+            simulator=None,
+            formal_verifier=AristotleFormalVerifier(),
+            session_id=session_id,
+        )
+        evidence = session_store.read_evidence(result.session_id)
+        verify_record = next(record for record in reversed(evidence) if record.phase == "verify")
+        actual_verdict = result.final_report.verdict
+        actual_tiers = list(verify_record.tiers_applied)
+        iterations = len(result.checkpoint.verdict_history)
+        route_provider = verify_record.provider
+        route_model = verify_record.model_used
+        artifacts = _persist_live_case_artifacts(
+            case_root=case_root,
+            result=result,
+            session_store=session_store,
+            transcripts=live_runner.transcripts,
+        )
+        if result.final_report.verdict is not case.expected_verdict:
+            notes.append(
+                f"Expected verdict {case.expected_verdict.value}, got {result.final_report.verdict.value}."
+            )
+        if verify_record.tiers_applied != case.expected_tiers:
+            notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
+        if verify_record.routing_temperature is not None:
+            notes.append("Hermes CLI does not expose temperature overrides; prompt separation only was applied.")
+        routing_mode = verify_record.routing_mode.value
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        notes.append(f"Live benchmark execution failed: {error}")
+        routing_mode = tier_runner.routing_plan.verifier.routing_mode.value
+        transcript_path = case_root / "role_transcripts.json"
+        _write_json(transcript_path, {"calls": [item.to_dict() for item in live_runner.transcripts]})
+        _write_json(
+            case_root / "live_error.json",
+            {"case_id": case.id, "error": error, "notes": notes},
+        )
+        artifacts = [
+            _display_path(case_root / "live_error.json"),
+            _display_path(transcript_path),
+            *_session_artifact_paths(session_store.session_paths(session_id)),
+        ]
+    passed = error is None and actual_verdict is case.expected_verdict and actual_tiers == case.expected_tiers
+    case_result = BenchmarkCaseResult(
+        mode="live",
+        id=case.id,
+        category=case.category,
+        scenario=case.scenario,
+        expected_verdict=case.expected_verdict,
+        actual_verdict=actual_verdict,
+        expected_tiers=list(case.expected_tiers),
+        actual_tiers=actual_tiers,
+        iterations=iterations,
+        passed=passed,
+        routing_mode=routing_mode,
+        provider=route_provider,
+        model_used=route_model,
+        session_id=session_id,
+        artifacts=artifacts,
+        runtime_seconds=round(time.perf_counter() - started, 3),
+        error=error,
+        notes=notes,
+    )
+    case_result_path = case_root / "case_result.json"
+    if _display_path(case_result_path) not in case_result.artifacts:
+        case_result.artifacts.append(_display_path(case_result_path))
+    _write_json(case_result_path, case_result.to_dict())
+    return case_result
+
+
+def _persist_live_case_artifacts(
+    *,
+    case_root: Path,
+    result: Any,
+    session_store: SessionStore,
+    transcripts: list[LiveRoleTranscript],
+) -> list[str]:
+    artifacts: list[str] = []
+    candidate_path = case_root / "candidate_solution.json"
+    report_path = case_root / "verification_report.json"
+    transcript_path = case_root / "role_transcripts.json"
+    _write_json(candidate_path, result.final_candidate.to_dict())
+    _write_json(report_path, result.final_report.to_dict())
+    _write_json(transcript_path, {"calls": [item.to_dict() for item in transcripts]})
+    artifacts.extend(
+        [
+            _display_path(candidate_path),
+            _display_path(report_path),
+            _display_path(transcript_path),
+            *_session_artifact_paths(result.session_paths),
+        ]
+    )
+    for artifact in result.checkpoint.artifacts:
+        artifacts.append(_resolve_session_artifact_path(session_store, result.session_id, artifact))
+    deduped: list[str] = []
+    for artifact in artifacts:
+        if artifact not in deduped:
+            deduped.append(artifact)
+    return deduped
+
+
+def _benchmark_config(evidence_directory: str) -> DeepGvrConfig:
+    config = DeepGvrConfig()
+    config.evidence.directory = evidence_directory
+    config.loop.max_iterations = 1
+    config.verification.tier3.enabled = True
+    return config
 
 
 def _summarize_results(results: list[BenchmarkCaseResult]) -> BenchmarkSummary:
@@ -320,12 +852,87 @@ def _ratio(numerator: int, denominator: int) -> float:
     return round(numerator / denominator, 3)
 
 
-def _display_path(path: Path) -> str:
-    repo_root = Path(__file__).resolve().parents[2]
+def _display_path(path: str | Path) -> str:
+    resolved = Path(path)
+    repo_root = _repo_root()
     try:
-        return path.resolve().relative_to(repo_root).as_posix()
+        return resolved.resolve().relative_to(repo_root).as_posix()
     except ValueError:
-        return path.as_posix()
+        return resolved.as_posix()
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _default_executor(
+    command: list[str],
+    cwd: Path,
+    timeout_seconds: int | None = None,
+) -> CommandExecutionResult:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+        return CommandExecutionResult(returncode=completed.returncode, stdout=completed.stdout, stderr=completed.stderr)
+    except subprocess.TimeoutExpired as exc:
+        timeout_text = timeout_seconds if timeout_seconds is not None else "the configured"
+        return CommandExecutionResult(
+            returncode=124,
+            stdout=exc.stdout or "",
+            stderr=f"Hermes command timed out after {timeout_text} seconds.",
+        )
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _session_artifact_paths(session_paths: SessionPaths) -> list[str]:
+    artifacts: list[str] = []
+    for path in (session_paths.evidence_log, session_paths.checkpoint_file):
+        if path.exists():
+            artifacts.append(_display_path(path))
+    return artifacts
+
+
+def _resolve_session_artifact_path(session_store: SessionStore, session_id: str, artifact: str) -> str:
+    artifact_path = Path(artifact)
+    if artifact_path.is_absolute():
+        return _display_path(artifact_path)
+    session_root = session_store.session_paths(session_id).session_dir.parent
+    return _display_path(session_root / artifact_path)
+
+
+def _is_baseline_report_path(path: Path) -> bool:
+    target = path.expanduser()
+    if not target.is_absolute() and target.as_posix() == _BASELINE_REPORT_PATH.as_posix():
+        return True
+    baseline = (_repo_root() / _BASELINE_REPORT_PATH).resolve()
+    try:
+        return target.resolve() == baseline
+    except FileNotFoundError:
+        return target.parent.resolve() == baseline.parent and target.name == baseline.name
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(text):
+        if char not in "{[":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    raise ValueError(f"Could not parse a JSON object from Hermes output: {text[:200]!r}")
 
 
 def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
@@ -418,7 +1025,7 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             return SimResults(
                 simulator="stim",
                 adapter_version="0.1.0",
-                timestamp="2026-03-26T00:00:00Z",
+                timestamp=_DETERMINISTIC_TIMESTAMP,
                 runtime_seconds=0.2,
                 backend=Backend.LOCAL,
                 data=[],
@@ -434,7 +1041,7 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             return SimResults(
                 simulator="stim",
                 adapter_version="0.1.0",
-                timestamp="2026-03-26T00:00:00Z",
+                timestamp=_DETERMINISTIC_TIMESTAMP,
                 runtime_seconds=0.2,
                 backend=Backend.LOCAL,
                 data=[],
@@ -479,17 +1086,6 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
         reviser=reviser,
         simulator=simulator if case.scenario.startswith("simulation_") else None,
         formal_verifier=formal_verifier if case.scenario.startswith("formal_") else None,
-    )
-
-
-def benchmark_routing_probe(status: ProbeStatus) -> CapabilityProbeResult:
-    return CapabilityProbeResult(
-        name="per_subagent_model_routing",
-        status=status,
-        summary="Benchmark routing probe override.",
-        preferred_outcome="Route generator and verifier to distinct providers or models.",
-        fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
-        details={"source": "benchmark_fixture"},
     )
 
 

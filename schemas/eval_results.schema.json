@@ -1,9 +1,29 @@
 {
   "type": "object",
-  "required": ["generated_at", "suite_path", "routing_probe_status", "cases", "summary"],
+  "required": [
+    "mode",
+    "run_id",
+    "runner_backend",
+    "output_root",
+    "enabled_tiers",
+    "generated_at",
+    "suite_path",
+    "routing_probe_status",
+    "cases",
+    "summary"
+  ],
   "additionalProperties": false,
   "properties": {
-    "generated_at": { "type": "string" },
+    "mode": { "type": "string", "enum": ["deterministic", "live"] },
+    "run_id": { "type": "string", "minLength": 1 },
+    "runner_backend": { "type": "string", "enum": ["fixture", "hermes_chat"] },
+    "output_root": { "type": "string", "minLength": 1 },
+    "enabled_tiers": {
+      "type": "array",
+      "items": { "type": "integer", "enum": [1, 2, 3] },
+      "minItems": 1
+    },
+    "generated_at": { "type": "string", "minLength": 1 },
     "suite_path": { "type": "string", "minLength": 1 },
     "routing_probe_status": { "type": "string", "enum": ["ready", "fallback", "blocked"] },
     "cases": {
@@ -11,6 +31,7 @@
       "items": {
         "type": "object",
         "required": [
+          "mode",
           "id",
           "category",
           "scenario",
@@ -23,10 +44,15 @@
           "routing_mode",
           "provider",
           "model_used",
+          "session_id",
+          "artifacts",
+          "runtime_seconds",
+          "error",
           "notes"
         ],
         "additionalProperties": false,
         "properties": {
+          "mode": { "type": "string", "enum": ["deterministic", "live"] },
           "id": { "type": "string", "minLength": 1 },
           "category": { "type": "string", "minLength": 1 },
           "scenario": { "type": "string", "minLength": 1 },
@@ -34,11 +60,15 @@
           "actual_verdict": { "type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"] },
           "expected_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
           "actual_tiers": { "type": "array", "items": { "type": "integer", "enum": [1, 2, 3] } },
-          "iterations": { "type": "integer", "minimum": 1 },
+          "iterations": { "type": "integer", "minimum": 0 },
           "passed": { "type": "boolean" },
           "routing_mode": { "type": "string", "enum": ["direct", "temperature_decorrelation"] },
           "provider": { "type": "string" },
           "model_used": { "type": "string" },
+          "session_id": { "type": "string", "minLength": 1 },
+          "artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "runtime_seconds": { "type": "number", "minimum": 0 },
+          "error": { "type": ["string", "null"] },
           "notes": { "type": "array", "items": { "type": "string" } }
         }
       }
