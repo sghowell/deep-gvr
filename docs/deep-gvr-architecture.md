@@ -4,12 +4,14 @@
 **Organization:** Zetetic Works Research Corporation
 **Repository:** `zetetic-works/deep-gvr`
 **License:** MIT
-**Status:** Design, pre-implementation
+**Status:** Target architecture; implementation status is tracked separately
 **Version:** 0.1.0 (initial release target)
 **Date:** March 26, 2026
 **Authors:** Sean, with Claude
 
 ---
+
+Current implementation progress, temporary gaps, and retirement slices are tracked in [architecture-status.md](architecture-status.md). This document remains the target-state design for `deep-gvr`; temporary runtime substitutions are not the intended end state.
 
 ## 1. Overview
 

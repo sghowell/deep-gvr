@@ -3,6 +3,7 @@
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
 The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a runnable `deep-gvr` command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification through Hermes MCP when Aristotle is configured, with structured fallback when it is not.
+Target-state alignment is tracked in [docs/architecture-status.md](docs/architecture-status.md); current substitutions are temporary gaps with owning retirement slices, not the intended long-term surface.
 
 ## What Exists Now
 
@@ -20,6 +21,14 @@ The repository is intentionally structured for Codex-driven implementation. The 
 - Runnable CLI surface in `src/deep_gvr/cli.py`
 - Initial implementation backlog in `plans/`
 - Deterministic benchmark runner and recorded release baseline in `eval/`
+
+## Temporary Architecture Gaps
+
+- `hermes-native-orchestrator`: the supported runtime still executes role prompts through separate top-level `hermes chat` calls instead of Hermes-native delegated role execution. Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)
+- `subagent-capability-closure`: per-subagent routing and verifier-side MCP access are still not real supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
+- `formal-proof-lifecycle`: Tier 3 is still a bounded proof attempt rather than a full submission, polling, and resume lifecycle. Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
+- `remote-backend-completion`: Tier 2 is still local-first; Modal and SSH remain incomplete runtime paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
+- `evidence-system-completion`: evidence is still file-backed only; Hermes memory persistence and Parallax compatibility remain to be implemented. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
 ## Intended Public Surface
 
@@ -113,7 +122,7 @@ For simulation-testable quantitative claims that name concrete distances, error 
 For live known-incorrect benchmark cases, the runner now also treats a verified direct refutation as success instead of requiring the generator to role-play a false claim.
 Simulation-backed rejected benchmark claims can now also pass as accepted refutations when the live run clearly disproves the target claim.
 For compact theorem claims, the live verifier now keeps proof-oriented cases on Tier 3 and returns `CANNOT_VERIFY` when the core theorem claim only has failed Tier 3 results.
-The current representative stability gate is still `--subset live-expansion --repeat 2`; plan 21 recorded a clean `2/2` repeated sweep at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`. The new `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` subsets are broader coverage sweeps rather than the fast repeated gate. Plan 23 removed the prior analytical tier-mismatch and timeout mix, but the repeated `live-analytical-breadth` sweep is currently blocked on this machine by a Hermes provider-auth failure (`nous/claude-opus-4-6` returning HTTP 401), not by repo-local prompt or routing logic.
+The current representative stability gate is still `--subset live-expansion --repeat 2`; plan 21 recorded a clean `2/2` repeated sweep at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`. The new `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` subsets are broader coverage sweeps rather than the fast repeated gate. Plan 23 removed the prior analytical tier-mismatch and timeout mix, but the repeated `live-analytical-breadth` sweep is currently blocked on this machine by a Hermes provider-auth failure (`nous/claude-opus-4-6` returning HTTP 401), not by repo-local prompt or routing logic. Retirement slice for the runtime-side delegated and routing closure: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md) and [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 
 ## Reference Docs
 

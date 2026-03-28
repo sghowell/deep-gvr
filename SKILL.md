@@ -6,6 +6,15 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 
 The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the Python orchestration helper, append-only evidence logging, checkpoint-based resume, the same Hermes prompt execution path used by live evaluation, and a Hermes-MCP-backed Tier 3 transport path when Aristotle is configured.
 Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
+Current target-state gaps are tracked in [docs/architecture-status.md](docs/architecture-status.md); the temporary runtime substitutions below each point to a retirement slice.
+
+## Temporary Architecture Gaps
+
+- `hermes-native-orchestrator`: `/deep-gvr` still executes role prompts through separate top-level `hermes chat` calls rather than Hermes-native delegated role execution. Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)
+- `subagent-capability-closure`: per-subagent routing and verifier-direct MCP are still not supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
+- `formal-proof-lifecycle`: Tier 3 still ends at one bounded proof attempt instead of a full submission and polling lifecycle. Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
+- `remote-backend-completion`: Modal and SSH are still incomplete Tier 2 execution paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
+- `evidence-system-completion`: Hermes memory persistence and Parallax-compatible evidence outputs are still missing. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
 ## Intended Commands
 
@@ -63,18 +72,18 @@ When the user invokes `/deep-gvr`:
 - Literature-grounded threshold explanations and pure asymptotic-counting claims now stay on Tier 1 by default unless the candidate adds a genuinely new empirical or formal obligation.
 - Live CLI/eval now treat concrete role-model pins as explicit top-level route intent and will fall back to the shared live route when Hermes rejects that provider/model path as a route-configuration error.
 - Plain-text provider auth/401 failures from Hermes are now treated as live route configuration errors instead of bubbling up as JSON parse failures.
-- If Hermes cannot route models per subagent, fall back to the orchestrator route with prompt and temperature decorrelation, and record that limitation in evidence.
+- If Hermes cannot yet route models per subagent, treat the current route sharing as a temporary gap and record it in evidence. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 - Hermes CLI does not currently expose a temperature flag, so live evaluation records the intended fallback temperature values while relying on prompt separation only at execution time.
 - Hermes-backed live execution supports `compact` and `full` prompt profiles. `compact` is the default runtime path; `full` is the debugging path when prompt scaffolding needs inspection.
 - Live generator/verifier/reviser calls now default to a constrained Hermes tool surface when `--toolsets` is omitted, so prompt execution does not inherit the full interactive CLI tool policy by default.
 - Live evaluation treats `--command-timeout-seconds` as the base role timeout, applies a higher repo-local floor to the verifier, applies a larger follow-up floor once Tier 2 or Tier 3 evidence is attached, and leaves Tier 3 formal transport on the configured proof timeout.
-- Tier 3 transport readiness is separate from subagent MCP inheritance. The verifier still does not assume direct MCP access; the orchestrator checks for `mcp_servers.aristotle` and mediates the proof attempt.
+- Tier 3 transport readiness is separate from subagent MCP inheritance. The current orchestrator-mediated proof path is a temporary gap rather than the end state. Retirement slices: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md) and [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
 - For live known-incorrect benchmark cases, the evaluation runner now accepts a verified direct refutation as success instead of forcing the generator to produce a false candidate.
 - The same accepted-refutation scoring now also covers simulation-backed direct refutations when the live run clearly disproves the benchmark claim.
 - The accepted-refutation scoring now also recognizes conservative explicit refutations of the 5% circuit-level threshold claim when they clearly reject the claim and ground it in a sub-1% or `~0.6-0.8%` literature range.
 - Live case results now expose `strict_verdict_match`, `verdict_accepted`, `tiers_matched_expected`, `accepted_refutation`, and an explicit `outcome`, and repeated eval runs write a `consistency_report.json` so stability is measured structurally instead of from free-form notes.
 - For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without attached `simulation_results`, the live verifier guidance now defaults to requesting Tier 2.
 - For compact theorem or asymptotic proof claims, the live prompts now avoid unnecessary Tier 2 escalation and force `CANNOT_VERIFY` when the core theorem only has failed Tier 3 proof results.
-- The current remaining blocker for repeated `live-analytical-breadth` on this machine is operational, not repo-local: Hermes is rejecting the active `nous/claude-opus-4-6` provider path with HTTP 401 during generator calls.
+- The current remaining blocker for repeated `live-analytical-breadth` on this machine is operational, not repo-local: Hermes is rejecting the active `nous/claude-opus-4-6` provider path with HTTP 401 during generator calls. Retirement slices for the runtime-path closure: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md) and [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 
 See [docs/system-overview.md](docs/system-overview.md), [docs/contracts-and-artifacts.md](docs/contracts-and-artifacts.md), and the plans in `plans/` before implementing the full orchestrator.
