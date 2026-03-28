@@ -66,6 +66,43 @@ REQUIRED_PROMPT_MARKERS = {
     "simulator.md": ["python adapters/<simulator>_adapter.py", "confidence assessment", "If the simulation fails"],
 }
 
+OPEN_ARCHITECTURE_ITEMS = {
+    "hermes-native-orchestrator": "25-hermes-native-orchestrator.md",
+    "subagent-capability-closure": "26-subagent-capability-closure.md",
+    "formal-proof-lifecycle": "27-formal-proof-lifecycle.md",
+    "remote-backend-completion": "28-remote-backend-completion.md",
+    "evidence-system-completion": "29-evidence-system-completion.md",
+    "release-surface-completion": "30-release-surface-completion.md",
+    "opengauss-formal-backend": "31-opengauss-formal-backend.md",
+    "fanout-and-escalation": "32-fanout-and-escalation.md",
+    "domain-adapter-expansion": "33-domain-adapter-expansion.md",
+}
+
+ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_external"}
+
+REQUIRED_RETIREMENT_REFERENCES = {
+    "README.md": [
+        "Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)",
+        "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
+        "Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)",
+        "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
+        "Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)",
+    ],
+    "SKILL.md": [
+        "Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)",
+        "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
+        "Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)",
+        "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
+        "Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)",
+    ],
+    "docs/capability-probes.md": [
+        "Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)",
+        "Retirement slice: [27-formal-proof-lifecycle.md](../plans/27-formal-proof-lifecycle.md)",
+        "Retirement slice: [28-remote-backend-completion.md](../plans/28-remote-backend-completion.md)",
+        "Retirement slice: [29-evidence-system-completion.md](../plans/29-evidence-system-completion.md)",
+    ],
+}
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -80,6 +117,7 @@ def run_all_checks() -> list[str]:
     messages.extend(check_prompt_files(root))
     messages.extend(check_schemas_and_templates(root))
     messages.extend(check_release_surfaces(root))
+    messages.extend(check_architecture_completion_tracking(root))
     messages.extend(check_architecture_boundaries(root))
     return messages
 
@@ -215,3 +253,88 @@ def check_release_surfaces(root: Path) -> list[str]:
         if path.stat().st_mode & 0o111 == 0:
             errors.append(f"{path.relative_to(root)}: expected executable bit to be set")
     return errors
+
+
+def check_architecture_completion_tracking(root: Path) -> list[str]:
+    errors: list[str] = []
+    ledger_path = root / "docs" / "architecture-status.md"
+    if not ledger_path.exists():
+        return ["docs/architecture-status.md: required architecture ledger is missing"]
+
+    text = ledger_path.read_text(encoding="utf-8")
+    if "## Open Architecture Items" not in text:
+        errors.append("docs/architecture-status.md: missing '## Open Architecture Items' section")
+    else:
+        errors.extend(_check_open_architecture_table(text))
+
+    for relative_path, required_snippets in REQUIRED_RETIREMENT_REFERENCES.items():
+        body = (root / relative_path).read_text(encoding="utf-8")
+        for snippet in required_snippets:
+            if snippet not in body:
+                errors.append(f"{relative_path}: missing retirement-slice reference {snippet!r}")
+    return errors
+
+
+def _check_open_architecture_table(text: str) -> list[str]:
+    errors: list[str] = []
+    rows = _extract_open_architecture_rows(text)
+    seen: dict[str, str] = {}
+
+    for line in rows:
+        parts = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(parts) != 7:
+            errors.append(
+                "docs/architecture-status.md: open architecture row must have 7 columns: "
+                f"{line.strip()}"
+            )
+            continue
+        item_id, status, _target, _current_state, _dependency, owning_slice, retirement_criteria = parts
+        if item_id in seen:
+            errors.append(f"docs/architecture-status.md: duplicate open architecture item {item_id!r}")
+            continue
+        seen[item_id] = status
+        if item_id not in OPEN_ARCHITECTURE_ITEMS:
+            errors.append(f"docs/architecture-status.md: unexpected open architecture item {item_id!r}")
+            continue
+        if status not in ALLOWED_OPEN_ARCHITECTURE_STATUSES:
+            errors.append(
+                "docs/architecture-status.md: "
+                f"item {item_id!r} must use one of {sorted(ALLOWED_OPEN_ARCHITECTURE_STATUSES)}, got {status!r}"
+            )
+        expected_plan = OPEN_ARCHITECTURE_ITEMS[item_id]
+        expected_link = f"[{expected_plan}](../plans/{expected_plan})"
+        if expected_link not in owning_slice:
+            errors.append(
+                "docs/architecture-status.md: "
+                f"item {item_id!r} must link to owning slice {expected_link!r}"
+            )
+        if not retirement_criteria:
+            errors.append(
+                "docs/architecture-status.md: "
+                f"item {item_id!r} must include retirement criteria"
+            )
+
+    for item_id in OPEN_ARCHITECTURE_ITEMS:
+        if item_id not in seen:
+            errors.append(
+                f"docs/architecture-status.md: missing open architecture item {item_id!r}"
+            )
+    return errors
+
+
+def _extract_open_architecture_rows(text: str) -> list[str]:
+    in_section = False
+    rows: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            in_section = line == "## Open Architecture Items"
+            continue
+        if not in_section:
+            continue
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        if stripped.startswith("| Item ID ") or stripped.startswith("|---"):
+            continue
+        rows.append(line)
+    return rows
