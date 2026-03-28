@@ -5,15 +5,13 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
-
 import yaml
 
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.cli import load_runtime_config, resume_session_command, run_session_command
 from deep_gvr.contracts import DeepGvrConfig
-from deep_gvr.evaluation import CommandExecutionResult
+from deep_gvr.orchestrator import CommandExecutionResult
 from deep_gvr.tier1 import SessionStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,41 +27,27 @@ class SkillCliTests(unittest.TestCase):
     def _successful_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
         del cwd
         query = command[command.index("-q") + 1]
-        if "Role: generator" in query:
-            payload = {
-                "hypothesis": "The surface code has a threshold under standard depolarizing noise assumptions.",
-                "approach": "Use established threshold literature as the candidate basis.",
-                "technical_details": ["Threshold behavior is already well established in the cited literature."],
-                "expected_results": ["The verifier should accept the claim analytically."],
-                "assumptions": ["Standard depolarizing-noise assumptions apply."],
-                "limitations": ["This is a test fixture response."],
-                "references": ["Dennis et al. 2002"],
-                "revision_notes": [],
-            }
-            return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
-        if "Role: verifier" in query:
-            payload = {
-                "verdict": "VERIFIED",
-                "tier1": {
-                    "checks": [
-                        {
-                            "check": "benchmark_ground_truth",
-                            "status": "pass",
-                            "detail": "The claim matches established threshold literature.",
-                        }
-                    ],
-                    "overall": "VERIFIED",
-                    "flaws": [],
-                    "caveats": [],
-                },
-                "tier2": None,
-                "tier3": [],
-                "flaws": [],
-                "caveats": [],
-                "cannot_verify_reason": None,
-            }
-            return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
-        return CommandExecutionResult(returncode=1, stdout="", stderr=f"Unexpected command: {command}")
+        self.assertIn("--skills", command)
+        self.assertIn("deep-gvr", command[command.index("--skills") + 1])
+        self.assertIn("delegated orchestrator runtime", query)
+        payload = {
+            "command": "run" if '"command": "run"' in query else "resume",
+            "session_id": "session_cli_run" if '"command": "run"' in query else "session_cli_resume",
+            "status": "completed",
+            "final_verdict": "VERIFIED",
+            "result_summary": "Delegated orchestration completed.",
+            "problem": "Explain why the surface code has a threshold.",
+            "domain": "qec",
+            "iterations": 1,
+            "config_path": "/tmp/config.yaml",
+            "config_created": False,
+            "evidence_log": "/tmp/evidence.jsonl",
+            "checkpoint_file": "/tmp/checkpoint.json",
+            "artifacts_dir": "/tmp/artifacts",
+            "artifacts": ["/tmp/artifacts/session_summary.json"],
+            "error": None,
+        }
+        return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
 
     def _failing_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
         del command, cwd
@@ -94,15 +78,15 @@ class SkillCliTests(unittest.TestCase):
             self.assertEqual(summary.session_id, "session_cli_run")
             self.assertEqual(summary.final_verdict, "VERIFIED")
             self.assertFalse(summary.config_created)
-            self.assertTrue(any(path.endswith("_run_role_transcripts.json") for path in summary.artifacts))
-            transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
+            self.assertTrue(any(path.endswith("_run_orchestrator_transcript.json") for path in summary.artifacts))
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
             self.assertTrue(transcript_path.exists())
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
-            self.assertIn("Response budget:", transcripts["calls"][0]["query"])
-            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
-            self.assertIn("clarify", transcripts["calls"][0]["command"])
-            checkpoint = json.loads(Path(summary.checkpoint_file).read_text(encoding="utf-8"))
-            self.assertGreaterEqual(len(checkpoint["literature_context"]), 1)
+            self.assertIn("delegated orchestrator runtime", transcripts["calls"][0]["query"])
+            self.assertIn("--skills", transcripts["calls"][0]["hermes_command"])
+            self.assertIn("deep-gvr", transcripts["calls"][0]["hermes_command"])
 
     def test_run_session_command_explicit_toolsets_override_default_restriction(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -119,11 +103,12 @@ class SkillCliTests(unittest.TestCase):
                 toolsets=["search"],
             )
 
-            transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
-            self.assertIn("--toolsets", transcripts["calls"][0]["command"])
-            self.assertIn("search", transcripts["calls"][0]["command"])
-            self.assertNotIn("clarify", transcripts["calls"][0]["command"])
+            self.assertIn("--toolsets", transcripts["calls"][0]["hermes_command"])
+            self.assertIn("search", transcripts["calls"][0]["hermes_command"])
 
     def test_run_session_command_supports_full_prompt_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -140,9 +125,11 @@ class SkillCliTests(unittest.TestCase):
                 prompt_profile="full",
             )
 
-            transcript_path = next(Path(path) for path in summary.artifacts if path.endswith("_run_role_transcripts.json"))
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
-            self.assertNotIn("Response budget:", transcripts["calls"][0]["query"])
+            self.assertEqual(transcripts["calls"][0]["prompt_profile"], "full")
 
     def test_resume_session_command_continues_existing_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -168,7 +155,7 @@ class SkillCliTests(unittest.TestCase):
             self.assertEqual(summary.command, "resume")
             self.assertEqual(summary.session_id, "session_cli_resume")
             self.assertEqual(summary.final_verdict, "VERIFIED")
-            self.assertTrue(any(path.endswith("_resume_role_transcripts.json") for path in summary.artifacts))
+            self.assertTrue(any(path.endswith("_resume_orchestrator_transcript.json") for path in summary.artifacts))
 
     def test_run_session_command_returns_structured_error_on_role_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -188,25 +175,6 @@ class SkillCliTests(unittest.TestCase):
             self.assertIsNotNone(summary.error)
             self.assertEqual(summary.final_verdict, "PENDING")
             self.assertTrue(any(path.endswith("_run_error.json") for path in summary.artifacts))
-
-    def test_run_session_command_does_not_clip_formal_timeout_to_live_role_timeout(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "config.yaml"
-            evidence_dir = Path(tmpdir) / "sessions"
-            self._write_config(config_path, evidence_dir)
-
-            with patch("deep_gvr.cli.AristotleFormalVerifier") as verifier_ctor:
-                verifier_ctor.return_value = object()
-                summary = run_session_command(
-                    "Explain why the surface code has a threshold.",
-                    config_path=config_path,
-                    session_id="session_cli_formal_timeout",
-                    executor=self._successful_executor,
-                    command_timeout_seconds=5,
-                )
-
-        self.assertEqual(summary.final_verdict, "VERIFIED")
-        self.assertNotIn("command_timeout_seconds", verifier_ctor.call_args.kwargs)
 
     def test_console_script_help(self) -> None:
         completed = subprocess.run(

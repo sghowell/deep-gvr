@@ -8,12 +8,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .contracts import DeepGvrConfig, ProbeStatus, SessionCheckpoint
+from .contracts import DeepGvrConfig, SessionCheckpoint
 from .domain_context import load_domain_context
-from .evaluation import CommandExecutor, HermesPromptRoleRunner, LiveEvalConfig, benchmark_routing_probe
-from .formal import AristotleFormalVerifier, FormalVerifier
+from .orchestrator import CommandExecutor, DelegatedOrchestratorConfig, HermesDelegatedOrchestratorRunner
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
-from .routing import build_live_routing_plan
 from .runtime_config import (
     default_config_path,
     default_config_payload,
@@ -21,7 +19,7 @@ from .runtime_config import (
     resolve_config_path,
     write_default_config,
 )
-from .tier1 import SessionStore, Tier1LoopRunner, Tier1RunResult
+from .tier1 import SessionStore
 
 
 def _repo_root() -> Path:
@@ -41,14 +39,6 @@ def _split_csv_flags(values: list[str]) -> list[str]:
     for value in values:
         items.extend(part.strip() for part in value.split(",") if part.strip())
     return items
-
-
-def _resolve_routing_probe(mode: str):
-    if mode == "auto":
-        return None
-    return benchmark_routing_probe(ProbeStatus(mode))
-
-
 @dataclass(slots=True)
 class SkillSessionSummary:
     command: str
@@ -84,7 +74,6 @@ def run_session_command(
     command_timeout_seconds: int = 120,
     session_id: str | None = None,
     executor: CommandExecutor | None = None,
-    formal_verifier: FormalVerifier | None = None,
 ) -> SkillSessionSummary:
     resolved_config_path = resolve_config_path(config_path)
     config_created = not resolved_config_path.exists()
@@ -102,7 +91,6 @@ def run_session_command(
         skills=skills or [],
         command_timeout_seconds=command_timeout_seconds,
         executor=executor,
-        formal_verifier=formal_verifier,
         run_problem=problem,
         run_domain=selected_domain,
         run_literature_context=literature_context,
@@ -121,7 +109,6 @@ def resume_session_command(
     skills: list[str] | None = None,
     command_timeout_seconds: int = 120,
     executor: CommandExecutor | None = None,
-    formal_verifier: FormalVerifier | None = None,
 ) -> SkillSessionSummary:
     resolved_config_path = resolve_config_path(config_path)
     config_created = not resolved_config_path.exists()
@@ -138,7 +125,6 @@ def resume_session_command(
         skills=skills or [],
         command_timeout_seconds=command_timeout_seconds,
         executor=executor,
-        formal_verifier=formal_verifier,
         resume_session_id=session_id,
     )
 
@@ -156,7 +142,6 @@ def _execute_command(
     skills: list[str],
     command_timeout_seconds: int,
     executor: CommandExecutor | None,
-    formal_verifier: FormalVerifier | None,
     run_problem: str | None = None,
     run_domain: str | None = None,
     run_literature_context: list[str] | None = None,
@@ -164,63 +149,40 @@ def _execute_command(
     resume_session_id: str | None = None,
 ) -> SkillSessionSummary:
     session_store = SessionStore(config.evidence.directory)
-    routing_probe = _resolve_routing_probe(routing_probe_mode)
-    runner = Tier1LoopRunner(
-        config,
-        session_store=session_store,
-        routing_probe=routing_probe,
-        routing_plan=build_live_routing_plan(config, routing_probe=routing_probe),
-    )
-    role_runner = HermesPromptRoleRunner(
-        LiveEvalConfig(
-            prompt_root=prompt_root,
+    session_id = run_session_id if command == "run" else resume_session_id
+    prompt_root_path = _resolve_prompt_root(prompt_root)
+    orchestrator = HermesDelegatedOrchestratorRunner(
+        DelegatedOrchestratorConfig(
             prompt_profile=prompt_profile,
             command_timeout_seconds=command_timeout_seconds,
             toolsets=list(toolsets),
             skills=list(skills),
+            provider=config.models.orchestrator.provider,
+            model=config.models.orchestrator.model,
         ),
-        prompt_root=_resolve_prompt_root(prompt_root),
+        cwd=_repo_root(),
         executor=executor,
-        cwd=_repo_root(),
     )
-
-    verifier = formal_verifier or AristotleFormalVerifier(
-        command_executor=executor,
-        hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
-        prompt_root=prompt_root,
-        cwd=_repo_root(),
-        provider=config.models.orchestrator.provider,
-        model=config.models.orchestrator.model,
-        toolsets=list(toolsets),
-        skills=list(skills),
-        prompt_profile=prompt_profile,
-    )
-    session_id = run_session_id if command == "run" else resume_session_id
     try:
         if command == "run":
             if run_problem is None or run_domain is None or run_literature_context is None:
                 raise ValueError("Run command requires a problem, domain, and literature context.")
-            result = runner.run(
-                problem=run_problem,
-                generator=role_runner.generator,
-                verifier=role_runner.verifier,
-                reviser=role_runner.reviser,
-                simulator=None,
-                formal_verifier=verifier,
-                literature_context=run_literature_context,
-                domain=run_domain,
+            summary_payload = orchestrator.run(
+                question=run_problem,
                 session_id=run_session_id,
+                config_path=config_path,
+                prompt_root=prompt_root_path,
+                routing_probe_mode=routing_probe_mode,
+                domain_override=run_domain,
             )
         elif command == "resume":
             if resume_session_id is None:
                 raise ValueError("Resume command requires a session_id.")
-            result = runner.resume(
-                resume_session_id,
-                generator=role_runner.generator,
-                verifier=role_runner.verifier,
-                reviser=role_runner.reviser,
-                simulator=None,
-                formal_verifier=verifier,
+            summary_payload = orchestrator.resume(
+                session_id=resume_session_id,
+                config_path=config_path,
+                prompt_root=prompt_root_path,
+                routing_probe_mode=routing_probe_mode,
             )
         else:
             raise ValueError(f"Unsupported command {command!r}.")
@@ -231,7 +193,7 @@ def _execute_command(
             session_store=session_store,
             session_id=session_id,
             command=command,
-            transcripts=role_runner.transcripts,
+            transcripts=orchestrator.transcripts,
             error=f"{type(exc).__name__}: {exc}",
         )
         return _summary_from_failure(
@@ -248,17 +210,19 @@ def _execute_command(
 
     checkpoint = _record_session_artifacts(
         session_store=session_store,
-        session_id=result.session_id,
+        session_id=str(summary_payload.get("session_id") or session_id),
         command=command,
-        transcripts=role_runner.transcripts,
-        checkpoint=result.checkpoint,
+        transcripts=orchestrator.transcripts,
     )
-    return _summary_from_result(
+    return _summary_from_payload(
+        payload=summary_payload,
         command=command,
         config_path=config_path,
         config_created=config_created,
-        result=result,
         checkpoint=checkpoint,
+        session_store=session_store,
+        fallback_problem=run_problem or "",
+        fallback_domain=run_domain or config.domain.default,
     )
 
 
@@ -290,7 +254,7 @@ def _record_session_artifacts(
         new_artifacts.append(
             session_store.write_artifact_json(
                 session_id,
-                f"{stamp}_{command}_role_transcripts.json",
+                f"{stamp}_{command}_orchestrator_transcript.json",
                 {
                     "command": command,
                     "generated_at": _isoformat(_utc_now()),
@@ -319,7 +283,7 @@ def _record_session_artifacts(
             domain="",
             started=_isoformat(_utc_now()),
             last_updated=_isoformat(_utc_now()),
-            status="failed",
+            status="failed" if error is not None else "in_progress",
             current_iteration=0,
             max_iterations=0,
             next_phase="generate",
@@ -327,7 +291,11 @@ def _record_session_artifacts(
             candidate=None,
             verification_report=None,
             verdict_history=[],
-            result_summary="Command failed before a checkpoint summary was available.",
+            result_summary=(
+                "Command failed before a checkpoint summary was available."
+                if error is not None
+                else "Delegated orchestrator returned before a local checkpoint was available."
+            ),
             final_verdict="PENDING",
             evidence_file=str(session_store.session_paths(session_id).evidence_log),
             artifacts_dir=str(session_store.session_paths(session_id).artifacts_dir),
@@ -409,6 +377,47 @@ def _summary_from_result(
         checkpoint_file=str(result.session_paths.checkpoint_file),
         artifacts_dir=str(result.session_paths.artifacts_dir),
         artifacts=artifacts,
+    )
+
+
+def _summary_from_payload(
+    *,
+    payload: dict[str, Any],
+    command: str,
+    config_path: Path,
+    config_created: bool,
+    checkpoint: SessionCheckpoint,
+    session_store: SessionStore,
+    fallback_problem: str,
+    fallback_domain: str,
+) -> SkillSessionSummary:
+    session_id = str(payload.get("session_id") or checkpoint.session_id)
+    session_paths = session_store.session_paths(session_id)
+    artifact_values = [str(item) for item in payload.get("artifacts", [])]
+    for artifact in checkpoint.artifacts:
+        resolved = (
+            str((session_paths.session_dir.parent / artifact).resolve())
+            if not Path(artifact).is_absolute()
+            else str(Path(artifact))
+        )
+        if resolved not in artifact_values:
+            artifact_values.append(resolved)
+    return SkillSessionSummary(
+        command=command,
+        session_id=session_id,
+        status=str(payload.get("status") or checkpoint.status),
+        final_verdict=str(payload.get("final_verdict") or checkpoint.final_verdict),
+        result_summary=str(payload.get("result_summary") or checkpoint.result_summary),
+        problem=str(payload.get("problem") or checkpoint.problem or fallback_problem),
+        domain=str(payload.get("domain") or checkpoint.domain or fallback_domain),
+        iterations=int(payload.get("iterations", len(checkpoint.verdict_history))),
+        config_path=str(payload.get("config_path") or config_path),
+        config_created=bool(payload.get("config_created", config_created)),
+        evidence_log=str(payload.get("evidence_log") or session_paths.evidence_log),
+        checkpoint_file=str(payload.get("checkpoint_file") or session_paths.checkpoint_file),
+        artifacts_dir=str(payload.get("artifacts_dir") or session_paths.artifacts_dir),
+        artifacts=artifact_values,
+        error=str(payload["error"]) if payload.get("error") is not None else None,
     )
 
 

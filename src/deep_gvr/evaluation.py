@@ -783,7 +783,7 @@ def run_benchmark_suite(
             executor=executor,
         )
         generated_at = _isoformat(now)
-        runner_backend = "hermes_chat"
+        runner_backend = "hermes_prompt_harness"
     else:
         raise ValueError(f"Unsupported benchmark mode {mode!r}.")
 

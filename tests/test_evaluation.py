@@ -548,7 +548,7 @@ class EvaluationTests(unittest.TestCase):
             )
 
             self.assertEqual(report.mode, "live")
-            self.assertEqual(report.runner_backend, "hermes_chat")
+            self.assertEqual(report.runner_backend, "hermes_prompt_harness")
             self.assertEqual(report.summary.total_cases, 1)
             self.assertEqual(report.summary.failed_cases, 0)
             case = report.cases[0]
