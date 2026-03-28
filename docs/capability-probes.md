@@ -9,7 +9,7 @@ The current probe defaults are temporary gaps, not accepted end states; each one
 
 - Question: can Hermes route different models to delegated subagents?
 - Default until proven otherwise: assume no per-subagent override support.
-- Current baseline: the generic routing helper resolves direct per-role routes when the probe is `ready`; otherwise it records the shared orchestrator route plus role-specific temperature decorrelation in evidence. The live CLI/eval path is narrower: it makes separate top-level `hermes chat` calls, so concrete role-model pins can still be attempted there with shared-route fallback when Hermes rejects the explicit provider/model path.
+- Current baseline: the shipped command surface now runs through the delegated Hermes skill runtime, while the explicit live benchmark harness keeps the separate prompt-role calls for isolated testing. The generic routing helper resolves direct per-role routes when the probe is `ready`; otherwise it records the shared orchestrator route plus role-specific temperature decorrelation in evidence, and the live benchmark harness can still attempt concrete top-level role pins with shared-route fallback when Hermes rejects the explicit provider/model path.
 - Preferred outcome: explicit generator and verifier model overrides.
 - Temporary gap: the shared-route path remains in place only until the runtime can close this capability. Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)
 

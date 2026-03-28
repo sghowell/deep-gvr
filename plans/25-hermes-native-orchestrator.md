@@ -16,16 +16,17 @@ Start from `main` and implement this slice on `codex/hermes-native-orchestrator`
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Introduce a delegated Hermes runtime boundary for Generator, Verifier, Reviser, and Simulator execution.
-- [ ] Rewire the CLI and skill surface to use delegated runtime execution as the supported path.
-- [ ] Retain the current top-level role runner only for tests or delete it if no longer needed.
-- [ ] Validate the native orchestrator path with live smoke runs and updated docs.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Introduce a delegated Hermes runtime boundary for Generator, Verifier, Reviser, and Simulator execution.
+- [x] Rewire the CLI and skill surface to use delegated runtime execution as the supported path.
+- [x] Retain the current top-level role runner only for tests or delete it if no longer needed.
+- [x] Validate the native orchestrator path with updated docs and repo checks.
 
 ## Surprises & Discoveries
 
 - The current runtime is structurally closer to a prompt harness than to the delegated-skill architecture described in the original document.
 - The current live-route work can inform the delegated implementation, but it should not define the steady-state public runtime once this slice lands.
+- Hermes CLI does not expose delegation as a top-level shell flag; the workable repo-owned path is to preload the installed `deep-gvr` skill and let that skill perform the delegated orchestration inside one Hermes session.
 
 ## Decision Log
 
@@ -35,7 +36,10 @@ Start from `main` and implement this slice on `codex/hermes-native-orchestrator`
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Added `src/deep_gvr/orchestrator.py` as the single delegated runtime boundary for the shipped command surface.
+- Rewired `src/deep_gvr/cli.py` to call one Hermes session preloaded with the `deep-gvr` skill and to record top-level orchestrator transcripts locally.
+- Kept `HermesPromptRoleRunner` in `src/deep_gvr/evaluation.py` as explicit benchmark/test infrastructure, and renamed the live benchmark backend label to `hermes_prompt_harness` to make that split visible.
+- Updated the skill, architecture ledger, operator docs, and repo checks so plan 25 is treated as realized rather than still open.
 
 ## Context and Orientation
 

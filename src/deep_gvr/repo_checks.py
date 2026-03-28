@@ -67,7 +67,6 @@ REQUIRED_PROMPT_MARKERS = {
 }
 
 OPEN_ARCHITECTURE_ITEMS = {
-    "hermes-native-orchestrator": "25-hermes-native-orchestrator.md",
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "formal-proof-lifecycle": "27-formal-proof-lifecycle.md",
     "remote-backend-completion": "28-remote-backend-completion.md",
@@ -82,14 +81,12 @@ ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_exter
 
 REQUIRED_RETIREMENT_REFERENCES = {
     "README.md": [
-        "Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)",
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
         "Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)",
         "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
         "Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)",
     ],
     "SKILL.md": [
-        "Retirement slice: [plans/25-hermes-native-orchestrator.md](plans/25-hermes-native-orchestrator.md)",
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
         "Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)",
         "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",

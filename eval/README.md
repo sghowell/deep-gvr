@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-The evaluation directory contains both the deterministic readiness benchmark and the live prompt-driven benchmark runner for the current repo implementation.
+The evaluation directory contains both the deterministic readiness benchmark and the explicit live prompt-harness runner for the current repo implementation.
 
 ## Goals
 
@@ -45,7 +45,7 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 
 ## Live Mode Notes
 
-- Live mode drives the real Tier 1 loop plus Tier 2 and Tier 3 mediation paths.
+- Live mode drives the real Tier 1 loop plus Tier 2 and Tier 3 mediation paths through the explicit prompt harness in `src/deep_gvr/evaluation.py`.
 - Role prompts are loaded from `prompts/` and executed through `hermes chat`.
 - Live mode uses the `compact` prompt profile by default to reduce query size; use `--prompt-profile full` when you want the more verbose scaffolding in transcripts for debugging.
 - In compact mode, the verifier uses `prompts/verifier_compact.md` plus a tighter payload/contract shape so the live adversarial pass stays smaller than the generic compact prompt path.
