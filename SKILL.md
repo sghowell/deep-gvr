@@ -1,3 +1,13 @@
+---
+name: deep-gvr
+description: Agentic scientific research harness for Hermes with a generator-verifier-reviser loop and tiered verification
+version: 0.1.0
+metadata:
+  hermes:
+    tags: [research, verification, scientific-workflow, qec]
+    related_skills: [systematic-debugging, writing-plans]
+---
+
 # deep-gvr
 
 deep-gvr is a Hermes skill procedure for agentic scientific research with a generator-verifier-reviser loop.

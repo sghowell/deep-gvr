@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests import _path_setup  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +34,15 @@ class ReleaseScriptTests(unittest.TestCase):
             config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
             self.assertTrue(config_path.exists())
             self.assertIn("default", config_path.read_text(encoding="utf-8"))
+
+    def test_skill_manifest_exposes_required_frontmatter(self) -> None:
+        skill_path = ROOT / "SKILL.md"
+        payload = skill_path.read_text(encoding="utf-8")
+        self.assertTrue(payload.startswith("---\n"))
+        _, frontmatter, _ = payload.split("---", 2)
+        manifest = yaml.safe_load(frontmatter)
+        self.assertEqual(manifest["name"], "deep-gvr")
+        self.assertTrue(manifest["description"])
 
     def test_setup_mcp_script_reports_missing_key(self) -> None:
         env = dict(os.environ)
