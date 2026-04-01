@@ -65,7 +65,12 @@ fi
 if [[ "${install_mode}" == "copy" ]]; then
   cp -R "${repo_root}" "${install_path}"
 else
-  ln -s "${repo_root}" "${install_path}"
+  mkdir -p "${install_path}"
+  shopt -s dotglob nullglob
+  for source_path in "${repo_root}"/*; do
+    ln -s "${source_path}" "${install_path}/$(basename "${source_path}")"
+  done
+  shopt -u dotglob nullglob
 fi
 
 mkdir -p "${config_dir}"

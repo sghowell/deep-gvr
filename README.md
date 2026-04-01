@@ -73,7 +73,7 @@ scripts/install.sh
 scripts/setup_mcp.sh --install --check
 ```
 
-`scripts/install.sh` creates a symlink install under `~/.hermes/skills/deep-gvr` by default. Use `--copy` if you need a copied install or `--target` to choose a different skills directory.
+`scripts/install.sh` creates a Hermes-indexable install under `~/.hermes/skills/deep-gvr` by default. In the default `symlink` mode it creates a real skill directory whose contents are symlinked back to the repo, because Hermes does not index a top-level skill directory that is itself a symlink. Use `--copy` if you need a fully copied install or `--target` to choose a different skills directory.
 
 The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
 For Tier 3, `scripts/setup_mcp.sh --install` adds the expected `mcp_servers.aristotle` block to `~/.hermes/config.yaml` without duplicating an existing entry, `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry, and `scripts/setup_mcp.sh --print-snippet` prints the same block without modifying the config.

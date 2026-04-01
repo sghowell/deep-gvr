@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseScriptTests(unittest.TestCase):
-    def test_install_script_creates_symlink_install(self) -> None:
+    def test_install_script_creates_indexable_symlink_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             target_dir = Path(tmpdir) / "skills"
             env = dict(os.environ)
@@ -29,8 +29,12 @@ class ReleaseScriptTests(unittest.TestCase):
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             install_path = target_dir / "deep-gvr"
-            self.assertTrue(install_path.is_symlink())
-            self.assertEqual(install_path.resolve(), ROOT.resolve())
+            self.assertTrue(install_path.is_dir())
+            self.assertFalse(install_path.is_symlink())
+            self.assertTrue((install_path / "SKILL.md").is_symlink())
+            self.assertEqual((install_path / "SKILL.md").resolve(), (ROOT / "SKILL.md").resolve())
+            discovered = [path for path in install_path.rglob("SKILL.md")]
+            self.assertIn(install_path / "SKILL.md", discovered)
             config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
             self.assertTrue(config_path.exists())
             self.assertIn("default", config_path.read_text(encoding="utf-8"))
