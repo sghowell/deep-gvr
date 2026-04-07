@@ -6,13 +6,15 @@ import re
 import shutil
 import subprocess
 import tarfile
+import tempfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
 import yaml
 
-from .contracts import ProofStatus, Tier3ClaimResult
+from .contracts import FormalProofHandle, FormalProofLifecycle, ProofStatus, Tier3ClaimResult
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_formal_query
 
 
@@ -23,6 +25,8 @@ class FormalVerificationRequest:
     claims: list[Tier3ClaimResult]
     backend: str
     timeout_seconds: int
+    lifecycle_state: FormalProofLifecycle | None = None
+    enable_lifecycle: bool = False
 
 
 @dataclass(slots=True)
@@ -56,6 +60,8 @@ class CommandExecutor(Protocol):
 class FormalVerificationResultSet:
     results: list[Tier3ClaimResult]
     transport_artifact: dict[str, Any] | None = None
+    lifecycle_state: FormalProofLifecycle | None = None
+    pending: bool = False
 
 
 class FormalVerifier(Protocol):
@@ -69,6 +75,10 @@ _ARISTOTLE_TARBALL_RE = re.compile(r"Project saved to\s+([^\s]+\.tar\.gz)")
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
+
+def _isoformat_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def default_hermes_config_path() -> Path:
@@ -128,6 +138,7 @@ class AristotleFormalVerifier:
         mcp_server_name: str = "aristotle",
         prompt_profile: str = DEFAULT_PROMPT_PROFILE,
         allow_cli_fallback: bool = True,
+        prefer_lifecycle: bool = False,
     ) -> None:
         self.executor = executor
         self.command_executor = command_executor
@@ -145,6 +156,7 @@ class AristotleFormalVerifier:
         self.mcp_server_name = mcp_server_name
         self.prompt_profile = prompt_profile
         self.allow_cli_fallback = allow_cli_fallback
+        self.prefer_lifecycle = prefer_lifecycle
 
     def __call__(self, request: FormalVerificationRequest) -> FormalVerificationResultSet:
         if request.backend != "aristotle":
@@ -161,7 +173,10 @@ class AristotleFormalVerifier:
                 outcome = self.executor(request)
                 if isinstance(outcome, FormalVerificationResultSet):
                     return outcome
-                return FormalVerificationResultSet(results=list(outcome))
+                return FormalVerificationResultSet(
+                    results=list(outcome),
+                    pending=any(item.proof_status is ProofStatus.PENDING for item in outcome),
+                )
             except TimeoutError:
                 return self._result_set(
                     request,
@@ -195,9 +210,307 @@ class AristotleFormalVerifier:
                 artifact_status="missing_api_key",
                 transport=transport,
             )
+        if self._should_use_lifecycle(request):
+            return self._run_via_aristotle_cli_lifecycle(request)
         primary_result = self._run_via_hermes_mcp(request, transport)
         fallback_result = self._maybe_run_cli_fallback(request, primary_result)
         return fallback_result or primary_result
+
+    def _should_use_lifecycle(self, request: FormalVerificationRequest) -> bool:
+        if not self._cli_transport_available():
+            return False
+        return request.lifecycle_state is not None or (request.enable_lifecycle and self.prefer_lifecycle)
+
+    def _cli_transport_available(self) -> bool:
+        return self.cli_command_executor is not None or shutil.which(self.aristotle_binary) is not None
+
+    def _cli_executor(self, request: FormalVerificationRequest) -> CommandExecutor:
+        return self.cli_command_executor or (
+            lambda current_command, current_cwd: _default_executor(
+                current_command,
+                current_cwd,
+                self.command_timeout_seconds if self.command_timeout_seconds is not None else request.timeout_seconds,
+                command_label="Aristotle CLI command",
+            )
+        )
+
+    def _run_via_aristotle_cli_lifecycle(
+        self,
+        request: FormalVerificationRequest,
+    ) -> FormalVerificationResultSet:
+        executor = self._cli_executor(request)
+        now = _isoformat_now()
+        attempts: list[dict[str, Any]] = []
+        if request.lifecycle_state is None:
+            handles, submission_results = self._submit_cli_projects(request, executor, now, attempts)
+        else:
+            handles = [FormalProofHandle.from_dict(item.to_dict()) for item in request.lifecycle_state.handles]
+            submission_results = {
+                item.claim: Tier3ClaimResult(
+                    claim=item.claim,
+                    backend=item.backend,
+                    proof_status=item.proof_status,
+                    details=item.details,
+                    lean_code="",
+                    proof_time_seconds=None,
+                )
+                for item in handles
+                if item.proof_status is not ProofStatus.PENDING
+            }
+        poll_results = self._poll_cli_projects(request, executor, handles, now, attempts)
+        results_by_claim = {item.claim: item for item in submission_results.values()}
+        results_by_claim.update({item.claim: item for item in poll_results})
+        results = [results_by_claim.get(claim.claim, self._pending_result_from_claim(claim)) for claim in request.claims]
+        lifecycle = FormalProofLifecycle(
+            backend=request.backend,
+            transport="aristotle_cli_lifecycle",
+            proof_status=self._overall_lifecycle_status(results),
+            handles=handles,
+            last_transition=now,
+            details=self._lifecycle_details(results),
+        )
+        status = "pending" if lifecycle.proof_status is ProofStatus.PENDING else "completed"
+        if lifecycle.proof_status in {ProofStatus.ERROR, ProofStatus.TIMEOUT, ProofStatus.UNAVAILABLE}:
+            status = "error"
+        return FormalVerificationResultSet(
+            results=results,
+            transport_artifact={
+                "transport": "aristotle_cli_lifecycle",
+                "status": status,
+                "backend": request.backend,
+                "attempts": attempts,
+            },
+            lifecycle_state=lifecycle,
+            pending=lifecycle.proof_status is ProofStatus.PENDING,
+        )
+
+    def _submit_cli_projects(
+        self,
+        request: FormalVerificationRequest,
+        executor: CommandExecutor,
+        now: str,
+        attempts: list[dict[str, Any]],
+    ) -> tuple[list[FormalProofHandle], dict[str, Tier3ClaimResult]]:
+        handles: list[FormalProofHandle] = []
+        submission_results: dict[str, Tier3ClaimResult] = {}
+        for claim in request.claims:
+            prompt = self._build_cli_prompt(claim)
+            command = [self.aristotle_binary, "submit", prompt]
+            command_result = executor(command, self.cwd)
+            attempt: dict[str, Any] = {
+                "phase": "submit",
+                "claim": claim.claim,
+                "command": list(command),
+                "stdout": command_result.stdout,
+                "stderr": command_result.stderr,
+            }
+            if command_result.returncode != 0:
+                details = (
+                    command_result.stderr.strip()
+                    or command_result.stdout.strip()
+                    or "Aristotle CLI project submission failed."
+                )
+                attempt["status"] = "error"
+                submission_results[claim.claim] = Tier3ClaimResult(
+                    claim=claim.claim,
+                    backend=request.backend,
+                    proof_status=ProofStatus.ERROR,
+                    details=details,
+                    lean_code="",
+                    proof_time_seconds=0.0,
+                )
+                attempts.append(attempt)
+                continue
+            try:
+                project_id = _parse_aristotle_cli_project_id(command_result.stdout)
+            except Exception as exc:  # pragma: no cover - defensive runtime boundary
+                attempt["status"] = "parse_error"
+                submission_results[claim.claim] = Tier3ClaimResult(
+                    claim=claim.claim,
+                    backend=request.backend,
+                    proof_status=ProofStatus.ERROR,
+                    details=(
+                        "Aristotle CLI submission returned an unreadable project id: "
+                        f"{type(exc).__name__}: {exc}"
+                    ),
+                    lean_code="",
+                    proof_time_seconds=0.0,
+                )
+                attempts.append(attempt)
+                continue
+
+            handles.append(
+                FormalProofHandle(
+                    claim=claim.claim,
+                    backend=request.backend,
+                    project_id=project_id,
+                    transport="aristotle_cli_lifecycle",
+                    proof_status=ProofStatus.PENDING,
+                    submitted_at=now,
+                    details=f"Submitted Aristotle project {project_id}.",
+                )
+            )
+            attempt["status"] = "submitted"
+            attempt["project_id"] = project_id
+            attempts.append(attempt)
+        return handles, submission_results
+
+    def _poll_cli_projects(
+        self,
+        request: FormalVerificationRequest,
+        executor: CommandExecutor,
+        handles: list[FormalProofHandle],
+        now: str,
+        attempts: list[dict[str, Any]],
+    ) -> list[Tier3ClaimResult]:
+        results: list[Tier3ClaimResult] = []
+        for handle in handles:
+            if handle.proof_status is not ProofStatus.PENDING:
+                results.append(
+                    Tier3ClaimResult(
+                        claim=handle.claim,
+                        backend=handle.backend,
+                        proof_status=handle.proof_status,
+                        details=handle.details,
+                        lean_code="",
+                        proof_time_seconds=None,
+                    )
+                )
+                continue
+            with tempfile.TemporaryDirectory(prefix="deep-gvr-formal-result-") as tmpdir:
+                destination = Path(tmpdir) / "result"
+                command = [
+                    self.aristotle_binary,
+                    "result",
+                    "--wait",
+                    "--destination",
+                    str(destination),
+                    handle.project_id,
+                ]
+                command_result = executor(command, self.cwd)
+                attempt: dict[str, Any] = {
+                    "phase": "result",
+                    "claim": handle.claim,
+                    "project_id": handle.project_id,
+                    "command": list(command),
+                    "stdout": command_result.stdout,
+                    "stderr": command_result.stderr,
+                }
+                handle.poll_count += 1
+                handle.last_polled_at = now
+                if command_result.returncode == 124 or "timed out" in command_result.stderr.lower():
+                    handle.proof_status = ProofStatus.PENDING
+                    handle.details = (
+                        f"Aristotle project {handle.project_id} is still running; resume this session to continue polling."
+                    )
+                    attempt["status"] = "timeout"
+                    results.append(
+                        Tier3ClaimResult(
+                            claim=handle.claim,
+                            backend=handle.backend,
+                            proof_status=ProofStatus.PENDING,
+                            details=handle.details,
+                            lean_code="",
+                            proof_time_seconds=None,
+                        )
+                    )
+                    attempts.append(attempt)
+                    continue
+                if command_result.returncode != 0:
+                    handle.proof_status = ProofStatus.ERROR
+                    handle.details = (
+                        command_result.stderr.strip()
+                        or command_result.stdout.strip()
+                        or f"Aristotle result retrieval failed for project {handle.project_id}."
+                    )
+                    attempt["status"] = "error"
+                    results.append(
+                        Tier3ClaimResult(
+                            claim=handle.claim,
+                            backend=handle.backend,
+                            proof_status=ProofStatus.ERROR,
+                            details=handle.details,
+                            lean_code="",
+                            proof_time_seconds=0.0,
+                        )
+                    )
+                    attempts.append(attempt)
+                    continue
+
+                try:
+                    summary_text, lean_code = _extract_aristotle_result_artifacts(destination)
+                except Exception as exc:  # pragma: no cover - defensive runtime boundary
+                    handle.proof_status = ProofStatus.ERROR
+                    handle.details = (
+                        "Aristotle result retrieval returned an unreadable proof bundle: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    attempt["status"] = "parse_error"
+                    results.append(
+                        Tier3ClaimResult(
+                            claim=handle.claim,
+                            backend=handle.backend,
+                            proof_status=ProofStatus.ERROR,
+                            details=handle.details,
+                            lean_code="",
+                            proof_time_seconds=0.0,
+                        )
+                    )
+                    attempts.append(attempt)
+                    continue
+
+                handle.proof_status = ProofStatus.PROVED
+                handle.details = (
+                    f"Aristotle completed project {handle.project_id}. "
+                    f"{summary_text.strip() or 'A completed proof bundle was downloaded.'}"
+                )
+                attempt["status"] = "completed"
+                results.append(
+                    Tier3ClaimResult(
+                        claim=handle.claim,
+                        backend=handle.backend,
+                        proof_status=ProofStatus.PROVED,
+                        details=handle.details,
+                        lean_code=lean_code,
+                        proof_time_seconds=None,
+                    )
+                )
+                attempts.append(attempt)
+        return results
+
+    def _overall_lifecycle_status(self, results: list[Tier3ClaimResult]) -> ProofStatus:
+        statuses = {item.proof_status for item in results}
+        if not statuses:
+            return ProofStatus.ERROR
+        if ProofStatus.PENDING in statuses:
+            return ProofStatus.PENDING
+        if statuses <= {ProofStatus.PROVED}:
+            return ProofStatus.PROVED
+        if statuses <= {ProofStatus.DISPROVED}:
+            return ProofStatus.DISPROVED
+        if ProofStatus.ERROR in statuses:
+            return ProofStatus.ERROR
+        if ProofStatus.TIMEOUT in statuses:
+            return ProofStatus.TIMEOUT
+        if ProofStatus.UNAVAILABLE in statuses:
+            return ProofStatus.UNAVAILABLE
+        return ProofStatus.ERROR
+
+    def _lifecycle_details(self, results: list[Tier3ClaimResult]) -> str:
+        pending = sum(1 for item in results if item.proof_status is ProofStatus.PENDING)
+        proved = sum(1 for item in results if item.proof_status is ProofStatus.PROVED)
+        errored = sum(1 for item in results if item.proof_status is ProofStatus.ERROR)
+        return f"pending={pending} proved={proved} error={errored}"
+
+    def _pending_result_from_claim(self, claim: Tier3ClaimResult) -> Tier3ClaimResult:
+        return Tier3ClaimResult(
+            claim=claim.claim,
+            backend=claim.backend,
+            proof_status=ProofStatus.PENDING,
+            details="Tier 3 proof submission is in progress.",
+            lean_code="",
+            proof_time_seconds=None,
+        )
 
     def _resolve_prompt_path(self) -> Path:
         if self.prompt_root.is_absolute():
@@ -545,6 +858,7 @@ class AristotleFormalVerifier:
                 for claim in request.claims
             ],
             transport_artifact=artifact,
+            pending=status is ProofStatus.PENDING,
         )
 
 
@@ -598,6 +912,13 @@ def _parse_aristotle_cli_submit_output(text: str) -> tuple[str, str]:
     return project_match.group(1), tarball_match.group(1)
 
 
+def _parse_aristotle_cli_project_id(text: str) -> str:
+    project_match = _ARISTOTLE_PROJECT_ID_RE.search(text)
+    if project_match is None:
+        raise ValueError(f"Could not parse Aristotle project id from CLI output: {text[:200]!r}")
+    return project_match.group(1)
+
+
 def _extract_aristotle_bundle_artifacts(bundle_path: Path) -> tuple[str, str]:
     if not bundle_path.exists():
         raise FileNotFoundError(bundle_path)
@@ -617,4 +938,29 @@ def _extract_aristotle_bundle_artifacts(bundle_path: Path) -> tuple[str, str]:
                 lean_code = extracted.read().decode("utf-8")
     if not summary_text and not lean_code:
         raise ValueError(f"Aristotle bundle {bundle_path} did not contain a summary or Lean proof file.")
+    return summary_text, lean_code
+
+
+def _extract_aristotle_result_artifacts(result_path: Path) -> tuple[str, str]:
+    if result_path.is_file():
+        return _extract_aristotle_bundle_artifacts(result_path)
+    if not result_path.exists():
+        raise FileNotFoundError(result_path)
+    summary_text = ""
+    lean_code = ""
+    summary_match = next(result_path.rglob("*ARISTOTLE_SUMMARY_*.md"), None)
+    lean_match = next(
+        (
+            path
+            for path in result_path.rglob("*.lean")
+            if path.name != "Main.lean"
+        ),
+        None,
+    )
+    if summary_match is not None:
+        summary_text = summary_match.read_text(encoding="utf-8")
+    if lean_match is not None:
+        lean_code = lean_match.read_text(encoding="utf-8")
+    if not summary_text and not lean_code:
+        raise ValueError(f"Aristotle result path {result_path} did not contain a summary or Lean proof file.")
     return summary_text, lean_code

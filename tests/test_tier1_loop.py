@@ -16,6 +16,8 @@ from deep_gvr.contracts import (
     Backend,
     CapabilityProbeResult,
     DeepGvrConfig,
+    FormalProofHandle,
+    FormalProofLifecycle,
     ProbeStatus,
     ProofStatus,
     RoutingMode,
@@ -27,7 +29,12 @@ from deep_gvr.contracts import (
     VerificationReport,
     VerificationVerdict,
 )
-from deep_gvr.formal import AristotleFormalVerifier, CommandExecutionResult, FormalVerificationRequest
+from deep_gvr.formal import (
+    AristotleFormalVerifier,
+    CommandExecutionResult,
+    FormalVerificationRequest,
+    FormalVerificationResultSet,
+)
 from deep_gvr.tier1 import (
     GenerationRequest,
     RevisionRequest,
@@ -686,6 +693,198 @@ class Tier1LoopTests(unittest.TestCase):
             evidence = runner.session_store.read_evidence("session_tier3_verify")
             self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "verify"])
             self.assertIsNotNone(evidence[1].formal_verification_results)
+
+    def test_pending_formal_lifecycle_resumes_without_resubmitting_generator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(
+                self._config(tmpdir, enable_tier3=True),
+                routing_probe=self._routing_probe(ProbeStatus.READY),
+            )
+            verify_calls = 0
+            formal_calls = 0
+            generator_calls = 0
+
+            def generator(request: GenerationRequest):
+                nonlocal generator_calls
+                generator_calls += 1
+                return _candidate("Lifecycle hypothesis")
+
+            def verifier(request: VerificationRequest):
+                nonlocal verify_calls
+                verify_calls += 1
+                if request.formal_results is None:
+                    return VerificationReport(
+                        verdict=VerificationVerdict.FLAWS_FOUND,
+                        tier1=Tier1Report(
+                            checks=[
+                                AnalyticalCheck(
+                                    check="logical_consistency",
+                                    status=AnalyticalStatus.UNCERTAIN,
+                                    detail="The theorem sketch needs formal confirmation.",
+                                )
+                            ],
+                            overall=VerificationVerdict.FLAWS_FOUND,
+                            flaws=["Formal confirmation is required."],
+                            caveats=[],
+                        ),
+                        tier2=None,
+                        tier3=[
+                            Tier3ClaimResult(
+                                claim="For every odd repetition-code distance d, majority decoding corrects up to (d-1)/2 bit flips.",
+                                backend="aristotle",
+                                proof_status=ProofStatus.REQUESTED,
+                                details="This theorem statement should be routed to Tier 3.",
+                                lean_code="",
+                                proof_time_seconds=None,
+                            )
+                        ],
+                        flaws=["Formal confirmation is required."],
+                        caveats=[],
+                        cannot_verify_reason=None,
+                    )
+
+                self.assertEqual(request.formal_results[0].proof_status, ProofStatus.PROVED)
+                return VerificationReport(
+                    verdict=VerificationVerdict.VERIFIED,
+                    tier1=Tier1Report(
+                        checks=[
+                            AnalyticalCheck(
+                                check="logical_consistency",
+                                status=AnalyticalStatus.PASS,
+                                detail="The formal result resolved the open theorem claim.",
+                            )
+                        ],
+                        overall=VerificationVerdict.VERIFIED,
+                        flaws=[],
+                        caveats=[],
+                    ),
+                    tier2=None,
+                    tier3=list(request.formal_results),
+                    flaws=[],
+                    caveats=[],
+                    cannot_verify_reason=None,
+                )
+
+            def reviser(request: RevisionRequest):
+                return _candidate("Unexpected revision")
+
+            pending_lifecycle = FormalProofLifecycle(
+                backend="aristotle",
+                transport="aristotle_cli_lifecycle",
+                proof_status=ProofStatus.PENDING,
+                handles=[
+                    FormalProofHandle(
+                        claim="For every odd repetition-code distance d, majority decoding corrects up to (d-1)/2 bit flips.",
+                        backend="aristotle",
+                        project_id="123e4567-e89b-12d3-a456-426614174000",
+                        transport="aristotle_cli_lifecycle",
+                        proof_status=ProofStatus.PENDING,
+                        submitted_at="2026-04-07T12:00:00Z",
+                        last_polled_at=None,
+                        poll_count=0,
+                        details="Submitted Aristotle project 123e4567-e89b-12d3-a456-426614174000.",
+                    )
+                ],
+                last_transition="2026-04-07T12:00:00Z",
+                details="pending=1 proved=0 error=0",
+            )
+
+            def formal_verifier(request: FormalVerificationRequest):
+                nonlocal formal_calls
+                formal_calls += 1
+                if request.lifecycle_state is None:
+                    return FormalVerificationResultSet(
+                        results=[
+                            Tier3ClaimResult(
+                                claim=request.claims[0].claim,
+                                backend="aristotle",
+                                proof_status=ProofStatus.PENDING,
+                                details="Aristotle project is still running.",
+                                lean_code="",
+                                proof_time_seconds=None,
+                            )
+                        ],
+                        transport_artifact={
+                            "transport": "aristotle_cli_lifecycle",
+                            "status": "pending",
+                            "backend": "aristotle",
+                            "attempts": [],
+                        },
+                        lifecycle_state=pending_lifecycle,
+                        pending=True,
+                    )
+
+                self.assertEqual(request.lifecycle_state.handles[0].project_id, "123e4567-e89b-12d3-a456-426614174000")
+                return FormalVerificationResultSet(
+                    results=[
+                        Tier3ClaimResult(
+                            claim=request.claims[0].claim,
+                            backend="aristotle",
+                            proof_status=ProofStatus.PROVED,
+                            details="Aristotle completed the proof.",
+                            lean_code="theorem lifecycle_resume : True := by trivial",
+                            proof_time_seconds=None,
+                        )
+                    ],
+                    transport_artifact={
+                        "transport": "aristotle_cli_lifecycle",
+                        "status": "completed",
+                        "backend": "aristotle",
+                        "attempts": [],
+                    },
+                    lifecycle_state=FormalProofLifecycle(
+                        backend="aristotle",
+                        transport="aristotle_cli_lifecycle",
+                        proof_status=ProofStatus.PROVED,
+                        handles=[
+                            FormalProofHandle(
+                                claim=request.claims[0].claim,
+                                backend="aristotle",
+                                project_id="123e4567-e89b-12d3-a456-426614174000",
+                                transport="aristotle_cli_lifecycle",
+                                proof_status=ProofStatus.PROVED,
+                                submitted_at="2026-04-07T12:00:00Z",
+                                last_polled_at="2026-04-07T12:05:00Z",
+                                poll_count=1,
+                                details="Aristotle completed the proof.",
+                            )
+                        ],
+                        last_transition="2026-04-07T12:05:00Z",
+                        details="pending=0 proved=1 error=0",
+                    ),
+                    pending=False,
+                )
+
+            interim = runner.run(
+                problem="Check Tier 3 lifecycle resume",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                formal_verifier=formal_verifier,
+                session_id="session_tier3_lifecycle",
+            )
+
+            self.assertEqual(interim.checkpoint.status, "awaiting_formal")
+            self.assertEqual(interim.checkpoint.next_phase, "formalize")
+            self.assertIsNotNone(interim.checkpoint.formal_lifecycle)
+            self.assertEqual(generator_calls, 1)
+            self.assertEqual(verify_calls, 1)
+
+            resumed = runner.resume(
+                "session_tier3_lifecycle",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                formal_verifier=formal_verifier,
+            )
+
+            self.assertEqual(resumed.final_report.verdict, VerificationVerdict.VERIFIED)
+            self.assertEqual(generator_calls, 1)
+            self.assertEqual(verify_calls, 2)
+            self.assertEqual(formal_calls, 2)
+            self.assertIsNone(resumed.checkpoint.formal_lifecycle)
+            evidence = runner.session_store.read_evidence("session_tier3_lifecycle")
+            self.assertEqual([record.phase for record in evidence], ["generate", "formalize", "formalize", "verify"])
 
     def test_formal_request_uses_structured_unavailable_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

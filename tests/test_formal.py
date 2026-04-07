@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -10,7 +11,7 @@ from unittest.mock import patch
 
 from tests import _path_setup  # noqa: F401
 
-from deep_gvr.contracts import ProofStatus, Tier3ClaimResult
+from deep_gvr.contracts import FormalProofHandle, FormalProofLifecycle, ProofStatus, Tier3ClaimResult
 from deep_gvr.formal import (
     AristotleFormalVerifier,
     AristotleTransportStatus,
@@ -50,6 +51,16 @@ def _write_aristotle_bundle(tmpdir: str, *, summary: str, lean_code: str) -> str
     with tarfile.open(tarball, "w:gz") as archive:
         archive.add(root, arcname="test_project")
     return str(tarball)
+
+
+def _write_aristotle_result_dir(tmpdir: str, *, summary: str, lean_code: str) -> str:
+    root = Path(tmpdir) / "result_dir"
+    project_dir = root / "RequestProject"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (root / "ARISTOTLE_SUMMARY_test.md").write_text(summary, encoding="utf-8")
+    (project_dir / "Main.lean").write_text("import Mathlib\n", encoding="utf-8")
+    (project_dir / "Proof.lean").write_text(lean_code, encoding="utf-8")
+    return str(root)
 
 
 class AristotleFormalVerifierTests(unittest.TestCase):
@@ -237,6 +248,88 @@ class AristotleFormalVerifierTests(unittest.TestCase):
         self.assertIn("CLI fallback also failed", result_set.results[0].details)
         self.assertEqual(result_set.transport_artifact["transport"], "hermes_mcp")
         self.assertEqual(result_set.transport_artifact["cli_fallback"]["transport"], "aristotle_cli_direct")
+
+    def test_cli_lifecycle_submission_returns_pending_result_and_handle(self) -> None:
+        request = _request()
+        request.enable_lifecycle = True
+        calls: list[list[str]] = []
+
+        def cli_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+            del cwd
+            calls.append(command)
+            if command[1] == "submit":
+                return CommandExecutionResult(
+                    returncode=0,
+                    stdout="Project created: 123e4567-e89b-12d3-a456-426614174000\n",
+                    stderr="",
+                )
+            self.assertEqual(command[1], "result")
+            return CommandExecutionResult(
+                returncode=124,
+                stdout="",
+                stderr="Aristotle CLI command timed out after 30 seconds.",
+            )
+
+        with patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}, clear=False):
+            result_set = AristotleFormalVerifier(
+                cli_command_executor=cli_executor,
+                prefer_lifecycle=True,
+            )(request)
+
+        self.assertTrue(result_set.pending)
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PENDING)
+        self.assertIsNotNone(result_set.lifecycle_state)
+        self.assertEqual(result_set.lifecycle_state.proof_status, ProofStatus.PENDING)
+        self.assertEqual(result_set.lifecycle_state.handles[0].project_id, "123e4567-e89b-12d3-a456-426614174000")
+        self.assertEqual(calls[0][:2], ["aristotle", "submit"])
+        self.assertEqual(calls[1][:2], ["aristotle", "result"])
+
+    def test_cli_lifecycle_resume_polls_existing_project_to_completion(self) -> None:
+        request = _request()
+        request.enable_lifecycle = True
+        request.lifecycle_state = FormalProofLifecycle(
+            backend="aristotle",
+            transport="aristotle_cli_lifecycle",
+            proof_status=ProofStatus.PENDING,
+            handles=[
+                FormalProofHandle(
+                    claim=request.claims[0].claim,
+                    backend="aristotle",
+                    project_id="123e4567-e89b-12d3-a456-426614174000",
+                    transport="aristotle_cli_lifecycle",
+                    proof_status=ProofStatus.PENDING,
+                    submitted_at="2026-04-07T12:00:00Z",
+                    last_polled_at=None,
+                    poll_count=0,
+                    details="Submitted Aristotle project 123e4567-e89b-12d3-a456-426614174000.",
+                )
+            ],
+            last_transition="2026-04-07T12:00:00Z",
+            details="pending=1 proved=0 error=0",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_dir = _write_aristotle_result_dir(
+                tmpdir,
+                summary="# Summary of changes\nCLI lifecycle proof succeeded.",
+                lean_code="theorem lifecycle_resume : True := by trivial\n",
+            )
+
+            def cli_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                del cwd
+                self.assertEqual(command[1], "result")
+                destination = Path(command[command.index("--destination") + 1])
+                shutil.copytree(source_dir, destination, dirs_exist_ok=True)
+                return CommandExecutionResult(returncode=0, stdout="Downloaded result.\n", stderr="")
+
+            with patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}, clear=False):
+                result_set = AristotleFormalVerifier(cli_command_executor=cli_executor)(request)
+
+        self.assertFalse(result_set.pending)
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertIn("lifecycle_resume", result_set.results[0].lean_code)
+        self.assertEqual(result_set.lifecycle_state.proof_status, ProofStatus.PROVED)
+        self.assertEqual(result_set.lifecycle_state.handles[0].poll_count, 1)
 
     def test_compact_prompt_profile_emits_shorter_formal_query_than_full(self) -> None:
         request = _request()

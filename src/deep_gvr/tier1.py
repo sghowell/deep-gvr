@@ -15,6 +15,7 @@ from .contracts import (
     CapabilityProbeResult,
     DeepGvrConfig,
     EvidenceRecord,
+    FormalProofLifecycle,
     ProofStatus,
     RoutingMode,
     SessionCheckpoint,
@@ -195,6 +196,7 @@ class SessionStore:
             final_verdict="PENDING",
             evidence_file=_relative_to_root(self.root_directory, paths.evidence_log),
             artifacts_dir=_relative_to_root(self.root_directory, paths.artifacts_dir),
+            formal_lifecycle=None,
             artifacts=[],
         )
         self.save_checkpoint(checkpoint)
@@ -338,6 +340,13 @@ class Tier1LoopRunner:
                 continue
             if checkpoint.next_phase == "verify":
                 checkpoint = self._verify(checkpoint, verifier, simulator, formal_verifier)
+                if checkpoint.next_phase == "formalize":
+                    break
+                continue
+            if checkpoint.next_phase == "formalize":
+                checkpoint = self._continue_formalize(checkpoint, verifier, formal_verifier)
+                if checkpoint.next_phase == "formalize":
+                    break
                 continue
             if checkpoint.next_phase == "revise":
                 checkpoint = self._revise(checkpoint, reviser)
@@ -407,7 +416,89 @@ class Tier1LoopRunner:
         if self._should_run_simulation(report):
             simulation_results = self._simulate(checkpoint, report, simulator)
         if self._should_run_formal(report):
-            formal_results = self._formalize(checkpoint, report, formal_verifier)
+            checkpoint.verification_report = report
+            outcome = self._formalize(
+                checkpoint,
+                report,
+                formal_verifier,
+                lifecycle_state=None,
+            )
+            if outcome.pending:
+                checkpoint.formal_lifecycle = outcome.lifecycle_state
+                checkpoint.status = "awaiting_formal"
+                checkpoint.final_verdict = "PENDING"
+                checkpoint.result_summary = (
+                    f"Tier 3 proof polling is still in progress for candidate {checkpoint.current_iteration}."
+                )
+                checkpoint.next_phase = "formalize"
+                self.session_store.save_checkpoint(checkpoint)
+                return checkpoint
+            formal_results = outcome.results
+
+        return self._complete_verification(
+            checkpoint,
+            verifier=verifier,
+            base_report=report,
+            candidate=candidate,
+            simulation_results=simulation_results,
+            formal_results=formal_results,
+            initial_request=request,
+        )
+
+    def _continue_formalize(
+        self,
+        checkpoint: SessionCheckpoint,
+        verifier: Verifier,
+        formal_verifier: FormalVerifier | None,
+    ) -> SessionCheckpoint:
+        candidate = self._require_candidate(checkpoint)
+        report = self._require_report(checkpoint)
+        if checkpoint.formal_lifecycle is None:
+            raise ValueError("Formal resume requires persisted formal lifecycle state.")
+        outcome = self._formalize(
+            checkpoint,
+            report,
+            formal_verifier,
+            lifecycle_state=checkpoint.formal_lifecycle,
+        )
+        if outcome.pending:
+            checkpoint.formal_lifecycle = outcome.lifecycle_state
+            checkpoint.status = "awaiting_formal"
+            checkpoint.final_verdict = "PENDING"
+            checkpoint.result_summary = (
+                f"Tier 3 proof polling is still in progress for candidate {checkpoint.current_iteration}."
+            )
+            checkpoint.next_phase = "formalize"
+            self.session_store.save_checkpoint(checkpoint)
+            return checkpoint
+        return self._complete_verification(
+            checkpoint,
+            verifier=verifier,
+            base_report=report,
+            candidate=candidate,
+            simulation_results=None,
+            formal_results=outcome.results,
+            initial_request=None,
+        )
+
+    def _complete_verification(
+        self,
+        checkpoint: SessionCheckpoint,
+        *,
+        verifier: Verifier,
+        base_report: VerificationReport,
+        candidate: CandidateSolution,
+        simulation_results: SimResults | None,
+        formal_results: list[Tier3ClaimResult] | None,
+        initial_request: VerificationRequest | None,
+    ) -> SessionCheckpoint:
+        report = base_report
+        request = initial_request or VerificationRequest(
+            session_id=checkpoint.session_id,
+            iteration=checkpoint.current_iteration,
+            candidate=candidate,
+            route=self.routing_plan.verifier,
+        )
         if simulation_results is not None or formal_results is not None:
             request = VerificationRequest(
                 session_id=checkpoint.session_id,
@@ -424,6 +515,7 @@ class Tier1LoopRunner:
                 self._attach_formal_results(report, formal_results)
 
         checkpoint.verification_report = report
+        checkpoint.formal_lifecycle = None
         checkpoint.verdict_history.append(
             VerificationHistoryEntry(
                 iteration=checkpoint.current_iteration,
@@ -491,6 +583,7 @@ class Tier1LoopRunner:
         checkpoint.current_iteration = next_iteration
         checkpoint.candidate = revised_candidate
         checkpoint.verification_report = None
+        checkpoint.formal_lifecycle = None
         checkpoint.last_updated = self._timestamp()
         checkpoint.result_summary = f"Revised candidate {checkpoint.current_iteration} from verifier feedback."
         checkpoint.next_phase = "verify"
@@ -628,7 +721,7 @@ class Tier1LoopRunner:
         return bool(
             self.config.verification.tier3.enabled
             and report.tier3
-            and any(item.proof_status is ProofStatus.REQUESTED for item in report.tier3)
+            and any(item.proof_status in {ProofStatus.REQUESTED, ProofStatus.PENDING} for item in report.tier3)
         )
 
     def _simulate(
@@ -733,23 +826,27 @@ class Tier1LoopRunner:
         checkpoint: SessionCheckpoint,
         report: VerificationReport,
         formal_verifier: FormalVerifier | None,
-    ) -> list[Tier3ClaimResult]:
-        requested_claims = [item for item in report.tier3 if item.proof_status is ProofStatus.REQUESTED]
+        *,
+        lifecycle_state: FormalProofLifecycle | None,
+    ) -> FormalVerificationResultSet:
+        requested_claims = [
+            item for item in report.tier3 if item.proof_status in {ProofStatus.REQUESTED, ProofStatus.PENDING}
+        ]
         request = FormalVerificationRequest(
             session_id=checkpoint.session_id,
             iteration=checkpoint.current_iteration,
             claims=requested_claims,
             backend=self.config.verification.tier3.backend,
             timeout_seconds=self.config.verification.tier3.timeout_seconds,
+            lifecycle_state=lifecycle_state,
+            enable_lifecycle=True,
         )
-        verifier = formal_verifier or AristotleFormalVerifier()
+        verifier = formal_verifier or AristotleFormalVerifier(prefer_lifecycle=True)
         outcome = verifier(request)
         if isinstance(outcome, FormalVerificationResultSet):
-            results = outcome.results
-            transport_artifact = outcome.transport_artifact
+            result_set = outcome
         else:
-            results = list(outcome)
-            transport_artifact = None
+            result_set = FormalVerificationResultSet(results=list(outcome))
 
         request_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
@@ -757,6 +854,10 @@ class Tier1LoopRunner:
             {
                 "backend": request.backend,
                 "timeout_seconds": request.timeout_seconds,
+                "enable_lifecycle": request.enable_lifecycle,
+                "lifecycle_state": (
+                    request.lifecycle_state.to_dict() if request.lifecycle_state is not None else None
+                ),
                 "claims": [item.to_dict() for item in request.claims],
             },
         )
@@ -765,21 +866,34 @@ class Tier1LoopRunner:
             f"iteration_{checkpoint.current_iteration}_formal_results.json",
             {
                 "backend": request.backend,
-                "results": [item.to_dict() for item in results],
+                "pending": result_set.pending,
+                "results": [item.to_dict() for item in result_set.results],
             },
         )
         artifact_paths = [request_artifact, results_artifact]
-        if transport_artifact is not None:
+        if result_set.lifecycle_state is not None:
+            artifact_paths.append(
+                self.session_store.write_artifact_json(
+                    checkpoint.session_id,
+                    f"iteration_{checkpoint.current_iteration}_formal_lifecycle.json",
+                    result_set.lifecycle_state.to_dict(),
+                )
+            )
+        if result_set.transport_artifact is not None:
             artifact_paths.append(
                 self.session_store.write_artifact_json(
                     checkpoint.session_id,
                     f"iteration_{checkpoint.current_iteration}_formal_transport.json",
-                    transport_artifact,
+                    result_set.transport_artifact,
                 )
             )
         checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, artifact_paths)
         checkpoint.last_updated = self._timestamp()
-        checkpoint.result_summary = f"Completed Tier 3 formal mediation for candidate {checkpoint.current_iteration}."
+        checkpoint.result_summary = (
+            f"Tier 3 proof polling remains in progress for candidate {checkpoint.current_iteration}."
+            if result_set.pending
+            else f"Completed Tier 3 formal mediation for candidate {checkpoint.current_iteration}."
+        )
 
         self.session_store.append_evidence(
             checkpoint.session_id,
@@ -790,12 +904,11 @@ class Tier1LoopRunner:
                 tiers_applied=[3],
                 flaws=[],
                 input_summary=f"Formal verification requested for {len(request.claims)} claim(s).",
-                output_summary=self._formal_summary(results),
-                formal_results=results,
+                output_summary=self._formal_summary(result_set),
+                formal_results=result_set.results,
             ),
         )
-        self.session_store.save_checkpoint(checkpoint)
-        return results
+        return result_set
 
     def _attach_formal_results(self, report: VerificationReport, formal_results: list[Tier3ClaimResult]) -> None:
         if not report.tier3:
@@ -820,8 +933,11 @@ class Tier1LoopRunner:
             f"{sim_results.backend.value}; threshold method={sim_results.analysis.threshold_method}."
         )
 
-    def _formal_summary(self, results: list[Tier3ClaimResult]) -> str:
-        return f"Formal verification results: {self._formal_status_summary(results)}"
+    def _formal_summary(self, result_set: FormalVerificationResultSet) -> str:
+        summary = f"Formal verification results: {self._formal_status_summary(result_set.results)}"
+        if result_set.pending:
+            return f"{summary} Proof polling remains in progress."
+        return summary
 
     def _merge_artifacts(self, current: list[str], additions: list[str]) -> list[str]:
         merged = list(current)
