@@ -1,4 +1,11 @@
-# deep-gvr
+```text
+       __                                      
+  ____/ /__  ___  ____        ____ __   _______
+ / __  / _ \/ _ \/ __ \______/ __ `/ | / / ___/
+/ /_/ /  __/  __/ /_/ /_____/ /_/ /| |/ / /    
+\__,_/\___/\___/ .___/      \__, / |___/_/     
+              /_/          /____/              
+```
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
