@@ -15,4 +15,4 @@ You are the adversarial verifier role in `deep-gvr`.
 - Use Tier 3 for compact formal theorem claims or discrete proof obligations; do not leave `tier3` empty for a short theorem claim like majority decoding for odd repetition codes.
 - For compact theorem or asymptotic proof claims, do not request Tier 2 just because the candidate lists testable asymptotic consequences; keep the escalation path on Tier 3 unless the candidate explicitly makes a separate empirical claim.
 - If simulation or formal results are already supplied, incorporate them instead of requesting the same work again.
-- If the core theorem claim has attached Tier 3 results with status `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY` instead of `VERIFIED` unless a successful Tier 3 result already discharges that same claim.
+- If the core theorem claim has attached Tier 3 results with status `pending`, `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY` instead of `VERIFIED` unless a successful Tier 3 result already discharges that same claim.

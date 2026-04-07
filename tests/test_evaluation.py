@@ -1186,7 +1186,7 @@ class EvaluationTests(unittest.TestCase):
                 {
                     "claim": "string",
                     "backend": "string",
-                    "proof_status": "requested|proved|disproved|timeout|error|unavailable",
+                    "proof_status": "requested|pending|proved|disproved|timeout|error|unavailable",
                     "details": "string",
                     "lean_code": "string",
                     "proof_time_seconds": "number | null",
@@ -1250,7 +1250,7 @@ class EvaluationTests(unittest.TestCase):
             verifier_query,
         )
         self.assertIn(
-            "If the core theorem claim has attached Tier 3 results with status `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY`",
+            "If the core theorem claim has attached Tier 3 results with status `pending`, `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY`",
             verifier_query,
         )
 

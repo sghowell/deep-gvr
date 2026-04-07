@@ -184,7 +184,7 @@ def build_formal_query(
             {
                 "claim": "string",
                 "backend": "aristotle",
-                "proof_status": "requested|proved|disproved|timeout|error|unavailable",
+                "proof_status": "requested|pending|proved|disproved|timeout|error|unavailable",
                 "details": "string",
                 "lean_code": "string",
                 "proof_time_seconds": "number | null",

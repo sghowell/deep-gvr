@@ -18,6 +18,7 @@
     "final_verdict",
     "evidence_file",
     "artifacts_dir",
+    "formal_lifecycle",
     "artifacts"
   ],
   "additionalProperties": false,
@@ -51,6 +52,53 @@
     "final_verdict": { "type": "string", "minLength": 1 },
     "evidence_file": { "type": "string", "minLength": 1 },
     "artifacts_dir": { "type": "string", "minLength": 1 },
+    "formal_lifecycle": {
+      "type": ["object", "null"],
+      "required": ["backend", "transport", "proof_status", "handles", "last_transition", "details"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": { "type": "string", "minLength": 1 },
+        "transport": { "type": "string", "minLength": 1 },
+        "proof_status": {
+          "type": "string",
+          "enum": ["requested", "pending", "proved", "disproved", "timeout", "error", "unavailable"]
+        },
+        "handles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "claim",
+              "backend",
+              "project_id",
+              "transport",
+              "proof_status",
+              "submitted_at",
+              "last_polled_at",
+              "poll_count",
+              "details"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "claim": { "type": "string", "minLength": 1 },
+              "backend": { "type": "string", "minLength": 1 },
+              "project_id": { "type": "string", "minLength": 1 },
+              "transport": { "type": "string", "minLength": 1 },
+              "proof_status": {
+                "type": "string",
+                "enum": ["requested", "pending", "proved", "disproved", "timeout", "error", "unavailable"]
+              },
+              "submitted_at": { "type": "string", "minLength": 1 },
+              "last_polled_at": { "type": ["string", "null"] },
+              "poll_count": { "type": "integer" },
+              "details": { "type": "string" }
+            }
+          }
+        },
+        "last_transition": { "type": "string", "minLength": 1 },
+        "details": { "type": "string" }
+      }
+    },
     "artifacts": { "type": "array", "items": { "type": "string" } }
   }
 }

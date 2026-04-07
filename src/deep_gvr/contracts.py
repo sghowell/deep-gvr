@@ -48,6 +48,7 @@ class RoutingMode(StrEnum):
 
 class ProofStatus(StrEnum):
     REQUESTED = "requested"
+    PENDING = "pending"
     PROVED = "proved"
     DISPROVED = "disproved"
     TIMEOUT = "timeout"
@@ -313,6 +314,60 @@ class Tier3ClaimResult:
 
 
 @dataclass(slots=True)
+class FormalProofHandle:
+    claim: str
+    backend: str
+    project_id: str
+    transport: str
+    proof_status: ProofStatus
+    submitted_at: str
+    last_polled_at: str | None = None
+    poll_count: int = 0
+    details: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FormalProofHandle":
+        return cls(
+            claim=data["claim"],
+            backend=data.get("backend", "aristotle"),
+            project_id=data["project_id"],
+            transport=data["transport"],
+            proof_status=ProofStatus(data.get("proof_status", ProofStatus.PENDING.value)),
+            submitted_at=data["submitted_at"],
+            last_polled_at=data.get("last_polled_at"),
+            poll_count=int(data.get("poll_count", 0)),
+            details=data.get("details", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class FormalProofLifecycle:
+    backend: str
+    transport: str
+    proof_status: ProofStatus
+    handles: list[FormalProofHandle]
+    last_transition: str
+    details: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FormalProofLifecycle":
+        return cls(
+            backend=data.get("backend", "aristotle"),
+            transport=data["transport"],
+            proof_status=ProofStatus(data.get("proof_status", ProofStatus.PENDING.value)),
+            handles=[FormalProofHandle.from_dict(item) for item in data.get("handles", [])],
+            last_transition=data["last_transition"],
+            details=data.get("details", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class VerificationReport:
     verdict: VerificationVerdict
     tier1: Tier1Report
@@ -564,6 +619,7 @@ class SessionCheckpoint:
     final_verdict: str
     evidence_file: str
     artifacts_dir: str
+    formal_lifecycle: FormalProofLifecycle | None = None
     artifacts: list[str] = field(default_factory=list)
 
     @classmethod
@@ -588,6 +644,11 @@ class SessionCheckpoint:
             final_verdict=data["final_verdict"],
             evidence_file=data["evidence_file"],
             artifacts_dir=data["artifacts_dir"],
+            formal_lifecycle=(
+                FormalProofLifecycle.from_dict(data["formal_lifecycle"])
+                if data.get("formal_lifecycle") is not None
+                else None
+            ),
             artifacts=list(data.get("artifacts", [])),
         )
 

@@ -13,6 +13,8 @@ from deep_gvr.contracts import (
     CapabilityProbeResult,
     DeepGvrConfig,
     EvidenceRecord,
+    FormalProofHandle,
+    FormalProofLifecycle,
     ProofStatus,
     SessionCheckpoint,
     SessionIndex,
@@ -191,6 +193,32 @@ class ContractRoundTripTests(unittest.TestCase):
         self.assertEqual(model.claim, "For all odd d >= 1, majority decoding recovers the codeword.")
         self.assertEqual(model.proof_status, ProofStatus.REQUESTED)
         self.assertEqual(model.details, "Short formal theorem.")
+
+    def test_formal_proof_lifecycle_round_trip(self) -> None:
+        payload = {
+            "backend": "aristotle",
+            "transport": "aristotle_cli_lifecycle",
+            "proof_status": "pending",
+            "handles": [
+                {
+                    "claim": "majority decoding is correct up to (d-1)/2 flips",
+                    "backend": "aristotle",
+                    "project_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "transport": "aristotle_cli_lifecycle",
+                    "proof_status": "pending",
+                    "submitted_at": "2026-04-07T12:00:00Z",
+                    "last_polled_at": "2026-04-07T12:05:00Z",
+                    "poll_count": 1,
+                    "details": "Result polling is still in progress.",
+                }
+            ],
+            "last_transition": "2026-04-07T12:05:00Z",
+            "details": "pending=1 proved=0 error=0",
+        }
+        model = FormalProofLifecycle.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+        self.assertEqual(model.proof_status, ProofStatus.PENDING)
+        self.assertIsInstance(model.handles[0], FormalProofHandle)
 
 
 if __name__ == "__main__":

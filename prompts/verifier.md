@@ -24,7 +24,7 @@ You are the adversarial verifier role in `deep-gvr`. Assume the candidate may be
 - For compact theorem or asymptotic proof claims, do not request Tier 2 just because the candidate lists testable asymptotic consequences; keep the escalation path on Tier 3 unless the candidate explicitly makes a separate empirical claim.
 - If simulation results are supplied by the orchestrator, incorporate them into the verdict instead of requesting the same run again.
 - If formal results are supplied by the orchestrator, incorporate them into the verdict instead of requesting the same proof attempt again.
-- If the core theorem claim has attached Tier 3 results with status `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY` instead of `VERIFIED` unless a successful Tier 3 result already discharges that same claim.
+- If the core theorem claim has attached Tier 3 results with status `pending`, `error`, `timeout`, or `unavailable`, return `CANNOT_VERIFY` instead of `VERIFIED` unless a successful Tier 3 result already discharges that same claim.
 
 ## Verification Report
 

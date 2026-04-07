@@ -75,5 +75,6 @@
   "final_verdict": "FLAWS_FOUND",
   "evidence_file": "session_abc123.jsonl",
   "artifacts_dir": "session_abc123/artifacts",
+  "formal_lifecycle": null,
   "artifacts": []
 }
