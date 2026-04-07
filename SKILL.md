@@ -14,14 +14,13 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 
 ## Current State
 
-The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, and a Hermes-MCP-backed Tier 3 transport path when Aristotle is configured.
+The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
 Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
 Current target-state gaps are tracked in [docs/architecture-status.md](docs/architecture-status.md); the temporary runtime substitutions below each point to a retirement slice.
 
 ## Temporary Architecture Gaps
 
 - `subagent-capability-closure`: per-subagent routing and verifier-direct MCP are still not supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
-- `formal-proof-lifecycle`: Tier 3 still ends at one bounded proof attempt instead of a full submission and polling lifecycle. Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
 - `remote-backend-completion`: Modal and SSH are still incomplete Tier 2 execution paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
 - `evidence-system-completion`: Hermes memory persistence and Parallax-compatible evidence outputs are still missing. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
@@ -71,7 +70,8 @@ When the user invokes `/deep-gvr`:
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
-- The orchestrator mediates Tier 3 as verifier -> Hermes CLI -> configured Aristotle MCP tools -> verifier, persisting the formal request, transport trace, and returned results under the session artifacts directory.
+- The shipped Tier 3 path persists formal request, lifecycle, transport, and result artifacts so pending proof work can survive resume boundaries without resubmission.
+- The orchestrator mediates Tier 3 as verifier -> Aristotle proof lifecycle boundary -> verifier, persisting the formal request, lifecycle state, transport trace, and returned results under the session artifacts directory.
 - The repo-local `uv run deep-gvr ...` wrapper now opens one Hermes session preloaded with this skill; the live benchmark runner in `src/deep_gvr/evaluation.py` remains the explicit prompt-role harness.
 - `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
@@ -89,7 +89,7 @@ When the user invokes `/deep-gvr`:
 - Hermes-backed live execution supports `compact` and `full` prompt profiles. `compact` is the default runtime path; `full` is the debugging path when prompt scaffolding needs inspection.
 - Live generator/verifier/reviser calls now default to a constrained Hermes tool surface when `--toolsets` is omitted, so prompt execution does not inherit the full interactive CLI tool policy by default.
 - Live evaluation treats `--command-timeout-seconds` as the base role timeout, applies a higher repo-local floor to the verifier, applies a larger follow-up floor once Tier 2 or Tier 3 evidence is attached, and leaves Tier 3 formal transport on the configured proof timeout.
-- Tier 3 transport readiness is separate from subagent MCP inheritance. The current orchestrator-mediated proof path is a temporary gap rather than the end state. Retirement slices: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md) and [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
+- Tier 3 transport readiness is separate from subagent MCP inheritance. The remaining gap is verifier-direct MCP access, not proof lifecycle persistence. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 - For live known-incorrect benchmark cases, the evaluation runner now accepts a verified direct refutation as success instead of forcing the generator to produce a false candidate.
 - The same accepted-refutation scoring now also covers simulation-backed direct refutations when the live run clearly disproves the benchmark claim.
 - The accepted-refutation scoring now also recognizes conservative explicit refutations of the 5% circuit-level threshold claim when they clearly reject the claim and ground it in a sub-1% or `~0.6-0.8%` literature range.

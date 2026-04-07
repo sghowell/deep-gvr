@@ -16,11 +16,11 @@ Start from `main` and implement this slice on `codex/formal-proof-lifecycle`. Me
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Extend the formal contracts to represent proof handles, polling state, and terminal results.
-- [ ] Persist proof lifecycle artifacts and integrate them into checkpoint/resume.
-- [ ] Add runtime logic for submission, polling, timeout, and restart-safe completion.
-- [ ] Validate the new Tier 3 lifecycle on live proof cases.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Extend the formal contracts to represent proof handles, polling state, and terminal results.
+- [x] Persist proof lifecycle artifacts and integrate them into checkpoint/resume.
+- [x] Add runtime logic for submission, polling, timeout, and restart-safe completion.
+- [x] Validate the new Tier 3 lifecycle on live proof cases.
 
 ## Surprises & Discoveries
 
@@ -35,7 +35,9 @@ Start from `main` and implement this slice on `codex/formal-proof-lifecycle`. Me
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Tier 3 now persists `formal_lifecycle` checkpoint state plus `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts for each mediated proof attempt.
+- Resume can continue a pending Aristotle proof without re-running generation or blindly re-submitting the same theorem claim.
+- The shipped harness path now treats pending proof work as a first-class session state instead of collapsing it into generic timeout/error handling.
 
 ## Context and Orientation
 

@@ -415,11 +415,13 @@ For v0.1, Aristotle MCP is the primary Tier 3 backend (simpler integration, no l
   "backend": "aristotle" | "opengauss",
   "claim": "string (the mathematical statement)",
   "lean_code": "string (if generated)",
-  "proof_status": "proved" | "disproved" | "timeout" | "error",
+  "proof_status": "pending" | "proved" | "disproved" | "timeout" | "error",
   "proof_time_seconds": 180,
   "details": "string"
 }
 ```
+
+Proof attempts may remain `pending` across command boundaries; the runtime is expected to persist proof handles and resume polling instead of blindly resubmitting the same claim.
 
 ### 3.4 Tier Selection Logic
 

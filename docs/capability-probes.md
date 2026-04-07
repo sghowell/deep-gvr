@@ -1,7 +1,7 @@
 # Capability Probes
 
 The architecture document identifies several implementation unknowns that are important enough to probe before deeper feature work.
-The current probe defaults are temporary gaps, not accepted end states; each one now points to a retirement slice in the architecture-completion roadmap.
+The remaining open probe defaults are temporary gaps, not accepted end states; each open item points to a retirement slice in the architecture-completion roadmap.
 
 ## Probe Matrix
 
@@ -25,10 +25,10 @@ The current probe defaults are temporary gaps, not accepted end states; each one
 
 - Question: can the orchestrator dispatch Aristotle proof attempts through the locally configured Hermes MCP transport?
 - Default until proven otherwise: assume Tier 3 falls back unless Hermes, `ARISTOTLE_API_KEY`, and `mcp_servers.aristotle` are all present.
-- Current baseline: the formal verifier checks the Hermes config, dispatches Tier 3 through `hermes chat` plus the configured Aristotle MCP tools when available, and can fall back to direct `aristotle submit --wait` when the Hermes->MCP transport fails in a retryable way.
+- Current baseline: the formal verifier checks the Hermes config, uses persisted Aristotle proof handles for submission/polling on the shipped harness path, and still records Hermes MCP transport details when that boundary is used.
 - Operator path: use `scripts/setup_mcp.sh --install --check` to install the Aristotle MCP stanza into `~/.hermes/config.yaml` and confirm the transport preflight before live Tier 3 runs.
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
-- Temporary gap: bounded one-shot Tier 3 transport remains incomplete until the proof lifecycle is implemented. Retirement slice: [27-formal-proof-lifecycle.md](../plans/27-formal-proof-lifecycle.md)
+- Implemented baseline: Tier 3 now persists `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts so proof polling can resume without starting over.
 
 ### Session checkpoint and resume
 

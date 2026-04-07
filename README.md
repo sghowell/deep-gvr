@@ -9,7 +9,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and orchestrator-mediated Tier 3 formal verification through Hermes MCP when Aristotle is configured, with structured fallback when it is not.
+The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and Tier 3 formal verification with persisted proof handles, polling, and resume-aware completion on the shipped harness path.
 Target-state alignment is tracked in [docs/architecture-status.md](docs/architecture-status.md); current substitutions are temporary gaps with owning retirement slices, not the intended long-term surface.
 
 ## What Exists Now
@@ -33,7 +33,6 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 ## Temporary Architecture Gaps
 
 - `subagent-capability-closure`: per-subagent routing and verifier-side MCP access are still not real supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
-- `formal-proof-lifecycle`: Tier 3 is still a bounded proof attempt rather than a full submission, polling, and resume lifecycle. Retirement slice: [plans/27-formal-proof-lifecycle.md](plans/27-formal-proof-lifecycle.md)
 - `remote-backend-completion`: Tier 2 is still local-first; Modal and SSH remain incomplete runtime paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
 - `evidence-system-completion`: evidence is still file-backed only; Hermes memory persistence and Parallax compatibility remain to be implemented. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
@@ -99,7 +98,7 @@ uv run deep-gvr resume <session_id>
 The command now launches one Hermes session preloaded with the installed `deep-gvr` skill, passes the repo-local config/runtime request into that delegated orchestrator, and returns the structured session summary produced by the skill. The wrapper still records a local orchestrator transcript artifact alongside the skill-managed evidence directory.
 Because the wrapper preloads `--skills deep-gvr`, the skill must be installed first with `scripts/install.sh`. `uv run deep-gvr init-config` still creates `~/.hermes/deep-gvr/config.yaml`, but it does not install the skill bundle.
 `--command-timeout-seconds` is now the delegated orchestrator timeout for the top-level Hermes session. The separate live benchmark harness keeps its own prompt-harness timeout policy.
-If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill runs can still mediate Tier 3 requests through Hermes MCP and leave `formal_transport` artifacts in the session directory.
+If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill runs can mediate Tier 3 requests through the shipped proof lifecycle and leave `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts in the session directory.
 
 ## Evaluation Baseline
 

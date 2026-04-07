@@ -13,6 +13,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `SimSpec`: normalized simulation request
 - `SimResults`: normalized simulation output
 - `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
+- `FormalProofLifecycle`: persisted Tier 3 proof-handle state for submission, polling, and resume
 - `EvidenceRecord`: append-only record for one GVR phase transition, including the effective provider/model path, routing mode, and any fallback temperature
 - `SessionCheckpoint`: resume-safe loop state for the last complete phase
 - `SessionIndex`: summary view of known sessions
@@ -38,6 +39,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_lifecycle.json`: persisted Tier 3 proof-handle state for pending or completed proof work
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and Hermes MCP preflight details
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_results.json`: persisted Tier 3 returned formal results
 
