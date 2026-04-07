@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -38,6 +39,19 @@ def _request() -> FormalVerificationRequest:
     )
 
 
+def _write_aristotle_bundle(tmpdir: str, *, summary: str, lean_code: str) -> str:
+    root = Path(tmpdir) / "bundle_root"
+    project_dir = root / "RequestProject"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (root / "ARISTOTLE_SUMMARY_test.md").write_text(summary, encoding="utf-8")
+    (project_dir / "Main.lean").write_text("import Mathlib\n", encoding="utf-8")
+    (project_dir / "Proof.lean").write_text(lean_code, encoding="utf-8")
+    tarball = Path(tmpdir) / "proof-bundle.tar.gz"
+    with tarfile.open(tarball, "w:gz") as archive:
+        archive.add(root, arcname="test_project")
+    return str(tarball)
+
+
 class AristotleFormalVerifierTests(unittest.TestCase):
     def test_missing_api_key_returns_unavailable(self) -> None:
         request = _request()
@@ -57,6 +71,7 @@ class AristotleFormalVerifierTests(unittest.TestCase):
             result_set = AristotleFormalVerifier(
                 hermes_config_path=config_path,
                 hermes_binary="python3",
+                allow_cli_fallback=False,
             )(request)
 
         self.assertEqual(result_set.results[0].proof_status, ProofStatus.UNAVAILABLE)
@@ -149,10 +164,79 @@ class AristotleFormalVerifierTests(unittest.TestCase):
             result_set = AristotleFormalVerifier(
                 command_executor=command_executor,
                 hermes_config_path=config_path,
+                allow_cli_fallback=False,
             )(request)
 
         self.assertEqual(result_set.results[0].proof_status, ProofStatus.TIMEOUT)
         self.assertEqual(result_set.transport_artifact["status"], "timeout")
+
+    def test_cli_fallback_returns_proved_result_after_retryable_hermes_error(self) -> None:
+        request = _request()
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}):
+            config_path = Path(tmpdir) / "config.yaml"
+            config_path.write_text(
+                "mcp_servers:\n  aristotle:\n    command: uvx\n    args:\n      - aristotle-mcp\n",
+                encoding="utf-8",
+            )
+            tarball_path = _write_aristotle_bundle(
+                tmpdir,
+                summary="# Summary of changes\nA direct CLI proof succeeded.",
+                lean_code="theorem cli_fallback : True := by trivial\n",
+            )
+            calls: list[list[str]] = []
+
+            def hermes_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                calls.append(command)
+                return CommandExecutionResult(returncode=1, stdout="", stderr="MCP transport failed")
+
+            def cli_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                calls.append(command)
+                return CommandExecutionResult(
+                    returncode=0,
+                    stdout=f"Project created: 123e4567-e89b-12d3-a456-426614174000\nProject saved to {tarball_path}\n",
+                    stderr="",
+                )
+
+            result_set = AristotleFormalVerifier(
+                command_executor=hermes_executor,
+                cli_command_executor=cli_executor,
+                hermes_config_path=config_path,
+            )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertIn("123e4567-e89b-12d3-a456-426614174000", result_set.results[0].details)
+        self.assertIn("theorem cli_fallback", result_set.results[0].lean_code)
+        self.assertEqual(result_set.transport_artifact["transport"], "aristotle_cli_direct")
+        self.assertEqual(result_set.transport_artifact["primary_transport"]["transport"], "hermes_mcp")
+        self.assertEqual(result_set.transport_artifact["attempts"][0]["tarball_path"], tarball_path)
+        self.assertEqual(calls[0][:4], ["hermes", "chat", "-Q", "-q"])
+        self.assertEqual(calls[1][:3], ["aristotle", "submit", "--wait"])
+
+    def test_cli_fallback_failure_is_attached_to_primary_failure(self) -> None:
+        request = _request()
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, {"ARISTOTLE_API_KEY": "configured"}):
+            config_path = Path(tmpdir) / "config.yaml"
+            config_path.write_text(
+                "mcp_servers:\n  aristotle:\n    command: uvx\n    args:\n      - aristotle-mcp\n",
+                encoding="utf-8",
+            )
+
+            def hermes_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                return CommandExecutionResult(returncode=1, stdout="", stderr="MCP transport failed")
+
+            def cli_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                return CommandExecutionResult(returncode=1, stdout="", stderr="CLI fallback failed")
+
+            result_set = AristotleFormalVerifier(
+                command_executor=hermes_executor,
+                cli_command_executor=cli_executor,
+                hermes_config_path=config_path,
+            )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.ERROR)
+        self.assertIn("CLI fallback also failed", result_set.results[0].details)
+        self.assertEqual(result_set.transport_artifact["transport"], "hermes_mcp")
+        self.assertEqual(result_set.transport_artifact["cli_fallback"]["transport"], "aristotle_cli_direct")
 
     def test_compact_prompt_profile_emits_shorter_formal_query_than_full(self) -> None:
         request = _request()

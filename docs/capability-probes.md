@@ -25,7 +25,7 @@ The current probe defaults are temporary gaps, not accepted end states; each one
 
 - Question: can the orchestrator dispatch Aristotle proof attempts through the locally configured Hermes MCP transport?
 - Default until proven otherwise: assume Tier 3 falls back unless Hermes, `ARISTOTLE_API_KEY`, and `mcp_servers.aristotle` are all present.
-- Current baseline: the formal verifier checks the Hermes config, then dispatches Tier 3 through `hermes chat` plus the configured Aristotle MCP tools when available.
+- Current baseline: the formal verifier checks the Hermes config, dispatches Tier 3 through `hermes chat` plus the configured Aristotle MCP tools when available, and can fall back to direct `aristotle submit --wait` when the Hermes->MCP transport fails in a retryable way.
 - Operator path: use `scripts/setup_mcp.sh --install --check` to install the Aristotle MCP stanza into `~/.hermes/config.yaml` and confirm the transport preflight before live Tier 3 runs.
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
 - Temporary gap: bounded one-shot Tier 3 transport remains incomplete until the proof lifecycle is implemented. Retirement slice: [27-formal-proof-lifecycle.md](../plans/27-formal-proof-lifecycle.md)
