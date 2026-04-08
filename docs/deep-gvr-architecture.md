@@ -1072,7 +1072,8 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 - [ ] ARCHITECTURE.md (this document, finalized)
 - [ ] eval/ benchmark suite and results
 - [ ] QEC and FBQC domain context files
-- [ ] install.sh and setup_mcp.sh scripts
+- [ ] install.sh, release_preflight.py, and setup_mcp.sh scripts
+- [ ] checked-in publication bundle for agentskills.io-ready release packaging
 - [ ] Publish to agentskills.io
 - [ ] Announcement via Zetetic Works channels
 
@@ -1090,6 +1091,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 | 4 | Formalization requirement | Tiered, not mandatory | Most early use cases are analytical/empirical |
 | 5 | Release model | Zetetic Works open source, MIT | First public release, establishes brand |
 | 6 | Name | deep-gvr | Descriptive, echoes deep research, says what it does |
+| 15 | Skill auto-improvement policy | Ship with `auto_improve: false` and require an explicit publication-manifest edit to enable it | Keeps the default release surface conservative while still allowing future opt-in |
 
 ### Open
 
@@ -1102,7 +1104,6 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 | 12 | Multi-hypothesis fan-out vs sequential | P2 | Start sequential. Fan-out is a v0.2 feature. |
 | 13 | Failure escalation policy | P1 | v0.1: log + structured report to user. v0.2: auto-decomposition. |
 | 14 | Domain knowledge static vs dynamic | P1 | Minimal static context + dynamic retrieval. domain/ files are brief reference cards, not textbooks. |
-| 15 | Skill auto-improvement policy | P2 | Ship with auto_improve: false. Document how to enable. |
 | 16 | Contribution model | P2 | Accept adapter contributions freely. Prompt changes require review. |
 | 17 | Evaluation benchmark size | P1 | Target 10–15 problems across all categories for v0.1. |
 

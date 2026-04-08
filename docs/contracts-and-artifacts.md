@@ -20,15 +20,19 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `HermesMemorySummary`: derived session summary persisted as a session artifact and mirrored into Hermes memory when enabled
 - `ParallaxEvidenceManifest`: Parallax-compatible manifest derived from the checkpoint, evidence log, and artifact references
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
+- `ReleasePreflightReport`: structural and operator-readiness report for the shipped Hermes release surface
+- `ReleasePublicationManifest`: checked-in publication bundle manifest for GitHub and agentskills.io release work
 
 ## Artifact Paths
 
 - `schemas/*.json`: canonical JSON Schemas
 - `templates/*.json`: sample artifacts used in tests
 - `templates/config.template.yaml`: YAML form of the default runtime config written by install and CLI helpers
+- `release/agentskills.publication.json`: checked-in publication bundle manifest validated against repo metadata
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
 - `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
+- `scripts/release_preflight.py`: operator-facing release preflight helper for install, config, provider, backend, and Tier 3 readiness
 - `eval/known_problems.json`: deterministic release benchmark corpus
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report

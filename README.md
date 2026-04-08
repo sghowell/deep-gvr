@@ -61,6 +61,7 @@ The repo is pinned to Python 3.12 and `uv`.
 uv sync
 uv run deep-gvr init-config
 bash scripts/install.sh
+uv run python scripts/release_preflight.py --json
 uv run deep-gvr run "Explain why the surface code is understood to have a threshold."
 uv run python scripts/check_repo.py
 uv run python scripts/run_capability_probes.py
@@ -76,14 +77,24 @@ For a local Hermes skill install, use the repo helper:
 
 ```bash
 scripts/install.sh
-scripts/setup_mcp.sh --install --check
+uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
 ```
 
 `scripts/install.sh` creates a Hermes-indexable install under `~/.hermes/skills/deep-gvr` by default. In the default `symlink` mode it creates a real skill directory whose contents are symlinked back to the repo, because Hermes does not index a top-level skill directory that is itself a symlink. Use `--copy` if you need a fully copied install or `--target` to choose a different skills directory.
 
 The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
+`scripts/release_preflight.py` is the release-grade operator check for the installed bundle. In default mode it verifies the structural release surface without requiring live provider credentials or Hermes itself, so it is safe for CI and packaging checks. `--operator` raises the bar to actual runtime readiness for the configured path: installed skill bundle, valid config, Hermes CLI presence, explicit provider credentials, selected Tier 2 backend readiness, Tier 3 transport readiness when enabled, checked-in publication manifest, and the shipped `auto_improve: false` policy.
 For Tier 3, `scripts/setup_mcp.sh --install` adds the expected `mcp_servers.aristotle` block to `~/.hermes/config.yaml` without duplicating an existing entry, `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry, and `scripts/setup_mcp.sh --print-snippet` prints the same block without modifying the config.
+If you plan to enable Tier 3 in `~/.hermes/deep-gvr/config.yaml`, run `scripts/setup_mcp.sh --install --check` before the operator preflight.
 For Tier 2 remote backends, the runtime config now also carries `verification.tier2.modal.cli_bin`, `verification.tier2.modal.stub_path`, and the SSH fields `host`, `user`, `key_path`, `remote_workspace`, and `python_bin`. Modal readiness depends on the configured CLI plus stub path; SSH readiness depends on `ssh` and `scp` plus a populated remote workspace config.
+
+## Release Surface
+
+The checked-in publication bundle lives at `release/agentskills.publication.json`. It is validated against `SKILL.md`, `pyproject.toml`, the install/preflight helpers, and the committed deterministic baseline, so it can act as the repo-local source bundle for GitHub and agentskills.io release work.
+
+The release bundle ships with `auto_improve: false`. To opt in, edit `release/agentskills.publication.json` after human review and republish that same validated bundle; do not change the repo default casually.
+
+See [docs/release-workflow.md](docs/release-workflow.md) for the end-to-end install, preflight, and publication flow.
 
 ## Command Surface
 

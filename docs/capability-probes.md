@@ -52,6 +52,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
 - `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
+- `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
 - `src/deep_gvr/evidence.py` derives Hermes memory summaries and Parallax-compatible manifests from the file-backed session artifacts.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.

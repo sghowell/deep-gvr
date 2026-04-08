@@ -8,6 +8,7 @@ The architecture spec in [deep-gvr-architecture.md](deep-gvr-architecture.md) re
 - [contracts-and-artifacts.md](contracts-and-artifacts.md): shared interfaces, files, and artifact rules
 - [capability-probes.md](capability-probes.md): P0 unknowns, probe expectations, defaults, and fallbacks
 - [architecture-status.md](architecture-status.md): realized architecture, temporary gaps, and the owning retirement slices
+- [release-workflow.md](release-workflow.md): install, preflight, publication bundle, and auto-improve policy
 - [golden-principles.md](golden-principles.md): harness-engineering workflow and hard repo rules
 - [deep-gvr-architecture.md](deep-gvr-architecture.md): full source architecture document
 

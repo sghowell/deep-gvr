@@ -16,10 +16,10 @@ Start from `main` and implement this slice on `codex/release-surface-completion`
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Complete install, preflight, and operator validation for the intended public surface.
-- [ ] Add the publication assets and release docs for Hermes and agentskills.io.
-- [ ] Update repo checks and CI for release-surface completeness.
+- [x] The plan already existed and was indexed from `plans/README.md`.
+- [x] Added a release-grade preflight surface in `scripts/release_preflight.py` plus the supporting Python module and contracts.
+- [x] Added a checked-in publication bundle at `release/agentskills.publication.json` with schema/template validation.
+- [x] Updated install output, docs, repo checks, and CI to treat the release surface as a maintained product interface.
 
 ## Surprises & Discoveries
 
@@ -34,7 +34,9 @@ Start from `main` and implement this slice on `codex/release-surface-completion`
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- The release surface is now explicit and machine-checked instead of being implied by scattered scripts and docs.
+- Structural release completeness and operator runtime readiness are now separate preflight concepts, which keeps CI safe without watering down the real operator check.
+- The publication bundle now ships with an explicit `auto_improve: false` policy and a documented opt-in path.
 
 ## Context and Orientation
 

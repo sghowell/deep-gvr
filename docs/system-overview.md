@@ -8,11 +8,14 @@
 - `/deep-gvr resume <session_id>` resumes a session
 - `uv run deep-gvr run "<question>"` launches one Hermes session preloaded with the installed `deep-gvr` skill
 - `uv run deep-gvr resume <session_id>` resumes a prior session through the same delegated runtime wrapper
+- `uv run python scripts/release_preflight.py --json` checks the installed release surface
+- `uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml` checks live operator readiness
 - Config path: `~/.hermes/deep-gvr/config.yaml`
 - Evidence path: `~/.hermes/deep-gvr/sessions/<session_id>/`
 - Checkpoint path: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
 - Hermes memory path: `~/.hermes/memories/MEMORY.md`
 - Parallax manifest path: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/parallax_manifest.json`
+- Publication bundle path: `release/agentskills.publication.json`
 
 ## Core Components
 
@@ -26,6 +29,7 @@
 - Fixtures in `templates/`
 - Deterministic and live prompt-harness benchmark runner in `eval/run_eval.py`
 - Capability probes and repo checks in `scripts/`
+- Release publication and preflight helpers in `release/` and `scripts/release_preflight.py`
 
 ## Verification Model
 
@@ -49,6 +53,7 @@
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
 - The shipped CLI/skill path now uses Hermes delegated orchestration, while the benchmark runner keeps the explicit prompt-role harness for isolated evaluation
+- The shipped release surface also includes a structural/operator preflight split, so CI can validate packaging without pretending to have a live Hermes environment
 - The live benchmark runner supports named subsets such as `live-expansion` for representative multi-case sweeps plus `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` for broader coverage
 - The live benchmark runner also supports repeated subset sweeps with a top-level `consistency_report.json` plus per-run reports under `runs/run-###/`
 - The current representative stability gate is a repeated `live-expansion` sweep, and plan 21 recorded a clean `2/2` pass on that subset
@@ -71,3 +76,4 @@
 - Plain-text provider auth/401 failures from Hermes are now treated as live route configuration errors instead of JSON parse failures
 - Plan 23 narrowed the remaining analytical-breadth instability to an external Hermes provider-auth failure on this machine, rather than a repo-local tier-routing or prompt-discipline bug
 - Local, Modal, and SSH backends all dispatch through the same Stim adapter contract, with environment-sensitive readiness surfaced by the capability probe
+- The publication bundle ships with `auto_improve: false`; enabling it is a deliberate manifest edit, not the repo default

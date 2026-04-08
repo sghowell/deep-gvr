@@ -16,6 +16,7 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 
 The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
 Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
+The shipped release surface now also includes `scripts/release_preflight.py` plus the checked-in publication bundle at `release/agentskills.publication.json`.
 Current target-state gaps are tracked in [docs/architecture-status.md](docs/architecture-status.md); the temporary runtime substitutions below each point to a retirement slice.
 
 ## Temporary Architecture Gaps
@@ -77,6 +78,8 @@ When the user invokes `/deep-gvr`:
 - The repo-local `uv run deep-gvr ...` wrapper now opens one Hermes session preloaded with this skill; the live benchmark runner in `src/deep_gvr/evaluation.py` remains the explicit prompt-role harness.
 - The session store now derives `session_memory_summary.json` and `parallax_manifest.json` from the file-backed checkpoint/evidence log and, when `persist_to_memory` is enabled, upserts the session summary into `~/.hermes/memories/MEMORY.md`.
 - `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
+- `scripts/release_preflight.py --operator` is the release-grade operator check for the installed skill bundle, configured routes, selected Tier 2 backend, and Tier 3 readiness.
+- The checked-in publication bundle ships with `auto_improve: false`; only enable it by editing `release/agentskills.publication.json` after human review.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - Live eval now reads the same repo-local runtime config as the delegated CLI wrapper when `--config` is provided, so route tuning should happen in one config file instead of through benchmark-only overrides.
 - The live eval prompt harness still treats a non-default provider selection as explicit top-level route intent even when the model field is empty, so repo-local provider defaults such as `openrouter` are actually exercised there.
