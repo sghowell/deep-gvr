@@ -151,7 +151,10 @@ def _execute_command(
     run_session_id: str | None = None,
     resume_session_id: str | None = None,
 ) -> SkillSessionSummary:
-    session_store = SessionStore(config.evidence.directory)
+    session_store = SessionStore(
+        config.evidence.directory,
+        persist_to_memory=config.evidence.persist_to_memory,
+    )
     session_id = run_session_id if command == "run" else resume_session_id
     prompt_root_path = _resolve_prompt_root(prompt_root)
     routing_probe = _resolve_routing_probe(config, routing_probe_mode)
@@ -366,7 +369,8 @@ def _record_session_artifacts(
         )
 
     if current_checkpoint is None:
-        return SessionCheckpoint(
+        session_paths = session_store.session_paths(session_id)
+        fallback_checkpoint = SessionCheckpoint(
             session_id=session_id,
             problem="",
             domain="",
@@ -386,13 +390,17 @@ def _record_session_artifacts(
                 else "Delegated orchestrator returned before a local checkpoint was available."
             ),
             final_verdict="PENDING",
-            evidence_file=str(session_store.session_paths(session_id).evidence_log),
-            artifacts_dir=str(session_store.session_paths(session_id).artifacts_dir),
+            evidence_file=str(session_paths.evidence_log),
+            artifacts_dir=str(session_paths.artifacts_dir),
+            memory_summary_file=str(session_paths.memory_summary_file),
+            parallax_manifest_file=str(session_paths.parallax_manifest_file),
             artifacts=[
-                str((session_store.session_paths(session_id).session_dir.parent / artifact).resolve())
+                str((session_paths.session_dir.parent / artifact).resolve())
                 for artifact in new_artifacts
             ],
         )
+        session_store.save_checkpoint(fallback_checkpoint)
+        return fallback_checkpoint
 
     for artifact in new_artifacts:
         if artifact not in current_checkpoint.artifacts:

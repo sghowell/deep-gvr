@@ -18,6 +18,8 @@
     "final_verdict",
     "evidence_file",
     "artifacts_dir",
+    "memory_summary_file",
+    "parallax_manifest_file",
     "formal_lifecycle",
     "artifacts"
   ],
@@ -52,6 +54,8 @@
     "final_verdict": { "type": "string", "minLength": 1 },
     "evidence_file": { "type": "string", "minLength": 1 },
     "artifacts_dir": { "type": "string", "minLength": 1 },
+    "memory_summary_file": { "type": "string", "minLength": 1 },
+    "parallax_manifest_file": { "type": "string", "minLength": 1 },
     "formal_lifecycle": {
       "type": ["object", "null"],
       "required": ["backend", "transport", "proof_status", "handles", "last_transition", "details"],

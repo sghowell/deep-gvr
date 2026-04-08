@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "required": [
+    "format",
+    "manifest_version",
+    "session_id",
+    "generated_at",
+    "problem",
+    "domain",
+    "status",
+    "final_verdict",
+    "result_summary",
+    "evidence_file",
+    "checkpoint_file",
+    "memory_summary_file",
+    "artifacts_dir",
+    "hermes_memory_file",
+    "persisted_to_memory",
+    "evidence_records",
+    "assets"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "type": "string", "const": "parallax-compatible-evidence-manifest" },
+    "manifest_version": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "problem": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "final_verdict": { "type": "string", "minLength": 1 },
+    "result_summary": { "type": "string", "minLength": 1 },
+    "evidence_file": { "type": "string", "minLength": 1 },
+    "checkpoint_file": { "type": "string", "minLength": 1 },
+    "memory_summary_file": { "type": "string", "minLength": 1 },
+    "artifacts_dir": { "type": "string", "minLength": 1 },
+    "hermes_memory_file": { "type": ["string", "null"] },
+    "persisted_to_memory": { "type": "boolean" },
+    "evidence_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "iteration",
+          "phase",
+          "verdict",
+          "tiers_applied",
+          "input_summary",
+          "output_summary",
+          "artifacts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "iteration": { "type": "integer" },
+          "phase": { "type": "string", "minLength": 1 },
+          "verdict": { "type": ["string", "null"] },
+          "tiers_applied": { "type": "array", "items": { "type": "integer" } },
+          "input_summary": { "type": "string", "minLength": 1 },
+          "output_summary": { "type": "string", "minLength": 1 },
+          "artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind", "media_type", "phase", "iteration"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "media_type": { "type": "string", "minLength": 1 },
+          "phase": { "type": ["string", "null"] },
+          "iteration": { "type": ["integer", "null"] }
+        }
+      }
+    }
+  }
+}

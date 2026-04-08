@@ -1,0 +1,21 @@
+{
+  "session_id": "session_abc123",
+  "generated_at": "2026-04-08T05:00:00Z",
+  "problem": "Estimate the threshold behavior of a rotated surface-code memory experiment under depolarizing noise.",
+  "domain": "qec",
+  "status": "completed",
+  "final_verdict": "VERIFIED",
+  "iterations": 1,
+  "result_summary": "Verified with Tier 1 evidence and no remaining flaws.",
+  "evidence_file": "session_abc123.jsonl",
+  "checkpoint_file": "session_abc123/checkpoint.json",
+  "parallax_manifest_file": "session_abc123/artifacts/parallax_manifest.json",
+  "persisted_to_memory": true,
+  "memory_file": "/Users/example/.hermes/memories/MEMORY.md",
+  "tiers_observed": [1],
+  "artifacts": [
+    "session_abc123/artifacts/session_memory_summary.json",
+    "session_abc123/artifacts/parallax_manifest.json"
+  ],
+  "memory_entry": "[deep-gvr:session_abc123] qec session \"Estimate the threshold behavior of a rotated surface-code memory experiment under depolarizing noise.\" is completed with verdict VERIFIED after 1 iteration(s). Summary: Verified with Tier 1 evidence and no remaining flaws. Evidence: session_abc123.jsonl. Checkpoint: session_abc123/checkpoint.json. Manifest: session_abc123/artifacts/parallax_manifest.json."
+}

@@ -15,6 +15,8 @@ from deep_gvr.contracts import (
     EvidenceRecord,
     FormalProofHandle,
     FormalProofLifecycle,
+    HermesMemorySummary,
+    ParallaxEvidenceManifest,
     ProofStatus,
     SessionCheckpoint,
     SessionIndex,
@@ -93,6 +95,16 @@ class ContractRoundTripTests(unittest.TestCase):
         model = SessionIndex.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_hermes_memory_summary_round_trip(self) -> None:
+        payload = self._load_json("templates/hermes_memory_summary.template.json")
+        model = HermesMemorySummary.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
+    def test_parallax_manifest_round_trip(self) -> None:
+        payload = self._load_json("templates/parallax_manifest.template.json")
+        model = ParallaxEvidenceManifest.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_session_checkpoint_round_trip(self) -> None:
         payload = self._load_json("templates/session_checkpoint.template.json")
         model = SessionCheckpoint.from_dict(payload)
@@ -148,6 +160,16 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_session_checkpoint_fixture_validates(self) -> None:
         schema = self._load_json("schemas/session_checkpoint.schema.json")
         fixture = self._load_json("templates/session_checkpoint.template.json")
+        validate(fixture, schema)
+
+    def test_hermes_memory_summary_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/hermes_memory_summary.schema.json")
+        fixture = self._load_json("templates/hermes_memory_summary.template.json")
+        validate(fixture, schema)
+
+    def test_parallax_manifest_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/parallax_manifest.schema.json")
+        fixture = self._load_json("templates/parallax_manifest.template.json")
         validate(fixture, schema)
 
     def test_tier3_claim_round_trip(self) -> None:

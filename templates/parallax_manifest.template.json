@@ -1,0 +1,60 @@
+{
+  "format": "parallax-compatible-evidence-manifest",
+  "manifest_version": "1.0",
+  "session_id": "session_abc123",
+  "generated_at": "2026-04-08T05:00:00Z",
+  "problem": "Estimate the threshold behavior of a rotated surface-code memory experiment under depolarizing noise.",
+  "domain": "qec",
+  "status": "completed",
+  "final_verdict": "VERIFIED",
+  "result_summary": "Verified with Tier 1 evidence and no remaining flaws.",
+  "evidence_file": "session_abc123.jsonl",
+  "checkpoint_file": "session_abc123/checkpoint.json",
+  "memory_summary_file": "session_abc123/artifacts/session_memory_summary.json",
+  "artifacts_dir": "session_abc123/artifacts",
+  "hermes_memory_file": "/Users/example/.hermes/memories/MEMORY.md",
+  "persisted_to_memory": true,
+  "evidence_records": [
+    {
+      "iteration": 1,
+      "phase": "verify",
+      "verdict": "VERIFIED",
+      "tiers_applied": [1],
+      "input_summary": "Hypothesis: the surface code threshold remains below one percent in the stated regime.",
+      "output_summary": "Verified with Tier 1 evidence and no remaining flaws.",
+      "artifacts": [
+        "session_abc123/artifacts/session_memory_summary.json"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "session_abc123/checkpoint.json",
+      "kind": "session_checkpoint",
+      "media_type": "application/json",
+      "phase": null,
+      "iteration": null
+    },
+    {
+      "path": "session_abc123.jsonl",
+      "kind": "evidence_log",
+      "media_type": "application/x-ndjson",
+      "phase": null,
+      "iteration": null
+    },
+    {
+      "path": "session_abc123/artifacts/session_memory_summary.json",
+      "kind": "session_memory_summary",
+      "media_type": "application/json",
+      "phase": null,
+      "iteration": null
+    },
+    {
+      "path": "/Users/example/.hermes/memories/MEMORY.md",
+      "kind": "hermes_memory",
+      "media_type": "text/markdown",
+      "phase": null,
+      "iteration": null
+    }
+  ]
+}

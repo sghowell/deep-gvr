@@ -75,6 +75,11 @@
   "final_verdict": "FLAWS_FOUND",
   "evidence_file": "session_abc123.jsonl",
   "artifacts_dir": "session_abc123/artifacts",
+  "memory_summary_file": "session_abc123/artifacts/session_memory_summary.json",
+  "parallax_manifest_file": "session_abc123/artifacts/parallax_manifest.json",
   "formal_lifecycle": null,
-  "artifacts": []
+  "artifacts": [
+    "session_abc123/artifacts/session_memory_summary.json",
+    "session_abc123/artifacts/parallax_manifest.json"
+  ]
 }

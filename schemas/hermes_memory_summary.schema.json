@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "required": [
+    "session_id",
+    "generated_at",
+    "problem",
+    "domain",
+    "status",
+    "final_verdict",
+    "iterations",
+    "result_summary",
+    "evidence_file",
+    "checkpoint_file",
+    "parallax_manifest_file",
+    "persisted_to_memory",
+    "memory_file",
+    "tiers_observed",
+    "artifacts",
+    "memory_entry"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "problem": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "final_verdict": { "type": "string", "minLength": 1 },
+    "iterations": { "type": "integer" },
+    "result_summary": { "type": "string", "minLength": 1 },
+    "evidence_file": { "type": "string", "minLength": 1 },
+    "checkpoint_file": { "type": "string", "minLength": 1 },
+    "parallax_manifest_file": { "type": "string", "minLength": 1 },
+    "persisted_to_memory": { "type": "boolean" },
+    "memory_file": { "type": "string", "minLength": 1 },
+    "tiers_observed": { "type": "array", "items": { "type": "integer" } },
+    "artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "memory_entry": { "type": "string", "minLength": 1 }
+  }
+}

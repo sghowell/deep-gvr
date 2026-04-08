@@ -30,6 +30,7 @@ from .contracts import (
     VerificationReport,
     VerificationVerdict,
 )
+from .evidence import build_memory_summary, build_parallax_manifest, hermes_memory_file, persist_memory_summary
 from .formal import (
     AristotleFormalVerifier,
     FormalVerificationRequest,
@@ -132,6 +133,9 @@ class SessionPaths:
     evidence_log: Path
     checkpoint_file: Path
     artifacts_dir: Path
+    memory_summary_file: Path
+    parallax_manifest_file: Path
+    hermes_memory_file: Path
 
 
 @dataclass(slots=True)
@@ -144,9 +148,16 @@ class Tier1RunResult:
 
 
 class SessionStore:
-    def __init__(self, root_directory: str | Path, clock: Callable[[], datetime] | None = None) -> None:
+    def __init__(
+        self,
+        root_directory: str | Path,
+        clock: Callable[[], datetime] | None = None,
+        *,
+        persist_to_memory: bool = True,
+    ) -> None:
         self.root_directory = Path(root_directory).expanduser()
         self.clock = clock or _utc_now
+        self.persist_to_memory = persist_to_memory
 
     def session_paths(self, session_id: str) -> SessionPaths:
         session_dir = self.root_directory / session_id
@@ -156,6 +167,9 @@ class SessionStore:
             evidence_log=self.root_directory / f"{session_id}.jsonl",
             checkpoint_file=session_dir / "checkpoint.json",
             artifacts_dir=session_dir / "artifacts",
+            memory_summary_file=session_dir / "artifacts" / "session_memory_summary.json",
+            parallax_manifest_file=session_dir / "artifacts" / "parallax_manifest.json",
+            hermes_memory_file=hermes_memory_file(self.root_directory),
         )
 
     def initialize_session(
@@ -196,8 +210,13 @@ class SessionStore:
             final_verdict="PENDING",
             evidence_file=_relative_to_root(self.root_directory, paths.evidence_log),
             artifacts_dir=_relative_to_root(self.root_directory, paths.artifacts_dir),
+            memory_summary_file=_relative_to_root(self.root_directory, paths.memory_summary_file),
+            parallax_manifest_file=_relative_to_root(self.root_directory, paths.parallax_manifest_file),
             formal_lifecycle=None,
-            artifacts=[],
+            artifacts=[
+                _relative_to_root(self.root_directory, paths.memory_summary_file),
+                _relative_to_root(self.root_directory, paths.parallax_manifest_file),
+            ],
         )
         self.save_checkpoint(checkpoint)
         return checkpoint
@@ -211,8 +230,17 @@ class SessionStore:
         paths = self.session_paths(checkpoint.session_id)
         paths.session_dir.mkdir(parents=True, exist_ok=True)
         paths.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        memory_summary_relative = _relative_to_root(self.root_directory, paths.memory_summary_file)
+        parallax_manifest_relative = _relative_to_root(self.root_directory, paths.parallax_manifest_file)
+        checkpoint.memory_summary_file = memory_summary_relative
+        checkpoint.parallax_manifest_file = parallax_manifest_relative
+        if memory_summary_relative not in checkpoint.artifacts:
+            checkpoint.artifacts.append(memory_summary_relative)
+        if parallax_manifest_relative not in checkpoint.artifacts:
+            checkpoint.artifacts.append(parallax_manifest_relative)
         self._write_json(paths.checkpoint_file, checkpoint.to_dict())
         self._write_json(self.root_directory / "index.json", self._updated_index(checkpoint).to_dict())
+        self._sync_derived_artifacts(checkpoint, paths)
 
     def append_evidence(self, session_id: str, record: EvidenceRecord) -> None:
         self.root_directory.mkdir(parents=True, exist_ok=True)
@@ -250,8 +278,35 @@ class SessionStore:
             final_verdict=checkpoint.final_verdict,
             result_summary=checkpoint.result_summary,
             evidence_file=checkpoint.evidence_file,
+            memory_summary_file=checkpoint.memory_summary_file,
+            parallax_manifest_file=checkpoint.parallax_manifest_file,
         )
         return index
+
+    def _sync_derived_artifacts(self, checkpoint: SessionCheckpoint, paths: SessionPaths) -> None:
+        evidence_records = self.read_evidence(checkpoint.session_id)
+        generated_at = _isoformat(self.clock())
+        memory_summary = build_memory_summary(
+            root_directory=self.root_directory,
+            checkpoint=checkpoint,
+            evidence_records=evidence_records,
+            checkpoint_file=paths.checkpoint_file,
+            memory_file=paths.hermes_memory_file,
+            generated_at=generated_at,
+            persisted_to_memory=self.persist_to_memory,
+        )
+        self._write_json(paths.memory_summary_file, memory_summary.to_dict())
+        if self.persist_to_memory:
+            persist_memory_summary(paths.hermes_memory_file, memory_summary)
+        manifest = build_parallax_manifest(
+            root_directory=self.root_directory,
+            checkpoint=checkpoint,
+            evidence_records=evidence_records,
+            checkpoint_file=paths.checkpoint_file,
+            artifacts_dir=paths.artifacts_dir,
+            memory_summary=memory_summary,
+        )
+        self._write_json(paths.parallax_manifest_file, manifest.to_dict())
 
     def _write_json(self, path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -272,7 +327,11 @@ class Tier1LoopRunner:
     ) -> None:
         self.config = config
         self.clock = clock or _utc_now
-        self.session_store = session_store or SessionStore(config.evidence.directory, clock=self.clock)
+        self.session_store = session_store or SessionStore(
+            config.evidence.directory,
+            clock=self.clock,
+            persist_to_memory=config.evidence.persist_to_memory,
+        )
         self.routing_plan = routing_plan or build_routing_plan(config, routing_probe=routing_probe)
 
     def run(

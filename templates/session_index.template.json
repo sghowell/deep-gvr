@@ -9,7 +9,9 @@
       "iterations": 1,
       "final_verdict": "FLAWS_FOUND",
       "result_summary": "Initial candidate requires empirical verification.",
-      "evidence_file": "sessions/session_abc123.jsonl"
+      "evidence_file": "session_abc123.jsonl",
+      "memory_summary_file": "session_abc123/artifacts/session_memory_summary.json",
+      "parallax_manifest_file": "session_abc123/artifacts/parallax_manifest.json"
     }
   }
 }

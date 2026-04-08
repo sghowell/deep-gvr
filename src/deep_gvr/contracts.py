@@ -619,6 +619,8 @@ class SessionCheckpoint:
     final_verdict: str
     evidence_file: str
     artifacts_dir: str
+    memory_summary_file: str
+    parallax_manifest_file: str
     formal_lifecycle: FormalProofLifecycle | None = None
     artifacts: list[str] = field(default_factory=list)
 
@@ -644,6 +646,8 @@ class SessionCheckpoint:
             final_verdict=data["final_verdict"],
             evidence_file=data["evidence_file"],
             artifacts_dir=data["artifacts_dir"],
+            memory_summary_file=data["memory_summary_file"],
+            parallax_manifest_file=data["parallax_manifest_file"],
             formal_lifecycle=(
                 FormalProofLifecycle.from_dict(data["formal_lifecycle"])
                 if data.get("formal_lifecycle") is not None
@@ -667,6 +671,8 @@ class SessionSummary:
     final_verdict: str
     result_summary: str
     evidence_file: str
+    memory_summary_file: str
+    parallax_manifest_file: str
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SessionSummary":
@@ -680,6 +686,146 @@ class SessionSummary:
             final_verdict=data["final_verdict"],
             result_summary=data["result_summary"],
             evidence_file=data["evidence_file"],
+            memory_summary_file=data["memory_summary_file"],
+            parallax_manifest_file=data["parallax_manifest_file"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class HermesMemorySummary:
+    session_id: str
+    generated_at: str
+    problem: str
+    domain: str
+    status: str
+    final_verdict: str
+    iterations: int
+    result_summary: str
+    evidence_file: str
+    checkpoint_file: str
+    parallax_manifest_file: str
+    persisted_to_memory: bool
+    memory_file: str
+    tiers_observed: list[int]
+    artifacts: list[str]
+    memory_entry: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "HermesMemorySummary":
+        return cls(
+            session_id=data["session_id"],
+            generated_at=data["generated_at"],
+            problem=data["problem"],
+            domain=data["domain"],
+            status=data["status"],
+            final_verdict=data["final_verdict"],
+            iterations=int(data["iterations"]),
+            result_summary=data["result_summary"],
+            evidence_file=data["evidence_file"],
+            checkpoint_file=data["checkpoint_file"],
+            parallax_manifest_file=data["parallax_manifest_file"],
+            persisted_to_memory=bool(data["persisted_to_memory"]),
+            memory_file=data["memory_file"],
+            tiers_observed=[int(item) for item in data.get("tiers_observed", [])],
+            artifacts=list(data.get("artifacts", [])),
+            memory_entry=data["memory_entry"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ParallaxAsset:
+    path: str
+    kind: str
+    media_type: str
+    phase: str | None = None
+    iteration: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ParallaxAsset":
+        return cls(
+            path=data["path"],
+            kind=data["kind"],
+            media_type=data["media_type"],
+            phase=data.get("phase"),
+            iteration=int(data["iteration"]) if data.get("iteration") is not None else None,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ParallaxEvidenceEntry:
+    iteration: int
+    phase: str
+    verdict: str | None
+    tiers_applied: list[int]
+    input_summary: str
+    output_summary: str
+    artifacts: list[str]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ParallaxEvidenceEntry":
+        return cls(
+            iteration=int(data["iteration"]),
+            phase=data["phase"],
+            verdict=data.get("verdict"),
+            tiers_applied=[int(item) for item in data.get("tiers_applied", [])],
+            input_summary=data["input_summary"],
+            output_summary=data["output_summary"],
+            artifacts=list(data.get("artifacts", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ParallaxEvidenceManifest:
+    format: str
+    manifest_version: str
+    session_id: str
+    generated_at: str
+    problem: str
+    domain: str
+    status: str
+    final_verdict: str
+    result_summary: str
+    evidence_file: str
+    checkpoint_file: str
+    memory_summary_file: str
+    artifacts_dir: str
+    hermes_memory_file: str | None
+    persisted_to_memory: bool
+    evidence_records: list[ParallaxEvidenceEntry]
+    assets: list[ParallaxAsset]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ParallaxEvidenceManifest":
+        return cls(
+            format=data["format"],
+            manifest_version=data["manifest_version"],
+            session_id=data["session_id"],
+            generated_at=data["generated_at"],
+            problem=data["problem"],
+            domain=data["domain"],
+            status=data["status"],
+            final_verdict=data["final_verdict"],
+            result_summary=data["result_summary"],
+            evidence_file=data["evidence_file"],
+            checkpoint_file=data["checkpoint_file"],
+            memory_summary_file=data["memory_summary_file"],
+            artifacts_dir=data["artifacts_dir"],
+            hermes_memory_file=data.get("hermes_memory_file"),
+            persisted_to_memory=bool(data["persisted_to_memory"]),
+            evidence_records=[ParallaxEvidenceEntry.from_dict(item) for item in data.get("evidence_records", [])],
+            assets=[ParallaxAsset.from_dict(item) for item in data.get("assets", [])],
         )
 
     def to_dict(self) -> dict[str, Any]:

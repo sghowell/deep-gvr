@@ -94,6 +94,8 @@ class SkillCliTests(unittest.TestCase):
             self.assertIsNotNone(summary.capability_evidence)
             self.assertEqual(summary.capability_evidence["per_subagent_model_routing"]["evidence_source"], "delegated_runtime_test")
             self.assertTrue(any(path.endswith("_run_orchestrator_transcript.json") for path in summary.artifacts))
+            self.assertTrue(any(path.endswith("session_memory_summary.json") for path in summary.artifacts))
+            self.assertTrue(any(path.endswith("parallax_manifest.json") for path in summary.artifacts))
             transcript_path = next(
                 Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
             )
@@ -232,6 +234,8 @@ class SkillCliTests(unittest.TestCase):
             self.assertIsNotNone(summary.error)
             self.assertEqual(summary.final_verdict, "PENDING")
             self.assertTrue(any(path.endswith("_run_error.json") for path in summary.artifacts))
+            self.assertTrue(any(path.endswith("session_memory_summary.json") for path in summary.artifacts))
+            self.assertTrue(any(path.endswith("parallax_manifest.json") for path in summary.artifacts))
 
     def test_console_script_help(self) -> None:
         completed = subprocess.run(

@@ -174,6 +174,72 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual(evidence[1]["routing_mode"], "direct")
             self.assertIsNone(evidence[1]["routing_temperature"])
 
+    def test_completed_run_persists_memory_summary_and_parallax_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
+
+            result = runner.run(
+                problem="Check evidence completion behavior",
+                generator=lambda request: _candidate("Initial hypothesis"),
+                verifier=lambda request: _report(VerificationVerdict.VERIFIED),
+                reviser=lambda request: _candidate("Unexpected revision"),
+                session_id="session_test_evidence_completion",
+            )
+
+            paths = runner.session_store.session_paths("session_test_evidence_completion")
+            self.assertTrue(paths.memory_summary_file.exists())
+            self.assertTrue(paths.parallax_manifest_file.exists())
+            self.assertTrue(paths.hermes_memory_file.exists())
+
+            memory_summary = json.loads(paths.memory_summary_file.read_text(encoding="utf-8"))
+            self.assertTrue(memory_summary["persisted_to_memory"])
+            self.assertIn("[deep-gvr:session_test_evidence_completion]", memory_summary["memory_entry"])
+            self.assertEqual(
+                memory_summary["parallax_manifest_file"],
+                "session_test_evidence_completion/artifacts/parallax_manifest.json",
+            )
+
+            manifest = json.loads(paths.parallax_manifest_file.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["format"], "parallax-compatible-evidence-manifest")
+            self.assertTrue(manifest["persisted_to_memory"])
+            self.assertTrue(any(asset["kind"] == "hermes_memory" for asset in manifest["assets"]))
+
+            hermes_memory_text = paths.hermes_memory_file.read_text(encoding="utf-8")
+            self.assertIn("[deep-gvr:session_test_evidence_completion]", hermes_memory_text)
+            self.assertIn("Check evidence completion behavior", hermes_memory_text)
+            self.assertEqual(
+                result.checkpoint.memory_summary_file,
+                "session_test_evidence_completion/artifacts/session_memory_summary.json",
+            )
+            self.assertEqual(
+                result.checkpoint.parallax_manifest_file,
+                "session_test_evidence_completion/artifacts/parallax_manifest.json",
+            )
+
+    def test_persist_to_memory_false_skips_hermes_memory_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = self._config(tmpdir)
+            config.evidence.persist_to_memory = False
+            runner = Tier1LoopRunner(config, routing_probe=self._routing_probe(ProbeStatus.READY))
+
+            runner.run(
+                problem="Check memory-disabled behavior",
+                generator=lambda request: _candidate("Initial hypothesis"),
+                verifier=lambda request: _report(VerificationVerdict.VERIFIED),
+                reviser=lambda request: _candidate("Unexpected revision"),
+                session_id="session_test_memory_disabled",
+            )
+
+            paths = runner.session_store.session_paths("session_test_memory_disabled")
+            self.assertTrue(paths.memory_summary_file.exists())
+            self.assertTrue(paths.parallax_manifest_file.exists())
+            self.assertFalse(paths.hermes_memory_file.exists())
+
+            memory_summary = json.loads(paths.memory_summary_file.read_text(encoding="utf-8"))
+            self.assertFalse(memory_summary["persisted_to_memory"])
+            manifest = json.loads(paths.parallax_manifest_file.read_text(encoding="utf-8"))
+            self.assertFalse(manifest["persisted_to_memory"])
+
     def test_flaws_found_triggers_revision_then_verifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))

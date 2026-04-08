@@ -16,7 +16,9 @@
           "iterations",
           "final_verdict",
           "result_summary",
-          "evidence_file"
+          "evidence_file",
+          "memory_summary_file",
+          "parallax_manifest_file"
         ],
         "additionalProperties": false,
         "properties": {
@@ -28,7 +30,9 @@
           "iterations": { "type": "integer" },
           "final_verdict": { "type": "string" },
           "result_summary": { "type": "string" },
-          "evidence_file": { "type": "string" }
+          "evidence_file": { "type": "string" },
+          "memory_summary_file": { "type": "string" },
+          "parallax_manifest_file": { "type": "string" }
         }
       }
     }
