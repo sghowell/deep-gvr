@@ -97,6 +97,14 @@ class SSHConfig:
     host: str = ""
     user: str = ""
     key_path: str = ""
+    remote_workspace: str = ""
+    python_bin: str = "python3"
+
+
+@dataclass(slots=True)
+class ModalConfig:
+    cli_bin: str = "modal"
+    stub_path: str = "adapters/modal_stubs/stim_modal.py"
 
 
 @dataclass(slots=True)
@@ -105,6 +113,7 @@ class Tier2Config:
     default_simulator: str = "stim"
     default_backend: Backend = Backend.LOCAL
     timeout_seconds: int = 3600
+    modal: ModalConfig = field(default_factory=ModalConfig)
     ssh: SSHConfig = field(default_factory=SSHConfig)
 
 
@@ -156,6 +165,9 @@ class DeepGvrConfig:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DeepGvrConfig":
         verification = data["verification"]
+        tier2 = verification["tier2"]
+        modal = tier2.get("modal") or {}
+        ssh = tier2.get("ssh") or {}
         return cls(
             loop=LoopConfig(
                 max_iterations=int(data["loop"]["max_iterations"]),
@@ -165,14 +177,20 @@ class DeepGvrConfig:
             verification=VerificationConfig(
                 tier1=TierToggleConfig(enabled=bool(verification["tier1"]["enabled"])),
                 tier2=Tier2Config(
-                    enabled=bool(verification["tier2"]["enabled"]),
-                    default_simulator=verification["tier2"]["default_simulator"],
-                    default_backend=Backend(verification["tier2"]["default_backend"]),
-                    timeout_seconds=int(verification["tier2"]["timeout_seconds"]),
+                    enabled=bool(tier2["enabled"]),
+                    default_simulator=tier2["default_simulator"],
+                    default_backend=Backend(tier2["default_backend"]),
+                    timeout_seconds=int(tier2["timeout_seconds"]),
+                    modal=ModalConfig(
+                        cli_bin=modal.get("cli_bin", "modal"),
+                        stub_path=modal.get("stub_path", "adapters/modal_stubs/stim_modal.py"),
+                    ),
                     ssh=SSHConfig(
-                        host=verification["tier2"]["ssh"]["host"],
-                        user=verification["tier2"]["ssh"]["user"],
-                        key_path=verification["tier2"]["ssh"]["key_path"],
+                        host=ssh.get("host", ""),
+                        user=ssh.get("user", ""),
+                        key_path=ssh.get("key_path", ""),
+                        remote_workspace=ssh.get("remote_workspace", ""),
+                        python_bin=ssh.get("python_bin", "python3"),
                     ),
                 ),
                 tier3=Tier3Config(

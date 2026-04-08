@@ -35,6 +35,15 @@
             "default_simulator": { "type": "string" },
             "default_backend": { "type": "string", "enum": ["local", "modal", "ssh"] },
             "timeout_seconds": { "type": "integer" },
+            "modal": {
+              "type": "object",
+              "required": ["cli_bin", "stub_path"],
+              "additionalProperties": false,
+              "properties": {
+                "cli_bin": { "type": "string" },
+                "stub_path": { "type": "string" }
+              }
+            },
             "ssh": {
               "type": "object",
               "required": ["host", "user", "key_path"],
@@ -42,7 +51,9 @@
               "properties": {
                 "host": { "type": "string" },
                 "user": { "type": "string" },
-                "key_path": { "type": "string" }
+                "key_path": { "type": "string" },
+                "remote_workspace": { "type": "string" },
+                "python_bin": { "type": "string" }
               }
             }
           }

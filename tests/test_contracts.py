@@ -45,6 +45,25 @@ class ContractRoundTripTests(unittest.TestCase):
         model = DeepGvrConfig.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_config_accepts_legacy_tier2_shape_without_modal_or_extended_ssh_fields(self) -> None:
+        payload = self._load_json("templates/config.template.json")
+        del payload["verification"]["tier2"]["modal"]
+        payload["verification"]["tier2"]["ssh"] = {
+            "host": "gpu-node",
+            "user": "alice",
+            "key_path": "~/.ssh/id_ed25519",
+        }
+
+        model = DeepGvrConfig.from_dict(payload)
+
+        self.assertEqual(model.verification.tier2.modal.cli_bin, "modal")
+        self.assertEqual(model.verification.tier2.modal.stub_path, "adapters/modal_stubs/stim_modal.py")
+        self.assertEqual(model.verification.tier2.ssh.host, "gpu-node")
+        self.assertEqual(model.verification.tier2.ssh.user, "alice")
+        self.assertEqual(model.verification.tier2.ssh.key_path, "~/.ssh/id_ed25519")
+        self.assertEqual(model.verification.tier2.ssh.remote_workspace, "")
+        self.assertEqual(model.verification.tier2.ssh.python_bin, "python3")
+
     def test_verification_report_round_trip(self) -> None:
         payload = self._load_json("templates/verification_report.template.json")
         model = VerificationReport.from_dict(payload)

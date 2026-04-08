@@ -13,10 +13,16 @@
       "default_simulator": "stim",
       "default_backend": "local",
       "timeout_seconds": 3600,
+      "modal": {
+        "cli_bin": "modal",
+        "stub_path": "adapters/modal_stubs/stim_modal.py"
+      },
       "ssh": {
         "host": "",
         "user": "",
-        "key_path": ""
+        "key_path": "",
+        "remote_workspace": "",
+        "python_bin": "python3"
       }
     },
     "tier3": {
