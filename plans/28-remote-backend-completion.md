@@ -10,22 +10,25 @@ Start from `main` and implement this slice on `codex/remote-backend-completion`.
 
 ## Commit Plan
 
-- `implement modal stim backend`
-- `implement ssh stim backend`
+- `implement remote stim backend contracts`
+- `implement remote stim backends`
 - `add remote backend validation`
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Implement Modal execution in the Stim adapter.
-- [ ] Implement SSH execution in the Stim adapter.
-- [ ] Add backend readiness validation and benchmark coverage.
-- [ ] Update docs and operator workflows for all supported backends.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Implement Modal execution in the Stim adapter.
+- [x] Implement SSH execution in the Stim adapter.
+- [x] Add backend readiness validation and benchmark coverage.
+- [x] Update docs and operator workflows for all supported backends.
 
 ## Surprises & Discoveries
 
 - The adapter boundary is already the right place for this work; the main missing pieces are concrete execution plumbing and environment-sensitive readiness checks.
 - Backend completion should be coupled to benchmark evidence so “supported” means exercised, not merely callable.
+- The cleanest contract boundary was adapter construction, not widening `SimulationRequest`: the built-in runner now injects the Tier 2 backend config into the Stim adapter while preserving the existing simulator request shape.
+- SSH execution must invoke the remote adapter with `--backend local` and then normalize the downloaded results to backend `ssh`; otherwise the remote host would recursively dispatch SSH again.
+- Modal and SSH smoke coverage can be exercised in CI with fake `modal`, `ssh`, and `scp` binaries that still drive the real adapter code paths and normalized results.
 
 ## Decision Log
 
@@ -35,7 +38,10 @@ Start from `main` and implement this slice on `codex/remote-backend-completion`.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- The Stim adapter now executes real Modal and SSH flows behind the same normalized contract as the local path.
+- The runtime config now carries explicit Modal and SSH backend settings, while remaining backward-compatible with older config files that only had the original SSH fields.
+- Capability probes now report environment-sensitive readiness for local dependencies, the Modal CLI plus stub path, and SSH/`scp` plus remote workspace config.
+- The architecture ledger now treats remote backend completion as realized instead of a temporary gap.
 
 ## Context and Orientation
 

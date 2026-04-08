@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import importlib.util
 import shutil
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
-from .contracts import CapabilityProbeResult, ProbeStatus
+from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
 from .formal import inspect_aristotle_transport
 
 
@@ -123,36 +125,83 @@ def probe_checkpoint_resume() -> CapabilityProbeResult:
     )
 
 
-def probe_backend_dispatch() -> CapabilityProbeResult:
-    local_ready = shutil.which("python3") is not None
-    modal_ready = shutil.which("modal") is not None
-    ssh_ready = shutil.which("ssh") is not None
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _package_available(name: str) -> bool:
+    return importlib.util.find_spec(name) is not None
+
+
+def probe_backend_dispatch(runtime_config: DeepGvrConfig | None = None) -> CapabilityProbeResult:
+    config = runtime_config or DeepGvrConfig()
+    modal_config = config.verification.tier2.modal
+    ssh_config = config.verification.tier2.ssh
+
+    local_ready = shutil.which("python3") is not None and all(
+        _package_available(package_name) for package_name in ("numpy", "stim", "pymatching")
+    )
+    modal_binary = shutil.which(modal_config.cli_bin)
+    modal_stub_path = Path(modal_config.stub_path).expanduser()
+    if not modal_stub_path.is_absolute():
+        modal_stub_path = _repo_root() / modal_stub_path
+    modal_ready = modal_binary is not None and modal_stub_path.exists()
+
+    ssh_binary = shutil.which("ssh")
+    scp_binary = shutil.which("scp")
+    ssh_key_path = Path(ssh_config.key_path).expanduser() if ssh_config.key_path else None
+    ssh_key_exists = ssh_key_path.exists() if ssh_key_path is not None else True
+    ssh_configured = bool(ssh_config.host and ssh_config.remote_workspace and ssh_config.python_bin)
+    ssh_ready = ssh_binary is not None and scp_binary is not None and ssh_configured and ssh_key_exists
 
     status = ProbeStatus.READY if local_ready else ProbeStatus.BLOCKED
-    summary = "Local backend is available; Modal and SSH remain environment-dependent." if local_ready else "No Python runtime found for local adapter execution."
+    summary = (
+        "Backend dispatch is implemented for local, Modal, and SSH execution; probe details record which backends are configured in this environment."
+        if local_ready
+        else "No usable local Stim runtime was found for adapter execution."
+    )
 
     return CapabilityProbeResult(
         name="backend_dispatch",
         status=status,
         summary=summary,
         preferred_outcome="Expose the same adapter CLI for local, Modal, and SSH backends.",
-        fallback="Mark unavailable backends explicitly and continue with local-only development.",
+        fallback="Configure the missing backend prerequisites and rerun the readiness probe before using that backend.",
         details={
             "local_ready": local_ready,
+            "local_dependencies": {
+                "numpy": _package_available("numpy"),
+                "stim": _package_available("stim"),
+                "pymatching": _package_available("pymatching"),
+            },
             "modal_ready": modal_ready,
+            "modal_cli": modal_config.cli_bin,
+            "modal_cli_available": modal_binary is not None,
+            "modal_stub_path": str(modal_stub_path),
+            "modal_stub_exists": modal_stub_path.exists(),
             "ssh_ready": ssh_ready,
+            "ssh_binary_available": ssh_binary is not None,
+            "scp_binary_available": scp_binary is not None,
+            "ssh_host_configured": bool(ssh_config.host),
+            "ssh_remote_workspace_configured": bool(ssh_config.remote_workspace),
+            "ssh_python_bin": ssh_config.python_bin,
+            "ssh_key_path": ssh_config.key_path,
+            "ssh_key_exists": ssh_key_exists,
         },
     )
 
 
-def run_capability_probes(capability_evidence: dict[str, Any] | None = None) -> list[CapabilityProbeResult]:
+def run_capability_probes(
+    capability_evidence: dict[str, Any] | None = None,
+    runtime_config: DeepGvrConfig | None = None,
+) -> list[CapabilityProbeResult]:
     evidence = dict(capability_evidence or {})
     return [
         probe_model_routing(evidence.get("per_subagent_model_routing")),
         probe_mcp_inheritance(evidence.get("subagent_mcp_inheritance")),
         probe_aristotle_transport(),
         probe_checkpoint_resume(),
-        probe_backend_dispatch(),
+        probe_backend_dispatch(runtime_config),
     ]
 
 

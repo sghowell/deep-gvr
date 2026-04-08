@@ -9,7 +9,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a working local Stim/PyMatching Tier 2 path, and Tier 3 formal verification with persisted proof handles, polling, and resume-aware completion on the shipped harness path.
+The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a working Stim/PyMatching Tier 2 path across local, Modal, and SSH backends, and Tier 3 formal verification with persisted proof handles, polling, and resume-aware completion on the shipped harness path.
 Target-state alignment is tracked in [docs/architecture-status.md](docs/architecture-status.md); current substitutions are temporary gaps with owning retirement slices, not the intended long-term surface.
 
 ## What Exists Now
@@ -21,7 +21,7 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 - Typed Python contracts in `src/deep_gvr/`
 - Tier 1 loop helpers and session persistence in `src/deep_gvr/tier1.py`
 - Delegated Hermes command boundary in `src/deep_gvr/orchestrator.py`
-- Local Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
+- Local, Modal, and SSH Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
 - Orchestrator-mediated Aristotle Tier 3 transport and fallback logic in `src/deep_gvr/formal.py`
 - JSON schemas in `schemas/`
 - Prompt and skill procedure in `prompts/` and `SKILL.md`
@@ -33,7 +33,6 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 ## Temporary Architecture Gaps
 
 - `subagent-capability-closure`: per-subagent routing and verifier-side MCP access are still not real supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
-- `remote-backend-completion`: Tier 2 is still local-first; Modal and SSH remain incomplete runtime paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
 
 ## Intended Public Surface
 
@@ -84,6 +83,7 @@ scripts/setup_mcp.sh --install --check
 
 The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
 For Tier 3, `scripts/setup_mcp.sh --install` adds the expected `mcp_servers.aristotle` block to `~/.hermes/config.yaml` without duplicating an existing entry, `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry, and `scripts/setup_mcp.sh --print-snippet` prints the same block without modifying the config.
+For Tier 2 remote backends, the runtime config now also carries `verification.tier2.modal.cli_bin`, `verification.tier2.modal.stub_path`, and the SSH fields `host`, `user`, `key_path`, `remote_workspace`, and `python_bin`. Modal readiness depends on the configured CLI plus stub path; SSH readiness depends on `ssh` and `scp` plus a populated remote workspace config.
 
 ## Command Surface
 

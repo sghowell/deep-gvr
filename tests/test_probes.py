@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 from tests import _path_setup  # noqa: F401
 
-from deep_gvr.contracts import ProbeStatus
-from deep_gvr.probes import probe_mcp_inheritance, probe_model_routing, run_capability_probes
+from deep_gvr.contracts import DeepGvrConfig, ProbeStatus
+from deep_gvr.probes import probe_backend_dispatch, probe_mcp_inheritance, probe_model_routing, run_capability_probes
 from scripts.run_capability_probes import _load_capability_evidence
 
 
@@ -69,6 +69,24 @@ class ProbeTests(unittest.TestCase):
         status_by_name = {probe.name: probe.status for probe in probes}
         self.assertEqual(status_by_name["per_subagent_model_routing"], ProbeStatus.READY)
         self.assertEqual(status_by_name["subagent_mcp_inheritance"], ProbeStatus.READY)
+
+    def test_backend_dispatch_probe_uses_runtime_config_to_report_remote_readiness(self) -> None:
+        config = DeepGvrConfig()
+        config.verification.tier2.ssh.host = "gpu-node"
+        config.verification.tier2.ssh.remote_workspace = "/srv/deep-gvr"
+        config.verification.tier2.ssh.python_bin = "python3"
+
+        with (
+            patch("deep_gvr.probes.shutil.which") as which_mock,
+            patch("deep_gvr.probes._package_available", return_value=True),
+        ):
+            which_mock.side_effect = lambda name: f"/usr/local/bin/{name}" if name in {"python3", "modal", "ssh", "scp"} else None
+            probe = probe_backend_dispatch(config)
+
+        self.assertEqual(probe.status, ProbeStatus.READY)
+        self.assertTrue(probe.details["modal_ready"])
+        self.assertTrue(probe.details["ssh_ready"])
+        self.assertTrue(probe.details["ssh_remote_workspace_configured"])
 
     def test_load_capability_evidence_reads_top_level_json_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

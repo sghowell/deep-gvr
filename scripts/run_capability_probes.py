@@ -11,6 +11,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from deep_gvr.probes import run_capability_probes
+from deep_gvr.runtime_config import default_config_path, load_runtime_config
 
 
 def _load_capability_evidence(path: Path | None) -> dict[str, object]:
@@ -22,6 +23,17 @@ def _load_capability_evidence(path: Path | None) -> dict[str, object]:
     return payload
 
 
+def _load_probe_runtime_config(path: Path | None):
+    if path is not None:
+        return load_runtime_config(path)
+
+    configured_default = default_config_path()
+    if configured_default.exists():
+        return load_runtime_config(configured_default)
+
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run deep-gvr readiness capability probes")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of plain text")
@@ -30,9 +42,17 @@ def main() -> int:
         type=Path,
         help="Optional JSON file with observed runtime capability evidence for delegated routing and MCP inheritance.",
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Optional runtime config used for environment-sensitive backend readiness checks.",
+    )
     args = parser.parse_args()
 
-    results = run_capability_probes(_load_capability_evidence(args.capability_evidence))
+    results = run_capability_probes(
+        _load_capability_evidence(args.capability_evidence),
+        _load_probe_runtime_config(args.config),
+    )
     if args.json:
         print(json.dumps([result.to_dict() for result in results], indent=2))
         return 0

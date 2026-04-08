@@ -68,7 +68,6 @@ REQUIRED_PROMPT_MARKERS = {
 
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
-    "remote-backend-completion": "28-remote-backend-completion.md",
     "release-surface-completion": "30-release-surface-completion.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
     "fanout-and-escalation": "32-fanout-and-escalation.md",
@@ -80,15 +79,12 @@ ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_exter
 REQUIRED_RETIREMENT_REFERENCES = {
     "README.md": [
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
-        "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
     ],
     "SKILL.md": [
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
-        "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
     ],
     "docs/capability-probes.md": [
         "Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)",
-        "Retirement slice: [28-remote-backend-completion.md](../plans/28-remote-backend-completion.md)",
     ],
 }
 

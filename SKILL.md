@@ -21,7 +21,6 @@ Current target-state gaps are tracked in [docs/architecture-status.md](docs/arch
 ## Temporary Architecture Gaps
 
 - `subagent-capability-closure`: per-subagent routing and verifier-direct MCP are still not supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
-- `remote-backend-completion`: Modal and SSH are still incomplete Tier 2 execution paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
 
 ## Intended Commands
 
@@ -71,6 +70,7 @@ When the user invokes `/deep-gvr`:
 - Resume continues from the last complete phase recorded in `checkpoint.json`.
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
+- The shipped Stim adapter now supports local, Modal, and SSH execution behind the same normalized contract; actual backend readiness is environment-sensitive and is reported by `scripts/run_capability_probes.py`.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
 - The shipped Tier 3 path persists formal request, lifecycle, transport, and result artifacts so pending proof work can survive resume boundaries without resubmission.
 - The orchestrator mediates Tier 3 as verifier -> Aristotle proof lifecycle boundary -> verifier, persisting the formal request, lifecycle state, transport trace, and returned results under the session artifacts directory.

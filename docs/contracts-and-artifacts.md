@@ -4,7 +4,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 
 ## Core Contracts
 
-- `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, and domain defaults
+- `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, domain defaults, and backend runtime config for Modal and SSH Tier 2 execution
 - `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface, including any observed delegated `capability_evidence`
 - `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics

@@ -34,7 +34,7 @@
 - Tier 3 formal verification is triggered by formalizable claims
 - Any failed applicable tier is a failed candidate
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
-- The local Tier 2 baseline uses the Stim adapter with PyMatching decoding
+- The Tier 2 backend surface uses the Stim adapter with PyMatching decoding across local, Modal, and SSH execution
 - The Tier 3 baseline persists proof submission, polling, and resume state through the orchestrator, using Aristotle proof handles plus recorded transport artifacts when the environment is configured
 
 ## Early Defaults
@@ -70,4 +70,4 @@
 - Compact theorem/asymptotic proof claims now stay on the Tier 3 path, and failed Tier 3 proof results force `CANNOT_VERIFY` on the core theorem claim
 - Plain-text provider auth/401 failures from Hermes are now treated as live route configuration errors instead of JSON parse failures
 - Plan 23 narrowed the remaining analytical-breadth instability to an external Hermes provider-auth failure on this machine, rather than a repo-local tier-routing or prompt-discipline bug
-- Local, Modal, and SSH backends represented from the start through the adapter interface
+- Local, Modal, and SSH backends all dispatch through the same Stim adapter contract, with environment-sensitive readiness surfaced by the capability probe

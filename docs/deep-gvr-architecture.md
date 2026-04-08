@@ -591,6 +591,8 @@ modal run adapters/modal_stubs/stim_modal.py \
   --spec spec.json --output results.json
 ```
 
+The shipped repo now uses `adapters/modal_stubs/stim_modal.py` as that entrypoint and normalizes the returned results to backend `modal`.
+
 **SSH:** Forwards the simulation command to a remote host via the Hermes SSH terminal backend. The adapter constructs the remote command, ships the spec file, runs the simulation, and retrieves results.
 
 ```bash
@@ -599,6 +601,8 @@ scp spec.json user@gpu-node:/tmp/
 ssh user@gpu-node "cd /path/to/sim && python run.py --spec /tmp/spec.json --output /tmp/results.json"
 scp user@gpu-node:/tmp/results.json ./results.json
 ```
+
+The shipped repo now implements this by uploading the spec, invoking `adapters/stim_adapter.py --backend local` inside the configured remote workspace, and normalizing the downloaded results to backend `ssh`.
 
 ---
 
@@ -925,10 +929,15 @@ verification:
     default_simulator: stim
     default_backend: local     # local | modal | ssh
     timeout_seconds: 3600      # Per-simulation timeout
+    modal:
+      cli_bin: modal
+      stub_path: adapters/modal_stubs/stim_modal.py
     ssh:
       host: ""                 # For SSH backend
       user: ""
       key_path: ""
+      remote_workspace: ""
+      python_bin: python3
   tier3:
     enabled: false             # Formal verification (requires ARISTOTLE_API_KEY)
     backend: aristotle         # aristotle | opengauss

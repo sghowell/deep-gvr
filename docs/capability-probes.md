@@ -41,10 +41,10 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 ### Backend dispatch
 
 - Question: how should `local`, `modal`, and `ssh` be selected and validated?
-- Default until proven otherwise: all adapters expose the same CLI and return structured errors when a backend is unavailable.
-- Current baseline: the Stim adapter runs real local simulations and returns structured unavailability for Modal and SSH.
-- Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH probes.
-- Temporary gap: Modal and SSH unavailability is only the current interim state. Retirement slice: [28-remote-backend-completion.md](../plans/28-remote-backend-completion.md)
+- Implemented baseline: the Stim adapter now executes real simulations through local, Modal, and SSH backends while preserving the same normalized result contract.
+- Current probe behavior: `scripts/run_capability_probes.py` reports per-environment readiness for all three backends, including local dependency checks, Modal CLI plus stub availability, and SSH/`scp` plus runtime-config readiness.
+- Operator path: use `scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml` after configuring any remote backend so the probe details reflect the actual Modal and SSH settings you intend to use.
+- Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH readiness details.
 
 ## Repository Support
 
