@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests import _path_setup  # noqa: F401
 
@@ -31,37 +32,40 @@ class ProbeTests(unittest.TestCase):
             self.assertIn(probe.status, {ProbeStatus.READY, ProbeStatus.FALLBACK, ProbeStatus.BLOCKED})
 
     def test_model_routing_probe_requires_runtime_evidence_for_ready(self) -> None:
-        probe = probe_model_routing(
-            {
-                "distinct_routes_verified": True,
-                "route_pairs": {
-                    "generator": {"provider": "openrouter", "model": "claude-sonnet-4"},
-                    "verifier": {"provider": "openrouter", "model": "deepseek-r1"},
-                },
-                "evidence_source": "delegated_runtime_test",
-            }
-        )
+        with patch("deep_gvr.probes.shutil.which", return_value="/usr/local/bin/hermes"):
+            probe = probe_model_routing(
+                {
+                    "distinct_routes_verified": True,
+                    "route_pairs": {
+                        "generator": {"provider": "openrouter", "model": "claude-sonnet-4"},
+                        "verifier": {"provider": "openrouter", "model": "deepseek-r1"},
+                    },
+                    "evidence_source": "delegated_runtime_test",
+                }
+            )
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertEqual(probe.details["evidence_source"], "delegated_runtime_test")
 
     def test_mcp_inheritance_probe_requires_runtime_evidence_for_ready(self) -> None:
-        probe = probe_mcp_inheritance(
-            {
-                "delegated_mcp_verified": True,
-                "mcp_details": {"tool": "mcp_aristotle_formalize", "claim_count": 1},
-                "evidence_source": "delegated_runtime_test",
-            }
-        )
+        with patch("deep_gvr.probes.shutil.which", return_value="/usr/local/bin/hermes"):
+            probe = probe_mcp_inheritance(
+                {
+                    "delegated_mcp_verified": True,
+                    "mcp_details": {"tool": "mcp_aristotle_formalize", "claim_count": 1},
+                    "evidence_source": "delegated_runtime_test",
+                }
+            )
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertEqual(probe.details["mcp_details"]["tool"], "mcp_aristotle_formalize")
 
     def test_run_capability_probes_threads_runtime_evidence(self) -> None:
-        probes = run_capability_probes(
-            {
-                "per_subagent_model_routing": {"distinct_routes_verified": True},
-                "subagent_mcp_inheritance": {"delegated_mcp_verified": True},
-            }
-        )
+        with patch("deep_gvr.probes.shutil.which", return_value="/usr/local/bin/hermes"):
+            probes = run_capability_probes(
+                {
+                    "per_subagent_model_routing": {"distinct_routes_verified": True},
+                    "subagent_mcp_inheritance": {"delegated_mcp_verified": True},
+                }
+            )
         status_by_name = {probe.name: probe.status for probe in probes}
         self.assertEqual(status_by_name["per_subagent_model_routing"], ProbeStatus.READY)
         self.assertEqual(status_by_name["subagent_mcp_inheritance"], ProbeStatus.READY)
