@@ -227,7 +227,8 @@ PY
 check_only="false"
 install_requested="false"
 show_snippet="false"
-config_path="${HOME}/.hermes/config.yaml"
+hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
+config_path="${hermes_home}/config.yaml"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

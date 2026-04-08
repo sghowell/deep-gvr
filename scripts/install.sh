@@ -18,8 +18,9 @@ EOF
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
-target_dir="${HOME}/.hermes/skills"
-config_dir="${HOME}/.hermes/deep-gvr"
+hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
+target_dir="${hermes_home}/skills"
+config_dir="${hermes_home}/deep-gvr"
 config_path="${config_dir}/config.yaml"
 config_template="${repo_root}/templates/config.template.yaml"
 install_mode="symlink"

@@ -40,6 +40,24 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue(config_path.exists())
             self.assertIn("default", config_path.read_text(encoding="utf-8"))
 
+    def test_install_script_uses_hermes_home_override_for_default_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            hermes_home = Path(tmpdir) / "custom-hermes-home"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["HERMES_HOME"] = str(hermes_home)
+            completed = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((hermes_home / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertTrue((hermes_home / "deep-gvr" / "config.yaml").exists())
+
     def test_skill_manifest_exposes_required_frontmatter(self) -> None:
         skill_path = ROOT / "SKILL.md"
         payload = skill_path.read_text(encoding="utf-8")

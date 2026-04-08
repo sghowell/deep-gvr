@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -9,15 +10,16 @@ import yaml
 from .contracts import DeepGvrConfig
 from .json_schema import validate
 
-_DEFAULT_CONFIG_PATH = Path("~/.hermes/deep-gvr/config.yaml")
-
-
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _hermes_home() -> Path:
+    return Path(os.getenv("HERMES_HOME", "~/.hermes")).expanduser()
+
+
 def default_config_path() -> Path:
-    return _DEFAULT_CONFIG_PATH.expanduser()
+    return _hermes_home() / "deep-gvr" / "config.yaml"
 
 
 def default_config_payload() -> dict[str, Any]:

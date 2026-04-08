@@ -10,6 +10,8 @@
    bash scripts/install.sh
    ```
 
+   If you need an isolated Hermes home for packaging or smoke tests, set `HERMES_HOME` first and the install plus preflight helpers will use that tree instead of `~/.hermes`.
+
 2. Run structural preflight to confirm the installed bundle, runtime config, and publication assets are present:
 
    ```bash

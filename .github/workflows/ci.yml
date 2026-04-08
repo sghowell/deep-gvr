@@ -31,13 +31,13 @@ jobs:
 
       - name: Release surface preflight
         run: |
-          export HOME=/tmp/deep-gvr-release-home
-          bash scripts/install.sh --target "$HOME/.hermes/skills"
+          export HERMES_HOME=/tmp/deep-gvr-release-home/.hermes
+          bash scripts/install.sh --target "$HERMES_HOME/skills"
           uv run python scripts/release_preflight.py \
             --json \
-            --skills-dir "$HOME/.hermes/skills" \
-            --config "$HOME/.hermes/deep-gvr/config.yaml" \
-            --hermes-config "$HOME/.hermes/config.yaml" \
+            --skills-dir "$HERMES_HOME/skills" \
+            --config "$HERMES_HOME/deep-gvr/config.yaml" \
+            --hermes-config "$HERMES_HOME/config.yaml" \
             > /tmp/deep-gvr-release-preflight.json
 
       - name: Unit tests
