@@ -864,7 +864,7 @@ class Tier1LoopRunner:
                 ],
             )
 
-        return _load_stim_adapter_class()().run(request.sim_spec, request.backend)
+        return _load_stim_adapter_class()(tier2_config=self.config.verification.tier2).run(request.sim_spec, request.backend)
 
     def _attach_simulation_results(self, report: VerificationReport, sim_results: SimResults) -> None:
         if report.tier2 is None:

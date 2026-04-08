@@ -22,6 +22,7 @@ from deep_gvr.contracts import (
     ProofStatus,
     RoutingMode,
     SimAnalysis,
+    SimSpec,
     SimResults,
     Tier2Report,
     Tier1Report,
@@ -552,6 +553,73 @@ class Tier1LoopTests(unittest.TestCase):
                 sys.modules.pop("adapters.stim_adapter", None)
             else:
                 sys.modules["adapters.stim_adapter"] = original_stim_adapter
+
+    def test_run_simulation_request_passes_tier2_backend_config_to_stim_adapter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = self._config(tmpdir)
+            config.verification.tier2.default_backend = Backend.SSH
+            config.verification.tier2.ssh.host = "gpu-node"
+            config.verification.tier2.ssh.remote_workspace = "/srv/deep-gvr"
+            config.verification.tier2.ssh.python_bin = "python3"
+            runner = Tier1LoopRunner(config, routing_probe=self._routing_probe(ProbeStatus.READY))
+
+            captured: dict[str, object] = {}
+
+            class FakeStimAdapter:
+                def __init__(self, *, tier2_config):
+                    captured["tier2_config"] = tier2_config
+
+                def run(self, spec, backend):
+                    captured["spec"] = spec
+                    captured["backend"] = backend
+                    return SimResults(
+                        simulator="stim",
+                        adapter_version="0.1.0",
+                        timestamp="2026-04-07T12:00:00Z",
+                        runtime_seconds=0.5,
+                        backend=backend,
+                        data=[],
+                        analysis=SimAnalysis(
+                            threshold_estimate=None,
+                            threshold_method="fixture_remote_backend",
+                            below_threshold_distances=[],
+                            scaling_exponent=None,
+                        ),
+                        errors=[],
+                    )
+
+            request = SimulationRequest(
+                session_id="session_remote_backend",
+                iteration=1,
+                sim_spec=SimSpec.from_dict(
+                    {
+                        "simulator": "stim",
+                        "task": {
+                            "code": "surface_code",
+                            "task_type": "rotated_memory_z",
+                            "distance": [3],
+                            "rounds_per_distance": "d",
+                            "noise_model": "depolarizing",
+                            "error_rates": [0.003],
+                            "decoder": "pymatching",
+                            "shots_per_point": 100,
+                        },
+                        "resources": {
+                            "timeout_seconds": 60,
+                            "max_parallel": 1,
+                        },
+                    }
+                ),
+                backend=Backend.SSH,
+            )
+
+            with patch("deep_gvr.tier1._load_stim_adapter_class", return_value=FakeStimAdapter):
+                results = runner._run_simulation_request(request)
+
+            self.assertEqual(results.backend, Backend.SSH)
+            self.assertEqual(captured["backend"], Backend.SSH)
+            self.assertEqual(captured["tier2_config"].ssh.host, "gpu-node")
+            self.assertEqual(captured["tier2_config"].ssh.remote_workspace, "/srv/deep-gvr")
 
     def test_invalid_simulation_spec_becomes_structured_simulation_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
