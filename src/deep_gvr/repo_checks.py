@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from .json_schema import SchemaValidationError, validate
+from .release_surface import publication_manifest_errors
 
 REQUIRED_PLAN_HEADINGS = [
     "# ",
@@ -68,7 +69,6 @@ REQUIRED_PROMPT_MARKERS = {
 
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
-    "release-surface-completion": "30-release-surface-completion.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
     "fanout-and-escalation": "32-fanout-and-escalation.md",
     "domain-adapter-expansion": "33-domain-adapter-expansion.md",
@@ -169,6 +169,8 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "eval_consistency.template.json": "eval_consistency.schema.json",
         "eval_results.template.json": "eval_results.schema.json",
         "verification_report.template.json": "verification_report.schema.json",
+        "release_preflight.template.json": "release_preflight.schema.json",
+        "release_publication.template.json": "release_publication.schema.json",
         "sim_spec.template.json": "sim_spec.schema.json",
         "sim_results.template.json": "sim_results.schema.json",
         "evidence_record.template.json": "evidence.schema.json",
@@ -189,6 +191,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
     direct_artifacts = {
         "eval/known_problems.json": "benchmark_suite.schema.json",
         "eval/results/baseline_results.json": "eval_results.schema.json",
+        "release/agentskills.publication.json": "release_publication.schema.json",
     }
     for artifact_name, schema_name in direct_artifacts.items():
         artifact_path = root / artifact_name
@@ -231,6 +234,7 @@ def check_release_surfaces(root: Path) -> list[str]:
     executable_files = [
         root / "scripts" / "install.sh",
         root / "scripts" / "setup_mcp.sh",
+        root / "scripts" / "release_preflight.py",
         root / "eval" / "run_eval.py",
     ]
     for path in executable_files:
@@ -239,6 +243,14 @@ def check_release_surfaces(root: Path) -> list[str]:
             continue
         if path.stat().st_mode & 0o111 == 0:
             errors.append(f"{path.relative_to(root)}: expected executable bit to be set")
+    required_docs = [
+        root / "docs" / "release-workflow.md",
+        root / "release" / "agentskills.publication.json",
+    ]
+    for path in required_docs:
+        if not path.exists():
+            errors.append(f"{path.relative_to(root)}: required release-surface asset is missing")
+    errors.extend(publication_manifest_errors(root))
     return errors
 
 

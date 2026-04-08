@@ -29,6 +29,17 @@ jobs:
       - name: Capability probes
         run: uv run python scripts/run_capability_probes.py
 
+      - name: Release surface preflight
+        run: |
+          export HOME=/tmp/deep-gvr-release-home
+          bash scripts/install.sh --target "$HOME/.hermes/skills"
+          uv run python scripts/release_preflight.py \
+            --json \
+            --skills-dir "$HOME/.hermes/skills" \
+            --config "$HOME/.hermes/deep-gvr/config.yaml" \
+            --hermes-config "$HOME/.hermes/config.yaml" \
+            > /tmp/deep-gvr-release-preflight.json
+
       - name: Unit tests
         run: uv run python -m unittest discover -s tests -v
 
