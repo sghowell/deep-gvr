@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .contracts import DeepGvrConfig, SessionCheckpoint
+from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus, SessionCheckpoint
 from .domain_context import load_domain_context
 from .orchestrator import CommandExecutor, DelegatedOrchestratorConfig, HermesDelegatedOrchestratorRunner
+from .probes import probe_model_routing
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
+from .routing import build_routing_plan
 from .runtime_config import (
     default_config_path,
     default_config_payload,
@@ -55,6 +57,7 @@ class SkillSessionSummary:
     checkpoint_file: str
     artifacts_dir: str
     artifacts: list[str]
+    capability_evidence: dict[str, Any] | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -151,6 +154,9 @@ def _execute_command(
     session_store = SessionStore(config.evidence.directory)
     session_id = run_session_id if command == "run" else resume_session_id
     prompt_root_path = _resolve_prompt_root(prompt_root)
+    routing_probe = _resolve_routing_probe(config, routing_probe_mode)
+    routing_plan = build_routing_plan(config, routing_probe=routing_probe)
+    role_routes = _role_routes_payload(routing_plan)
     orchestrator = HermesDelegatedOrchestratorRunner(
         DelegatedOrchestratorConfig(
             prompt_profile=prompt_profile,
@@ -159,6 +165,7 @@ def _execute_command(
             skills=list(skills),
             provider=config.models.orchestrator.provider,
             model=config.models.orchestrator.model,
+            role_routes=role_routes,
         ),
         cwd=_repo_root(),
         executor=executor,
@@ -174,6 +181,7 @@ def _execute_command(
                 prompt_root=prompt_root_path,
                 routing_probe_mode=routing_probe_mode,
                 domain_override=run_domain,
+                role_routes=role_routes,
             )
         elif command == "resume":
             if resume_session_id is None:
@@ -183,6 +191,7 @@ def _execute_command(
                 config_path=config_path,
                 prompt_root=prompt_root_path,
                 routing_probe_mode=routing_probe_mode,
+                role_routes=role_routes,
             )
         else:
             raise ValueError(f"Unsupported command {command!r}.")
@@ -206,6 +215,7 @@ def _execute_command(
             fallback_problem=run_problem or "",
             fallback_domain=run_domain or config.domain.default,
             error=f"{type(exc).__name__}: {exc}",
+            capability_evidence=_merge_capability_evidence(orchestrator.transcripts),
         )
 
     checkpoint = _record_session_artifacts(
@@ -231,6 +241,72 @@ def _resolve_prompt_root(path: str | Path) -> Path:
     if prompt_root.is_absolute():
         return prompt_root
     return _repo_root() / prompt_root
+
+
+def _resolve_routing_probe(config: DeepGvrConfig, mode: str) -> CapabilityProbeResult:
+    normalized = mode.strip().lower()
+    if normalized == "auto":
+        return probe_model_routing()
+    if normalized == "ready":
+        return CapabilityProbeResult(
+            name="per_subagent_model_routing",
+            status=ProbeStatus.READY,
+            summary="Routing probe forced to ready by CLI flag for delegated runtime planning.",
+            preferred_outcome="Route generator and verifier to distinct providers or models.",
+            fallback="If runtime behavior disagrees, revert to prompt separation plus temperature decorrelation.",
+            details={"forced_by": "routing_probe_mode", "mode": normalized},
+        )
+    if normalized == "fallback":
+        return CapabilityProbeResult(
+            name="per_subagent_model_routing",
+            status=ProbeStatus.FALLBACK,
+            summary="Routing probe forced to fallback by CLI flag for delegated runtime planning.",
+            preferred_outcome="Route generator and verifier to distinct providers or models.",
+            fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
+            details={"forced_by": "routing_probe_mode", "mode": normalized},
+        )
+    raise ValueError(f"Unsupported routing probe mode {mode!r}.")
+
+
+def _route_payload(route: Any) -> dict[str, Any]:
+    return {
+        "provider": route.provider,
+        "model": route.model,
+        "routing_mode": route.routing_mode.value,
+        "temperature": route.temperature,
+        "notes": list(route.notes),
+        "fallback_routes": [
+            {
+                "provider": fallback.provider,
+                "model": fallback.model,
+                "routing_mode": fallback.routing_mode.value,
+                "temperature": fallback.temperature,
+                "notes": list(fallback.notes),
+            }
+            for fallback in route.fallback_routes
+        ],
+    }
+
+
+def _role_routes_payload(plan: Any) -> dict[str, Any]:
+    return {
+        "strategy": plan.strategy.value,
+        "probe": plan.probe.to_dict(),
+        "limitations": list(plan.limitations),
+        "orchestrator": _route_payload(plan.orchestrator),
+        "generator": _route_payload(plan.generator),
+        "verifier": _route_payload(plan.verifier),
+        "reviser": _route_payload(plan.reviser),
+    }
+
+
+def _merge_capability_evidence(transcripts: list[Any]) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for item in transcripts:
+        capability_evidence = getattr(item, "capability_evidence", None)
+        if isinstance(capability_evidence, dict):
+            merged.update(capability_evidence)
+    return merged
 
 
 def _record_session_artifacts(
@@ -262,6 +338,19 @@ def _record_session_artifacts(
                 },
             )
         )
+        capability_evidence = _merge_capability_evidence(transcripts)
+        if capability_evidence:
+            new_artifacts.append(
+                session_store.write_artifact_json(
+                    session_id,
+                    f"{stamp}_{command}_capability_evidence.json",
+                    {
+                        "command": command,
+                        "generated_at": _isoformat(_utc_now()),
+                        "capability_evidence": capability_evidence,
+                    },
+                )
+            )
     if error is not None:
         stamp = _utc_now().strftime("%Y%m%dT%H%M%SZ")
         new_artifacts.append(
@@ -324,6 +413,7 @@ def _summary_from_failure(
     fallback_problem: str,
     fallback_domain: str,
     error: str,
+    capability_evidence: dict[str, Any] | None = None,
 ) -> SkillSessionSummary:
     session_paths = session_store.session_paths(session_id)
     artifacts = checkpoint.artifacts
@@ -345,6 +435,7 @@ def _summary_from_failure(
             str((session_paths.session_dir.parent / artifact).resolve()) if not Path(artifact).is_absolute() else str(Path(artifact))
             for artifact in artifacts
         ],
+        capability_evidence=capability_evidence,
         error=error,
     )
 
@@ -377,6 +468,7 @@ def _summary_from_result(
         checkpoint_file=str(result.session_paths.checkpoint_file),
         artifacts_dir=str(result.session_paths.artifacts_dir),
         artifacts=artifacts,
+        capability_evidence=None,
     )
 
 
@@ -417,6 +509,7 @@ def _summary_from_payload(
         checkpoint_file=str(payload.get("checkpoint_file") or session_paths.checkpoint_file),
         artifacts_dir=str(payload.get("artifacts_dir") or session_paths.artifacts_dir),
         artifacts=artifact_values,
+        capability_evidence=dict(payload.get("capability_evidence", {})) if isinstance(payload.get("capability_evidence"), dict) else None,
         error=str(payload["error"]) if payload.get("error") is not None else None,
     )
 

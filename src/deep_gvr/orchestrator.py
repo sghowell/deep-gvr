@@ -31,6 +31,7 @@ class DelegatedOrchestratorConfig:
     skills: list[str] = field(default_factory=list)
     provider: str = "default"
     model: str = ""
+    role_routes: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -41,10 +42,12 @@ class OrchestratorTranscript:
     prompt_root: str
     prompt_profile: str
     routing_probe: str
+    role_routes: dict[str, Any]
     skills: list[str]
     hermes_command: list[str]
     query: str
     response: str
+    capability_evidence: dict[str, Any] = field(default_factory=dict)
     question: str | None = None
     domain_override: str | None = None
 
@@ -56,10 +59,12 @@ class OrchestratorTranscript:
             "prompt_root": self.prompt_root,
             "prompt_profile": self.prompt_profile,
             "routing_probe": self.routing_probe,
+            "role_routes": dict(self.role_routes),
             "skills": list(self.skills),
             "hermes_command": list(self.hermes_command),
             "query": self.query,
             "response": self.response,
+            "capability_evidence": dict(self.capability_evidence),
             "question": self.question,
             "domain_override": self.domain_override,
         }
@@ -87,6 +92,7 @@ class HermesDelegatedOrchestratorRunner:
         prompt_root: Path,
         routing_probe_mode: str,
         domain_override: str | None = None,
+        role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self._invoke(
             command="run",
@@ -96,6 +102,7 @@ class HermesDelegatedOrchestratorRunner:
             routing_probe_mode=routing_probe_mode,
             question=question,
             domain_override=domain_override,
+            role_routes=role_routes,
         )
 
     def resume(
@@ -105,6 +112,7 @@ class HermesDelegatedOrchestratorRunner:
         config_path: Path,
         prompt_root: Path,
         routing_probe_mode: str,
+        role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self._invoke(
             command="resume",
@@ -112,6 +120,7 @@ class HermesDelegatedOrchestratorRunner:
             config_path=config_path,
             prompt_root=prompt_root,
             routing_probe_mode=routing_probe_mode,
+            role_routes=role_routes,
         )
 
     def _invoke(
@@ -124,6 +133,7 @@ class HermesDelegatedOrchestratorRunner:
         routing_probe_mode: str,
         question: str | None = None,
         domain_override: str | None = None,
+        role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         effective_skills = _merge_skills(self.config.skills)
         if self.executor is None:
@@ -137,6 +147,7 @@ class HermesDelegatedOrchestratorRunner:
             routing_probe_mode=routing_probe_mode,
             question=question,
             domain_override=domain_override,
+            role_routes=role_routes or self.config.role_routes,
         )
         hermes_command = [self.config.hermes_binary, "chat", "-Q", "-q", query]
         if self.config.provider not in {"", "default", "auto"}:
@@ -157,28 +168,32 @@ class HermesDelegatedOrchestratorRunner:
             )
 
         response_text = result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip()
-        self.transcripts.append(
-            OrchestratorTranscript(
-                command=command,
-                session_id=session_id,
-                config_path=str(config_path),
-                prompt_root=str(prompt_root),
-                prompt_profile=self.config.prompt_profile,
-                routing_probe=routing_probe_mode,
-                skills=effective_skills,
-                hermes_command=list(hermes_command),
-                query=query,
-                response=response_text,
-                question=question,
-                domain_override=domain_override,
-            )
+        transcript = OrchestratorTranscript(
+            command=command,
+            session_id=session_id,
+            config_path=str(config_path),
+            prompt_root=str(prompt_root),
+            prompt_profile=self.config.prompt_profile,
+            routing_probe=routing_probe_mode,
+            role_routes=dict(role_routes or self.config.role_routes),
+            skills=effective_skills,
+            hermes_command=list(hermes_command),
+            query=query,
+            response=response_text,
+            question=question,
+            domain_override=domain_override,
         )
+        self.transcripts.append(transcript)
         if result.returncode != 0:
             raise RuntimeError(
                 "Hermes delegated orchestrator failed "
                 f"with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
             )
-        return _extract_json_object(result.stdout)
+        payload = _extract_json_object(result.stdout)
+        capability_evidence = payload.get("capability_evidence")
+        if isinstance(capability_evidence, dict):
+            transcript.capability_evidence = dict(capability_evidence)
+        return payload
 
 
 def _merge_skills(skills: list[str]) -> list[str]:
@@ -211,6 +226,7 @@ def _build_orchestrator_query(
     routing_probe_mode: str,
     question: str | None = None,
     domain_override: str | None = None,
+    role_routes: dict[str, Any] | None = None,
 ) -> str:
     request_payload = {
         "command": command,
@@ -221,6 +237,7 @@ def _build_orchestrator_query(
         "prompt_root": str(prompt_root),
         "prompt_profile": prompt_profile,
         "routing_probe": routing_probe_mode,
+        "role_routes": role_routes or {},
         "workspace_root": str(Path.cwd()),
     }
     response_contract = {
@@ -238,6 +255,18 @@ def _build_orchestrator_query(
         "checkpoint_file": "string",
         "artifacts_dir": "string",
         "artifacts": ["string"],
+        "capability_evidence": {
+            "per_subagent_model_routing": {
+                "distinct_routes_verified": "boolean",
+                "route_pairs": {"generator": {"provider": "string", "model": "string"}, "verifier": {"provider": "string", "model": "string"}},
+                "evidence_source": "string"
+            },
+            "subagent_mcp_inheritance": {
+                "delegated_mcp_verified": "boolean",
+                "mcp_details": {"tool": "string"},
+                "evidence_source": "string"
+            }
+        },
         "error": "string | null",
     }
     return (
@@ -250,6 +279,11 @@ def _build_orchestrator_query(
         "- Use the supplied config path and write session evidence/checkpoint artifacts under the configured evidence directory.\n"
         "- Keep the verifier isolated from the original problem framing as described by the skill and architecture docs.\n"
         "- Return only one JSON object matching the response contract below.\n"
+        "- Include `capability_evidence` whenever the delegated runtime can observe actual role-level routing or delegated MCP behavior.\n"
+        "- Treat `role_routes` as requested routing intent, not proof of capability closure.\n"
+        "- Only mark `per_subagent_model_routing.distinct_routes_verified=true` when the delegated run can confirm generator and verifier actually executed on distinct routes.\n"
+        "- Only mark `subagent_mcp_inheritance.delegated_mcp_verified=true` when the verifier itself exercised delegated Aristotle MCP access directly.\n"
+        "- If a capability is not actually observed, omit it or return the verified flag as false instead of inferring success from config or probe overrides.\n"
         "- If the run cannot complete, still return the JSON summary and populate the `error` field.\n\n"
         f"Response contract:\n{json.dumps(response_contract, indent=2)}"
     )

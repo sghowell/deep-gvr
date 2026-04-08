@@ -13,12 +13,26 @@ if str(SRC_ROOT) not in sys.path:
 from deep_gvr.probes import run_capability_probes
 
 
+def _load_capability_evidence(path: Path | None) -> dict[str, object]:
+    if path is None:
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Capability evidence must be a top-level JSON object.")
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run deep-gvr readiness capability probes")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of plain text")
+    parser.add_argument(
+        "--capability-evidence",
+        type=Path,
+        help="Optional JSON file with observed runtime capability evidence for delegated routing and MCP inheritance.",
+    )
     args = parser.parse_args()
 
-    results = run_capability_probes()
+    results = run_capability_probes(_load_capability_evidence(args.capability_evidence))
     if args.json:
         print(json.dumps([result.to_dict() for result in results], indent=2))
         return 0

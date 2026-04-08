@@ -5,7 +5,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 ## Core Contracts
 
 - `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, and domain defaults
-- `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface
+- `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface, including any observed delegated `capability_evidence`
 - `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
 - `CandidateSolution`: generator or reviser output
@@ -36,6 +36,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `eval/results/live/<run_id>/cases/<case_id>/case_result.json`: normalized per-case live benchmark summary
 - `eval/results/live/<run_id>/sessions/<session_id>/checkpoint.json`: persisted Tier 1 state for a live benchmark session
 - `sessions/<session_id>/artifacts/<timestamp>_run_orchestrator_transcript.json`: delegated top-level Hermes session transcript for the shipped CLI wrapper
+- `sessions/<session_id>/artifacts/<timestamp>_run_capability_evidence.json`: delegated capability-evidence artifact emitted by the CLI wrapper when the delegated runtime returns observed role-routing or delegated-MCP evidence
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend

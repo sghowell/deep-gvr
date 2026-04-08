@@ -1,49 +1,61 @@
 from __future__ import annotations
 
-import os
 import shutil
 from dataclasses import asdict
+from typing import Any
 
 from .contracts import CapabilityProbeResult, ProbeStatus
 from .formal import inspect_aristotle_transport
 
 
-def probe_model_routing() -> CapabilityProbeResult:
+def probe_model_routing(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
     hermes_available = shutil.which("hermes") is not None
-    override_hint = os.getenv("DEEP_GVR_HERMES_MODEL_ROUTING", "").strip().lower()
+    evidence = dict(runtime_evidence or {})
+    route_pairs = evidence.get("route_pairs")
+    distinct_routes_verified = bool(evidence.get("distinct_routes_verified"))
 
-    if hermes_available and override_hint == "supported":
+    if hermes_available and distinct_routes_verified:
         return CapabilityProbeResult(
             name="per_subagent_model_routing",
             status=ProbeStatus.READY,
-            summary="Hermes is present and the environment declares support for per-subagent model routing.",
+            summary="Per-subagent model routing was verified from observed delegated runtime behavior.",
             preferred_outcome="Route generator and verifier to distinct providers or models.",
-            fallback="If runtime behavior disagrees, revert to prompt and temperature decorrelation.",
-            details={"hermes_available": hermes_available, "override_hint": override_hint},
+            fallback="If runtime behavior regresses, revert to prompt separation plus temperature decorrelation.",
+            details={
+                "hermes_available": hermes_available,
+                "distinct_routes_verified": distinct_routes_verified,
+                "route_pairs": route_pairs,
+                "evidence_source": evidence.get("evidence_source", "runtime"),
+            },
         )
 
     return CapabilityProbeResult(
         name="per_subagent_model_routing",
         status=ProbeStatus.FALLBACK,
-        summary="Per-subagent model routing is not verified in this environment; use the documented fallback until a probe confirms support.",
+        summary="Per-subagent model routing is not yet proven from runtime evidence; use the documented fallback until delegated behavior is confirmed.",
         preferred_outcome="Route generator and verifier to distinct providers or models.",
         fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
-        details={"hermes_available": hermes_available, "override_hint": override_hint},
+        details={
+            "hermes_available": hermes_available,
+            "distinct_routes_verified": distinct_routes_verified,
+            "route_pairs": route_pairs,
+            "evidence_source": evidence.get("evidence_source", "none"),
+        },
     )
 
 
-def probe_mcp_inheritance() -> CapabilityProbeResult:
+def probe_mcp_inheritance(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
     hermes_available = shutil.which("hermes") is not None
-    aristotle_key = bool(os.getenv("ARISTOTLE_API_KEY"))
-    inheritance_hint = os.getenv("DEEP_GVR_SUBAGENT_MCP", "").strip().lower()
+    evidence = dict(runtime_evidence or {})
+    delegated_mcp_verified = bool(evidence.get("delegated_mcp_verified"))
 
-    if hermes_available and aristotle_key and inheritance_hint == "supported":
+    if hermes_available and delegated_mcp_verified:
         status = ProbeStatus.READY
-        summary = "Hermes and Aristotle credentials are present, and MCP inheritance is explicitly marked supported."
+        summary = "Delegated verifier MCP access was verified from observed runtime behavior."
     else:
         status = ProbeStatus.FALLBACK
         summary = (
-            "Subagent MCP inheritance is not verified; use the implemented orchestrator-mediated formal "
+            "Subagent MCP inheritance is not yet proven from runtime evidence; use the implemented orchestrator-mediated formal "
             "verification fallback."
         )
 
@@ -55,8 +67,9 @@ def probe_mcp_inheritance() -> CapabilityProbeResult:
         fallback="Have the orchestrator mediate formal verification requests and return results to verification.",
         details={
             "hermes_available": hermes_available,
-            "aristotle_key_present": aristotle_key,
-            "inheritance_hint": inheritance_hint,
+            "delegated_mcp_verified": delegated_mcp_verified,
+            "evidence_source": evidence.get("evidence_source", "none"),
+            "mcp_details": evidence.get("mcp_details"),
         },
     )
 
@@ -132,10 +145,11 @@ def probe_backend_dispatch() -> CapabilityProbeResult:
     )
 
 
-def run_capability_probes() -> list[CapabilityProbeResult]:
+def run_capability_probes(capability_evidence: dict[str, Any] | None = None) -> list[CapabilityProbeResult]:
+    evidence = dict(capability_evidence or {})
     return [
-        probe_model_routing(),
-        probe_mcp_inheritance(),
+        probe_model_routing(evidence.get("per_subagent_model_routing")),
+        probe_mcp_inheritance(evidence.get("subagent_mcp_inheritance")),
         probe_aristotle_transport(),
         probe_checkpoint_resume(),
         probe_backend_dispatch(),

@@ -44,9 +44,11 @@ When the user invokes `/deep-gvr`:
 4. Do not call `uv run deep-gvr run` or `uv run deep-gvr resume` from inside this skill. Those commands are the external wrapper that invokes this delegated orchestrator.
 5. If Tier 3 is expected, run `bash scripts/setup_mcp.sh --install --check` so `~/.hermes/config.yaml` has `mcp_servers.aristotle` and the local environment confirms `ARISTOTLE_API_KEY` plus Hermes MCP readiness.
 6. Persist or update the session evidence, checkpoint, and artifacts under the configured evidence directory.
-7. Return only the structured JSON session summary requested by the wrapper, including the session ID, verdict, and evidence/checkpoint paths.
-8. If a run needs debugging rather than throughput, prefer the `full` prompt profile from the runtime request.
-9. If the delegated run cannot complete because a role call times out, a backend is unavailable, or a provider route fails, surface the structured failure clearly instead of inventing a result.
+7. Return only the structured JSON session summary requested by the wrapper, including the session ID, verdict, and evidence/checkpoint paths. When the delegated runtime can observe actual role-level routing or delegated MCP behavior, include that under a top-level `capability_evidence` object in the returned JSON summary.
+8. Treat `capability_evidence` as observed-runtime evidence, not intent. Use the runtime request's `role_routes` only as the requested target. Mark `per_subagent_model_routing.distinct_routes_verified=true` only when the delegated run can confirm that generator and verifier actually executed on distinct routes. Mark `subagent_mcp_inheritance.delegated_mcp_verified=true` only when the verifier actually exercised delegated Aristotle MCP access directly rather than receiving orchestrator-mediated Tier 3 results.
+9. If the delegated run cannot yet prove one of those capabilities from observed behavior, omit that capability entry or return it with the verified flag set to `false`; do not promote a capability to verified based only on configuration, probe overrides, or requested routes.
+10. If a run needs debugging rather than throughput, prefer the `full` prompt profile from the runtime request.
+11. If the delegated run cannot complete because a role call times out, a backend is unavailable, or a provider route fails, surface the structured failure clearly instead of inventing a result.
 
 ## Required Inputs
 

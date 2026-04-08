@@ -30,6 +30,9 @@ class SkillCliTests(unittest.TestCase):
         self.assertIn("--skills", command)
         self.assertIn("deep-gvr", command[command.index("--skills") + 1])
         self.assertIn("delegated orchestrator runtime", query)
+        self.assertIn("Treat `role_routes` as requested routing intent", query)
+        self.assertIn("distinct_routes_verified=true", query)
+        self.assertIn("delegated_mcp_verified=true", query)
         payload = {
             "command": "run" if '"command": "run"' in query else "resume",
             "session_id": "session_cli_run" if '"command": "run"' in query else "session_cli_resume",
@@ -45,6 +48,16 @@ class SkillCliTests(unittest.TestCase):
             "checkpoint_file": "/tmp/checkpoint.json",
             "artifacts_dir": "/tmp/artifacts",
             "artifacts": ["/tmp/artifacts/session_summary.json"],
+            "capability_evidence": {
+                "per_subagent_model_routing": {
+                    "distinct_routes_verified": '"command": "run"' in query and '"routing_probe": "ready"' in query,
+                    "route_pairs": {
+                        "generator": {"provider": "openrouter", "model": "claude-sonnet-4"},
+                        "verifier": {"provider": "openrouter", "model": "deepseek-r1"},
+                    },
+                    "evidence_source": "delegated_runtime_test",
+                }
+            },
             "error": None,
         }
         return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
@@ -78,6 +91,8 @@ class SkillCliTests(unittest.TestCase):
             self.assertEqual(summary.session_id, "session_cli_run")
             self.assertEqual(summary.final_verdict, "VERIFIED")
             self.assertFalse(summary.config_created)
+            self.assertIsNotNone(summary.capability_evidence)
+            self.assertEqual(summary.capability_evidence["per_subagent_model_routing"]["evidence_source"], "delegated_runtime_test")
             self.assertTrue(any(path.endswith("_run_orchestrator_transcript.json") for path in summary.artifacts))
             transcript_path = next(
                 Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
@@ -87,6 +102,14 @@ class SkillCliTests(unittest.TestCase):
             self.assertIn("delegated orchestrator runtime", transcripts["calls"][0]["query"])
             self.assertIn("--skills", transcripts["calls"][0]["hermes_command"])
             self.assertIn("deep-gvr", transcripts["calls"][0]["hermes_command"])
+            self.assertIn("role_routes", transcripts["calls"][0])
+            self.assertIn("generator", transcripts["calls"][0]["role_routes"])
+            self.assertIn("verifier", transcripts["calls"][0]["role_routes"])
+            self.assertIn("capability_evidence", transcripts["calls"][0])
+            self.assertEqual(
+                transcripts["calls"][0]["capability_evidence"]["per_subagent_model_routing"]["evidence_source"],
+                "delegated_runtime_test",
+            )
 
     def test_run_session_command_explicit_toolsets_override_default_restriction(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -130,6 +153,40 @@ class SkillCliTests(unittest.TestCase):
             )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
             self.assertEqual(transcripts["calls"][0]["prompt_profile"], "full")
+
+    def test_run_session_command_threads_ready_role_routes_into_transcript(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            self._write_config(config_path, evidence_dir)
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_run_ready_routes",
+                executor=self._successful_executor,
+                command_timeout_seconds=5,
+                routing_probe_mode="ready",
+            )
+
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            role_routes = transcripts["calls"][0]["role_routes"]
+            self.assertEqual(role_routes["strategy"], "direct")
+            self.assertEqual(role_routes["generator"]["provider"], "openrouter")
+            self.assertEqual(role_routes["generator"]["model"], "claude-sonnet-4")
+            self.assertEqual(role_routes["verifier"]["provider"], "openrouter")
+            self.assertEqual(role_routes["verifier"]["model"], "deepseek-r1")
+            capability_evidence = transcripts["calls"][0]["capability_evidence"]
+            self.assertTrue(capability_evidence["per_subagent_model_routing"]["distinct_routes_verified"])
+            capability_artifact = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_capability_evidence.json")
+            )
+            payload = json.loads(capability_artifact.read_text(encoding="utf-8"))
+            self.assertTrue(payload["capability_evidence"]["per_subagent_model_routing"]["distinct_routes_verified"])
+            self.assertTrue(summary.capability_evidence["per_subagent_model_routing"]["distinct_routes_verified"])
 
     def test_resume_session_command_continues_existing_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
