@@ -1,13 +1,12 @@
 # deep-gvr: Architecture and Design Document
 
 **Project:** deep-gvr
-**Organization:** Zetetic Works Research Corporation
-**Repository:** `zetetic-works/deep-gvr`
+**Repository:** `sghowell/deep-gvr`
 **License:** MIT
 **Status:** Target architecture; implementation status is tracked separately
 **Version:** 0.1.0 (initial release target)
 **Date:** March 26, 2026
-**Authors:** Sean, with Claude
+**Authors:** Sean
 
 ---
 
@@ -29,8 +28,8 @@ The first target domain is fault-tolerant quantum computing research, specifical
 
 ### 1.2 What deep-gvr Is Not
 
-- Not a replacement for Lem (Zetetic Works' planned native scientific agent). deep-gvr is Lem's cognitive loop running on borrowed infrastructure (Hermes Agent) as a proof of concept and standalone tool.
-- Not a fine-tuned model. deep-gvr is a harness (in the sense of the Zetetic Works "Harness Engineering" framework). It orchestrates existing models through structured adversarial interaction.
+- Not a replacement for a future native scientific agent. deep-gvr is a cognitive loop running on borrowed infrastructure (Hermes Agent) as a proof of concept and standalone tool.
+- Not a fine-tuned model. deep-gvr is a harness that orchestrates existing models through structured adversarial interaction.
 - Not a formal methods tool. Formal verification (Tier 3) is available but not mandatory. Most use cases will rely primarily on analytical and empirical verification.
 
 ### 1.3 Design Principles
@@ -49,7 +48,7 @@ The first target domain is fault-tolerant quantum computing research, specifical
 
 ### 1.4 Relationship to Aletheia
 
-| Aletheia (DeepMind) | deep-gvr (Zetetic Works) |
+| Aletheia (DeepMind) | deep-gvr |
 |---|---|
 | Gemini Deep Think base model | Any model via OpenRouter / Nous Portal / OpenAI |
 | Single model for all GVR roles | Cross-model verification (different providers for G vs V) |
@@ -884,7 +883,7 @@ deep-gvr/
 ```bash
 # Clone into Hermes skills directory
 cd ~/.hermes/skills/
-git clone https://github.com/zetetic-works/deep-gvr.git
+git clone https://github.com/sghowell/deep-gvr.git
 
 # Install Python dependencies for adapters
 pip install stim pymatching --break-system-packages
@@ -1026,7 +1025,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 - [ ] config.yaml with defaults
 - [ ] Validation on 3+ known-correct and 3+ known-incorrect problems
 
-**Build approach:** Use Hermes Agent itself (or Claude Code) to generate the skill bundle, then iterate on prompts manually based on benchmark results.
+**Build approach:** Use Hermes Agent itself (or another agentic coding tool) to generate the skill bundle, then iterate on prompts manually based on benchmark results.
 
 ### Phase 2: Tier 2 — Simulation (Week 2–3)
 
@@ -1075,7 +1074,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 - [ ] install.sh, release_preflight.py, and setup_mcp.sh scripts
 - [ ] checked-in publication bundle for agentskills.io-ready release packaging
 - [ ] Publish to agentskills.io
-- [ ] Announcement via Zetetic Works channels
+- [ ] Announcement via project channels
 
 ---
 
@@ -1089,7 +1088,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 | 2 | Model providers | OpenRouter + Nous Portal + OpenAI | All available, enables cross-model verification |
 | 3 | Compute backends | Local + Modal + SSH | Covers dev, bursty, and large-scale workloads |
 | 4 | Formalization requirement | Tiered, not mandatory | Most early use cases are analytical/empirical |
-| 5 | Release model | Zetetic Works open source, MIT | First public release, establishes brand |
+| 5 | Release model | Open source, MIT | First public release, enables public collaboration |
 | 6 | Name | deep-gvr | Descriptive, echoes deep research, says what it does |
 | 15 | Skill auto-improvement policy | Ship with `auto_improve: false` and require an explicit publication-manifest edit to enable it | Keeps the default release surface conservative while still allowing future opt-in |
 
