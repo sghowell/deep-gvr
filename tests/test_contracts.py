@@ -18,6 +18,8 @@ from deep_gvr.contracts import (
     HermesMemorySummary,
     ParallaxEvidenceManifest,
     ProofStatus,
+    ReleasePreflightReport,
+    ReleasePublicationManifest,
     SessionCheckpoint,
     SessionIndex,
     SimResults,
@@ -124,6 +126,16 @@ class ContractRoundTripTests(unittest.TestCase):
         model = ParallaxEvidenceManifest.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_release_preflight_round_trip(self) -> None:
+        payload = self._load_json("templates/release_preflight.template.json")
+        model = ReleasePreflightReport.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
+    def test_release_publication_round_trip(self) -> None:
+        payload = self._load_json("templates/release_publication.template.json")
+        model = ReleasePublicationManifest.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_session_checkpoint_round_trip(self) -> None:
         payload = self._load_json("templates/session_checkpoint.template.json")
         model = SessionCheckpoint.from_dict(payload)
@@ -189,6 +201,16 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_parallax_manifest_fixture_validates(self) -> None:
         schema = self._load_json("schemas/parallax_manifest.schema.json")
         fixture = self._load_json("templates/parallax_manifest.template.json")
+        validate(fixture, schema)
+
+    def test_release_preflight_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/release_preflight.schema.json")
+        fixture = self._load_json("templates/release_preflight.template.json")
+        validate(fixture, schema)
+
+    def test_release_publication_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/release_publication.schema.json")
+        fixture = self._load_json("templates/release_publication.template.json")
         validate(fixture, schema)
 
     def test_tier3_claim_round_trip(self) -> None:

@@ -1,0 +1,100 @@
+{
+  "skill_name": "deep-gvr",
+  "version": "0.1.0",
+  "generated_at": "2026-04-08T00:00:00Z",
+  "overall_status": "attention",
+  "release_surface_ready": true,
+  "operator_ready": false,
+  "config_path": "~/.hermes/deep-gvr/config.yaml",
+  "hermes_config_path": "~/.hermes/config.yaml",
+  "publication_manifest_path": "release/agentskills.publication.json",
+  "checks": [
+    {
+      "name": "skill_install",
+      "status": "ready",
+      "summary": "The deep-gvr skill bundle is installed in the Hermes skills directory.",
+      "details": {
+        "install_path": "~/.hermes/skills/deep-gvr",
+        "skill_manifest_path": "~/.hermes/skills/deep-gvr/SKILL.md"
+      },
+      "guidance": "Re-run bash scripts/install.sh if the installed bundle is stale."
+    },
+    {
+      "name": "runtime_config",
+      "status": "ready",
+      "summary": "The runtime config exists and validates against the repo schema.",
+      "details": {
+        "config_path": "~/.hermes/deep-gvr/config.yaml",
+        "tier2_backend": "local",
+        "tier3_enabled": false
+      },
+      "guidance": "Keep the runtime config aligned with the checked-in YAML template."
+    },
+    {
+      "name": "hermes_cli",
+      "status": "blocked",
+      "summary": "Hermes CLI is not installed or not available on PATH.",
+      "details": {
+        "hermes_binary": null
+      },
+      "guidance": "Install Hermes Agent and ensure the hermes binary is on PATH before operator use."
+    },
+    {
+      "name": "provider_credentials",
+      "status": "blocked",
+      "summary": "At least one explicitly configured provider is missing its expected environment credential.",
+      "details": {
+        "providers": {
+          "openrouter": {
+            "roles": ["generator", "verifier"],
+            "required_env_vars": ["OPENROUTER_API_KEY"],
+            "present_env_vars": [],
+            "missing_env_vars": ["OPENROUTER_API_KEY"]
+          }
+        },
+        "blocked_providers": ["openrouter"]
+      },
+      "guidance": "Export the expected provider API key before using the configured route in Hermes."
+    },
+    {
+      "name": "tier2_backend",
+      "status": "ready",
+      "summary": "The selected Tier 2 backend (local) is ready in this environment.",
+      "details": {
+        "selected_backend": "local",
+        "local_ready": true,
+        "modal_ready": false,
+        "ssh_ready": false
+      },
+      "guidance": "Use scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml when backend settings change."
+    },
+    {
+      "name": "tier3_transport",
+      "status": "ready",
+      "summary": "Tier 3 is disabled in the runtime config, so Aristotle transport is not required for operator use.",
+      "details": {
+        "backend": "aristotle",
+        "hermes_config_path": "~/.hermes/config.yaml"
+      },
+      "guidance": "Run bash scripts/setup_mcp.sh --install --check before enabling Tier 3."
+    },
+    {
+      "name": "publication_manifest",
+      "status": "ready",
+      "summary": "The checked-in publication manifest matches the current repo metadata and release surface.",
+      "details": {
+        "manifest_path": "release/agentskills.publication.json"
+      },
+      "guidance": "Use the manifest as the publication bundle source for GitHub and agentskills.io release work."
+    },
+    {
+      "name": "auto_improve_policy",
+      "status": "ready",
+      "summary": "The published release policy ships with auto_improve disabled by default.",
+      "details": {
+        "auto_improve": false
+      },
+      "guidance": "Only opt in by editing the publication manifest after human review."
+    }
+  ]
+}

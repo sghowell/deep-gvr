@@ -1,0 +1,467 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import tomllib
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from .contracts import (
+    DeepGvrConfig,
+    ReleaseCheck,
+    ReleaseCheckStatus,
+    ReleasePreflightReport,
+    ReleasePublicationManifest,
+)
+from .json_schema import SchemaValidationError, validate
+from .probes import probe_aristotle_transport, probe_backend_dispatch
+from .runtime_config import default_config_path, load_runtime_config
+
+_PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
+_PROVIDER_ENV_MAP = {
+    "anthropic": ["ANTHROPIC_API_KEY"],
+    "google": ["GOOGLE_API_KEY"],
+    "nous": ["NOUS_API_KEY", "NOUS_API_TOKEN"],
+    "openai": ["OPENAI_API_KEY"],
+    "openrouter": ["OPENROUTER_API_KEY"],
+}
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def default_skills_dir() -> Path:
+    hermes_home = Path(os.getenv("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+    return hermes_home / "skills"
+
+
+def default_hermes_config_path() -> Path:
+    hermes_home = Path(os.getenv("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+    return hermes_home / "config.yaml"
+
+
+def publication_manifest_path(root: Path | None = None) -> Path:
+    return (root or repo_root()) / _PUBLICATION_MANIFEST_PATH
+
+
+def _schema_path(name: str, root: Path | None = None) -> Path:
+    return (root or repo_root()) / "schemas" / name
+
+
+def _skill_frontmatter(root: Path | None = None) -> dict[str, Any]:
+    skill_path = (root or repo_root()) / "SKILL.md"
+    payload = skill_path.read_text(encoding="utf-8")
+    if not payload.startswith("---\n"):
+        raise ValueError("SKILL.md is missing YAML frontmatter.")
+    _, frontmatter, _ = payload.split("---", 2)
+    return yaml.safe_load(frontmatter)
+
+
+def _pyproject_metadata(root: Path | None = None) -> dict[str, Any]:
+    pyproject_path = (root or repo_root()) / "pyproject.toml"
+    return tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+
+
+def expected_publication_manifest(root: Path | None = None) -> ReleasePublicationManifest:
+    effective_root = root or repo_root()
+    skill_manifest = _skill_frontmatter(effective_root)
+    project = _pyproject_metadata(effective_root)["project"]
+    return ReleasePublicationManifest(
+        name=skill_manifest["name"],
+        version=project["version"],
+        description=skill_manifest["description"],
+        package_layout="hermes_skill_bundle",
+        distribution_targets=["github", "agentskills.io"],
+        skill_manifest_path="SKILL.md",
+        readme_path="README.md",
+        install_script="scripts/install.sh",
+        preflight_script="scripts/release_preflight.py",
+        setup_mcp_script="scripts/setup_mcp.sh",
+        config_template_path="templates/config.template.yaml",
+        benchmark_baseline_path="eval/results/baseline_results.json",
+        public_commands=[
+            "/deep-gvr <question>",
+            "/deep-gvr resume <session_id>",
+            "uv run deep-gvr run \"<question>\"",
+            "uv run deep-gvr resume <session_id>",
+        ],
+        operator_validation_commands=[
+            "bash scripts/install.sh",
+            "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
+            "bash scripts/setup_mcp.sh --install --check",
+        ],
+        auto_improve=False,
+        auto_improve_enablement=(
+            "Set auto_improve to true in release/agentskills.publication.json only after human review, "
+            "then republish the same validated release bundle."
+        ),
+    )
+
+
+def load_publication_manifest(root: Path | None = None) -> ReleasePublicationManifest:
+    manifest_path = publication_manifest_path(root)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    schema = json.loads(_schema_path("release_publication.schema.json", root).read_text(encoding="utf-8"))
+    validate(payload, schema)
+    return ReleasePublicationManifest.from_dict(payload)
+
+
+def publication_manifest_errors(root: Path | None = None) -> list[str]:
+    effective_root = root or repo_root()
+    errors: list[str] = []
+    manifest_path = publication_manifest_path(effective_root)
+    if not manifest_path.exists():
+        return [f"{manifest_path.relative_to(effective_root)}: required publication manifest is missing"]
+
+    try:
+        actual = load_publication_manifest(effective_root).to_dict()
+    except (json.JSONDecodeError, OSError, SchemaValidationError, ValueError) as exc:
+        return [f"{manifest_path.relative_to(effective_root)}: invalid publication manifest: {exc}"]
+
+    expected = expected_publication_manifest(effective_root).to_dict()
+    if actual != expected:
+        errors.append(
+            f"{manifest_path.relative_to(effective_root)}: publication manifest is out of sync with repo metadata"
+        )
+    return errors
+
+
+def collect_release_preflight(
+    *,
+    config_path: Path | None = None,
+    skills_dir: Path | None = None,
+    hermes_config_path: Path | None = None,
+) -> ReleasePreflightReport:
+    effective_root = repo_root()
+    effective_config_path = (config_path or default_config_path()).expanduser()
+    effective_skills_dir = (skills_dir or default_skills_dir()).expanduser()
+    effective_hermes_config_path = (hermes_config_path or default_hermes_config_path()).expanduser()
+    checks: list[ReleaseCheck] = []
+
+    checks.append(_check_skill_install(effective_skills_dir))
+    config_check, runtime_config = _check_runtime_config(effective_config_path)
+    checks.append(config_check)
+    checks.append(_check_hermes_cli())
+    checks.append(_check_provider_credentials(runtime_config))
+    checks.append(_check_tier2_backend(runtime_config))
+    checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
+    checks.append(_check_publication_manifest(effective_root))
+    checks.append(_check_auto_improve_policy(effective_root))
+
+    structural_names = {"skill_install", "runtime_config", "publication_manifest", "auto_improve_policy"}
+    release_surface_ready = all(
+        check.status == ReleaseCheckStatus.READY for check in checks if check.name in structural_names
+    )
+    operator_ready = all(check.status == ReleaseCheckStatus.READY for check in checks)
+    if not release_surface_ready:
+        overall_status = ReleaseCheckStatus.BLOCKED
+    elif operator_ready:
+        overall_status = ReleaseCheckStatus.READY
+    else:
+        overall_status = ReleaseCheckStatus.ATTENTION
+
+    manifest_path = publication_manifest_path(effective_root)
+    version = expected_publication_manifest(effective_root).version
+    return ReleasePreflightReport(
+        skill_name="deep-gvr",
+        version=version,
+        generated_at=datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        overall_status=overall_status,
+        release_surface_ready=release_surface_ready,
+        operator_ready=operator_ready,
+        config_path=str(effective_config_path),
+        hermes_config_path=str(effective_hermes_config_path),
+        publication_manifest_path=str(manifest_path),
+        checks=checks,
+    )
+
+
+def _check_skill_install(skills_dir: Path) -> ReleaseCheck:
+    install_path = skills_dir / "deep-gvr"
+    skill_manifest_path = install_path / "SKILL.md"
+    if skill_manifest_path.exists():
+        return ReleaseCheck(
+            name="skill_install",
+            status=ReleaseCheckStatus.READY,
+            summary="The deep-gvr skill bundle is installed in the Hermes skills directory.",
+            details={"install_path": str(install_path), "skill_manifest_path": str(skill_manifest_path)},
+            guidance="Re-run bash scripts/install.sh if the installed bundle is stale.",
+        )
+    return ReleaseCheck(
+        name="skill_install",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="The deep-gvr skill bundle is not installed under the target Hermes skills directory.",
+        details={"install_path": str(install_path), "skill_manifest_path": str(skill_manifest_path)},
+        guidance="Run bash scripts/install.sh before invoking /deep-gvr from Hermes.",
+    )
+
+
+def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfig | None]:
+    if not config_path.exists():
+        return (
+            ReleaseCheck(
+                name="runtime_config",
+                status=ReleaseCheckStatus.BLOCKED,
+                summary="The runtime config file does not exist.",
+                details={"config_path": str(config_path)},
+                guidance="Run uv run deep-gvr init-config or bash scripts/install.sh to create the default config.",
+            ),
+            None,
+        )
+
+    try:
+        runtime_config = load_runtime_config(config_path, create_if_missing=False)
+    except Exception as exc:  # pragma: no cover - defensive wrapper around schema validation
+        return (
+            ReleaseCheck(
+                name="runtime_config",
+                status=ReleaseCheckStatus.BLOCKED,
+                summary="The runtime config file is present but does not validate against the repo schema.",
+                details={"config_path": str(config_path), "error": str(exc)},
+                guidance="Restore the config from templates/config.template.yaml or fix the invalid fields.",
+            ),
+            None,
+        )
+
+    return (
+        ReleaseCheck(
+            name="runtime_config",
+            status=ReleaseCheckStatus.READY,
+            summary="The runtime config exists and validates against the repo schema.",
+            details={
+                "config_path": str(config_path),
+                "tier2_backend": runtime_config.verification.tier2.default_backend.value,
+                "tier3_enabled": runtime_config.verification.tier3.enabled,
+            },
+            guidance="Keep the runtime config aligned with the checked-in YAML template.",
+        ),
+        runtime_config,
+    )
+
+
+def _check_hermes_cli() -> ReleaseCheck:
+    hermes_binary = shutil.which("hermes")
+    if hermes_binary is not None:
+        return ReleaseCheck(
+            name="hermes_cli",
+            status=ReleaseCheckStatus.READY,
+            summary="Hermes CLI is available on PATH.",
+            details={"hermes_binary": hermes_binary},
+            guidance="Use the same Hermes install for /deep-gvr and release preflight runs.",
+        )
+    return ReleaseCheck(
+        name="hermes_cli",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="Hermes CLI is not installed or not available on PATH.",
+        details={"hermes_binary": None},
+        guidance="Install Hermes Agent and ensure the hermes binary is on PATH before operator use.",
+    )
+
+
+def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="provider_credentials",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Provider credentials cannot be validated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun release preflight.",
+        )
+
+    explicit_roles: dict[str, list[str]] = {}
+    model_config = runtime_config.models
+    for role_name in ("orchestrator", "generator", "verifier", "reviser"):
+        selection = getattr(model_config, role_name)
+        provider = selection.provider.strip().lower()
+        if provider in {"", "default", "auto"}:
+            continue
+        explicit_roles.setdefault(provider, []).append(role_name)
+
+    if not explicit_roles:
+        return ReleaseCheck(
+            name="provider_credentials",
+            status=ReleaseCheckStatus.READY,
+            summary="All configured routes use the Hermes default provider selection, so credential resolution stays inside Hermes.",
+            details={"providers": {}},
+            guidance="If you pin explicit providers later, rerun release preflight to validate the expected API keys.",
+        )
+
+    provider_details: dict[str, Any] = {}
+    blocked_providers: list[str] = []
+    attention_providers: list[str] = []
+
+    for provider, roles in explicit_roles.items():
+        known_env_vars = _PROVIDER_ENV_MAP.get(provider, [])
+        if known_env_vars:
+            present_env_vars = [name for name in known_env_vars if os.getenv(name)]
+            missing_env_vars = [name for name in known_env_vars if name not in present_env_vars]
+            provider_details[provider] = {
+                "roles": roles,
+                "required_env_vars": known_env_vars,
+                "present_env_vars": present_env_vars,
+                "missing_env_vars": missing_env_vars,
+            }
+            if not present_env_vars:
+                blocked_providers.append(provider)
+        else:
+            provider_details[provider] = {
+                "roles": roles,
+                "required_env_vars": [],
+                "present_env_vars": [],
+                "missing_env_vars": [],
+            }
+            attention_providers.append(provider)
+
+    if blocked_providers:
+        return ReleaseCheck(
+            name="provider_credentials",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="At least one explicitly configured provider is missing its expected environment credential.",
+            details={"providers": provider_details, "blocked_providers": blocked_providers},
+            guidance="Export the expected provider API key before using the configured route in Hermes.",
+        )
+    if attention_providers:
+        return ReleaseCheck(
+            name="provider_credentials",
+            status=ReleaseCheckStatus.ATTENTION,
+            summary="One or more explicit providers do not have a repo-local credential mapping and require manual operator verification.",
+            details={"providers": provider_details, "attention_providers": attention_providers},
+            guidance="Verify the provider credential manually in Hermes, then rerun preflight after updating the repo mapping if needed.",
+        )
+    return ReleaseCheck(
+        name="provider_credentials",
+        status=ReleaseCheckStatus.READY,
+        summary="All explicitly configured providers have the expected credential environment variables.",
+        details={"providers": provider_details},
+        guidance="Keep provider env vars available in the shell that launches Hermes.",
+    )
+
+
+def _check_tier2_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Tier 2 backend readiness cannot be evaluated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun release preflight.",
+        )
+
+    tier2 = runtime_config.verification.tier2
+    if not tier2.enabled:
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.READY,
+            summary="Tier 2 is disabled in the runtime config, so no backend readiness is required for operator use.",
+            details={"selected_backend": tier2.default_backend.value},
+            guidance="Enable Tier 2 only after the chosen backend is configured and ready.",
+        )
+
+    probe = probe_backend_dispatch(runtime_config)
+    selected_backend = tier2.default_backend.value
+    selected_key = f"{selected_backend}_ready"
+    selected_ready = bool(probe.details.get(selected_key))
+    if selected_ready:
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.READY,
+            summary=f"The selected Tier 2 backend ({selected_backend}) is ready in this environment.",
+            details={"selected_backend": selected_backend, **probe.details},
+            guidance="Use scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml when backend settings change.",
+        )
+    return ReleaseCheck(
+        name="tier2_backend",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary=f"The selected Tier 2 backend ({selected_backend}) is not ready in this environment.",
+        details={"selected_backend": selected_backend, **probe.details},
+        guidance="Install or configure the selected backend prerequisites, or switch the default backend to one that is ready.",
+    )
+
+
+def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_path: Path) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Tier 3 transport readiness cannot be evaluated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun release preflight.",
+        )
+
+    tier3 = runtime_config.verification.tier3
+    if not tier3.enabled:
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.READY,
+            summary="Tier 3 is disabled in the runtime config, so Aristotle transport is not required for operator use.",
+            details={"backend": tier3.backend, "hermes_config_path": str(hermes_config_path)},
+            guidance="Run bash scripts/setup_mcp.sh --install --check before enabling Tier 3.",
+        )
+
+    probe = probe_aristotle_transport()
+    if probe.status.value == "ready":
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.READY,
+            summary="The configured Tier 3 transport is ready for Aristotle proof dispatch.",
+            details=probe.details,
+            guidance="Proof polling and resume will use the configured Aristotle transport on the shipped harness path.",
+        )
+    return ReleaseCheck(
+        name="tier3_transport",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="Tier 3 is enabled, but Aristotle transport is not ready in this environment.",
+        details=probe.details,
+        guidance="Run bash scripts/setup_mcp.sh --install --check and verify ARISTOTLE_API_KEY before enabling Tier 3 live use.",
+    )
+
+
+def _check_publication_manifest(root: Path) -> ReleaseCheck:
+    errors = publication_manifest_errors(root)
+    manifest_path = publication_manifest_path(root)
+    if errors:
+        return ReleaseCheck(
+            name="publication_manifest",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in publication manifest is missing or out of sync with repo metadata.",
+            details={"manifest_path": str(manifest_path), "errors": errors},
+            guidance="Regenerate or update the publication manifest so it matches SKILL.md, pyproject.toml, and the release scripts.",
+        )
+    return ReleaseCheck(
+        name="publication_manifest",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in publication manifest matches the current repo metadata and release surface.",
+        details={"manifest_path": str(manifest_path)},
+        guidance="Use the manifest as the publication bundle source for GitHub and agentskills.io release work.",
+    )
+
+
+def _check_auto_improve_policy(root: Path) -> ReleaseCheck:
+    try:
+        manifest = load_publication_manifest(root)
+    except Exception as exc:  # pragma: no cover - defensive wrapper
+        return ReleaseCheck(
+            name="auto_improve_policy",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The auto_improve release policy cannot be evaluated because the publication manifest is invalid.",
+            details={"error": str(exc)},
+            guidance="Fix the publication manifest before release.",
+        )
+
+    if not manifest.auto_improve:
+        return ReleaseCheck(
+            name="auto_improve_policy",
+            status=ReleaseCheckStatus.READY,
+            summary="The published release policy ships with auto_improve disabled by default.",
+            details={"auto_improve": manifest.auto_improve},
+            guidance="Only opt in by editing the publication manifest after human review.",
+        )
+    return ReleaseCheck(
+        name="auto_improve_policy",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="The publication manifest currently enables auto_improve, which violates the documented release default.",
+        details={"auto_improve": manifest.auto_improve},
+        guidance="Set auto_improve back to false before cutting a public release.",
+    )

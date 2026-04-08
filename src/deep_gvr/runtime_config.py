@@ -43,9 +43,9 @@ def write_default_config(path: str | Path | None = None, *, force: bool = False)
     return config_path
 
 
-def load_runtime_config(path: str | Path | None = None) -> DeepGvrConfig:
+def load_runtime_config(path: str | Path | None = None, *, create_if_missing: bool = True) -> DeepGvrConfig:
     config_path = resolve_config_path(path)
-    if not config_path.exists():
+    if not config_path.exists() and create_if_missing:
         write_default_config(config_path)
 
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}

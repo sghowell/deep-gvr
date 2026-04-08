@@ -84,5 +84,6 @@ fi
 echo "Installed deep-gvr at ${install_path} using ${install_mode} mode."
 echo "Next steps:"
 echo "  1. Review ${install_path}/README.md for quickstart, CLI, and evaluation commands."
-echo "  2. Run 'uv run deep-gvr --help' from ${install_path} to inspect the command surface."
-echo "  3. Run ${install_path}/scripts/setup_mcp.sh --check if you plan to use Tier 3."
+echo "  2. Run 'uv run python ${install_path}/scripts/release_preflight.py --json' to inspect the installed release surface."
+echo "  3. Run 'uv run python ${install_path}/scripts/release_preflight.py --operator --config ${config_path}' before live operator use."
+echo "  4. Run ${install_path}/scripts/setup_mcp.sh --install --check if you plan to use Tier 3."

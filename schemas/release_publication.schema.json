@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "description",
+    "package_layout",
+    "distribution_targets",
+    "skill_manifest_path",
+    "readme_path",
+    "install_script",
+    "preflight_script",
+    "setup_mcp_script",
+    "config_template_path",
+    "benchmark_baseline_path",
+    "public_commands",
+    "operator_validation_commands",
+    "auto_improve",
+    "auto_improve_enablement"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "package_layout": { "type": "string" },
+    "distribution_targets": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "skill_manifest_path": { "type": "string" },
+    "readme_path": { "type": "string" },
+    "install_script": { "type": "string" },
+    "preflight_script": { "type": "string" },
+    "setup_mcp_script": { "type": "string" },
+    "config_template_path": { "type": "string" },
+    "benchmark_baseline_path": { "type": "string" },
+    "public_commands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "operator_validation_commands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "auto_improve": { "type": "boolean" },
+    "auto_improve_enablement": { "type": "string" }
+  }
+}

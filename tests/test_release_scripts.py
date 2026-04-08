@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from tests import _path_setup  # noqa: F401
+from deep_gvr.release_surface import publication_manifest_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -169,6 +170,91 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertIn("timezone: America/Los_Angeles", payload)
             self.assertEqual(payload.count("aristotle:"), 1)
             self.assertIn("mcp_servers:", payload)
+
+    def test_release_preflight_reports_structural_release_surface_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_dir = Path(tmpdir) / "skills"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh"), "--target", str(target_dir)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "release_preflight.py"),
+                    "--json",
+                    "--skills-dir",
+                    str(target_dir),
+                    "--config",
+                    str(Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"),
+                    "--hermes-config",
+                    str(Path(tmpdir) / ".hermes" / "config.yaml"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn('"release_surface_ready": true', completed.stdout)
+            self.assertIn('"operator_ready": false', completed.stdout)
+
+    def test_release_preflight_operator_mode_requires_configured_provider_credentials(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_dir = Path(tmpdir) / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            hermes_path = bin_dir / "hermes"
+            hermes_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            hermes_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh"), "--target", str(target_dir)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "release_preflight.py"),
+                    "--operator",
+                    "--json",
+                    "--skills-dir",
+                    str(target_dir),
+                    "--config",
+                    str(Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"),
+                    "--hermes-config",
+                    str(Path(tmpdir) / ".hermes" / "config.yaml"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn('"name": "provider_credentials"', completed.stdout)
+            self.assertIn('"status": "blocked"', completed.stdout)
+
+    def test_publication_manifest_matches_repo_metadata(self) -> None:
+        self.assertEqual(publication_manifest_errors(ROOT), [])
 
 
 if __name__ == "__main__":

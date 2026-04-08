@@ -41,6 +41,12 @@ class ProbeStatus(StrEnum):
     BLOCKED = "blocked"
 
 
+class ReleaseCheckStatus(StrEnum):
+    READY = "ready"
+    ATTENTION = "attention"
+    BLOCKED = "blocked"
+
+
 class RoutingMode(StrEnum):
     DIRECT = "direct"
     TEMPERATURE_DECORRELATION = "temperature_decorrelation"
@@ -882,6 +888,104 @@ class CapabilityProbeResult:
             preferred_outcome=data["preferred_outcome"],
             fallback=data["fallback"],
             details=dict(data.get("details", {})),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ReleaseCheck:
+    name: str
+    status: ReleaseCheckStatus
+    summary: str
+    details: dict[str, Any] = field(default_factory=dict)
+    guidance: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ReleaseCheck":
+        return cls(
+            name=data["name"],
+            status=ReleaseCheckStatus(data["status"]),
+            summary=data["summary"],
+            details=dict(data.get("details", {})),
+            guidance=data.get("guidance", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ReleasePreflightReport:
+    skill_name: str
+    version: str
+    generated_at: str
+    overall_status: ReleaseCheckStatus
+    release_surface_ready: bool
+    operator_ready: bool
+    config_path: str
+    hermes_config_path: str
+    publication_manifest_path: str
+    checks: list[ReleaseCheck]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ReleasePreflightReport":
+        return cls(
+            skill_name=data["skill_name"],
+            version=data["version"],
+            generated_at=data["generated_at"],
+            overall_status=ReleaseCheckStatus(data["overall_status"]),
+            release_surface_ready=bool(data["release_surface_ready"]),
+            operator_ready=bool(data["operator_ready"]),
+            config_path=data["config_path"],
+            hermes_config_path=data["hermes_config_path"],
+            publication_manifest_path=data["publication_manifest_path"],
+            checks=[ReleaseCheck.from_dict(item) for item in data.get("checks", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class ReleasePublicationManifest:
+    name: str
+    version: str
+    description: str
+    package_layout: str
+    distribution_targets: list[str]
+    skill_manifest_path: str
+    readme_path: str
+    install_script: str
+    preflight_script: str
+    setup_mcp_script: str
+    config_template_path: str
+    benchmark_baseline_path: str
+    public_commands: list[str]
+    operator_validation_commands: list[str]
+    auto_improve: bool
+    auto_improve_enablement: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ReleasePublicationManifest":
+        return cls(
+            name=data["name"],
+            version=data["version"],
+            description=data["description"],
+            package_layout=data["package_layout"],
+            distribution_targets=list(data["distribution_targets"]),
+            skill_manifest_path=data["skill_manifest_path"],
+            readme_path=data["readme_path"],
+            install_script=data["install_script"],
+            preflight_script=data["preflight_script"],
+            setup_mcp_script=data["setup_mcp_script"],
+            config_template_path=data["config_template_path"],
+            benchmark_baseline_path=data["benchmark_baseline_path"],
+            public_commands=list(data["public_commands"]),
+            operator_validation_commands=list(data["operator_validation_commands"]),
+            auto_improve=bool(data["auto_improve"]),
+            auto_improve_enablement=data["auto_improve_enablement"],
         )
 
     def to_dict(self) -> dict[str, Any]:

@@ -1,0 +1,27 @@
+{
+  "name": "deep-gvr",
+  "version": "0.1.0",
+  "description": "Agentic scientific research harness for Hermes with a generator-verifier-reviser loop and tiered verification",
+  "package_layout": "hermes_skill_bundle",
+  "distribution_targets": ["github", "agentskills.io"],
+  "skill_manifest_path": "SKILL.md",
+  "readme_path": "README.md",
+  "install_script": "scripts/install.sh",
+  "preflight_script": "scripts/release_preflight.py",
+  "setup_mcp_script": "scripts/setup_mcp.sh",
+  "config_template_path": "templates/config.template.yaml",
+  "benchmark_baseline_path": "eval/results/baseline_results.json",
+  "public_commands": [
+    "/deep-gvr <question>",
+    "/deep-gvr resume <session_id>",
+    "uv run deep-gvr run \"<question>\"",
+    "uv run deep-gvr resume <session_id>"
+  ],
+  "operator_validation_commands": [
+    "bash scripts/install.sh",
+    "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
+    "bash scripts/setup_mcp.sh --install --check"
+  ],
+  "auto_improve": false,
+  "auto_improve_enablement": "Set auto_improve to true in release/agentskills.publication.json only after human review, then republish the same validated release bundle."
+}
