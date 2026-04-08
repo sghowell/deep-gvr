@@ -185,11 +185,15 @@ The Simulator subagent does NOT invoke Stim directly. It invokes the **simulator
 
 #### 2.2.6 Evidence System (file-based)
 
-Not a subagent. A set of files managed by the Orchestrator:
+Not a subagent. A set of files managed by the Orchestrator, with Hermes memory
+and export layers derived from those files:
 
 - **Evidence log** (`~/.hermes/deep-gvr/sessions/<session_id>.jsonl`): Append-only JSON Lines file. One line per GVR iteration.
 - **Session index** (`~/.hermes/deep-gvr/sessions/index.json`): Maps session IDs to metadata (problem statement, start time, status, result summary).
 - **Artifacts directory** (`~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`): Simulation outputs, Lean files, intermediate results.
+- **Session memory summary** (`~/.hermes/deep-gvr/sessions/<session_id>/artifacts/session_memory_summary.json`): Derived structured summary for searchable evidence persistence.
+- **Parallax-compatible manifest** (`~/.hermes/deep-gvr/sessions/<session_id>/artifacts/parallax_manifest.json`): Derived export manifest over the session evidence set.
+- **Hermes memory document** (`~/.hermes/memories/MEMORY.md`): Receives namespaced deep-gvr session summaries when configured.
 
 ### 2.3 GVR Loop Control Flow
 
@@ -1084,7 +1088,6 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 |---|----------|----------|-------|
 | 7 | Per-subagent model routing in Hermes | **P0** | Blocking for cross-model verification. Investigate delegate_task internals. |
 | 8 | Subagent MCP access | **P0** | Do delegated subagents inherit MCP tool access? Must verify. |
-| 9 | Evidence format Parallax compatibility | P1 | JSON Lines works for v0.1. Parallax schema alignment is Phase 2+. |
 | 10 | Session checkpoint/resume mechanics | P1 | Serialize loop state to session directory. Orchestrator reloads on `/deep-gvr resume <session_id>`. |
 | 11 | Lean 4 environment location | P2 | Aristotle API avoids local Lean for v0.1. OpenGauss needs local or Morph Cloud. |
 | 12 | Multi-hypothesis fan-out vs sequential | P2 | Start sequential. Fan-out is a v0.2 feature. |

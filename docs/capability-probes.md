@@ -35,8 +35,8 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Question: what minimal state is required to resume a run safely?
 - Implemented baseline: persist loop state, verdict history, and artifact references in `sessions/<session_id>/checkpoint.json`.
 - Current command surface: `uv run deep-gvr resume <session_id>` loads the same configured evidence directory and resumes from that checkpoint.
+- Evidence integration baseline: each saved checkpoint now also derives `session_memory_summary.json`, a Parallax-compatible `parallax_manifest.json`, and an optional Hermes-memory summary entry in `~/.hermes/memories/MEMORY.md` when `persist_to_memory` is enabled.
 - Preferred outcome: `/deep-gvr resume <session_id>` can reconstruct the next orchestrator step without hidden memory.
-- Temporary gap: resume is file-backed only until Hermes memory persistence and richer evidence integration are complete. Retirement slice: [29-evidence-system-completion.md](../plans/29-evidence-system-completion.md)
 
 ### Backend dispatch
 
@@ -53,4 +53,5 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
+- `src/deep_gvr/evidence.py` derives Hermes memory summaries and Parallax-compatible manifests from the file-backed session artifacts.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.

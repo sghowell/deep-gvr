@@ -22,7 +22,6 @@ Current target-state gaps are tracked in [docs/architecture-status.md](docs/arch
 
 - `subagent-capability-closure`: per-subagent routing and verifier-direct MCP are still not supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 - `remote-backend-completion`: Modal and SSH are still incomplete Tier 2 execution paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
-- `evidence-system-completion`: Hermes memory persistence and Parallax-compatible evidence outputs are still missing. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
 ## Intended Commands
 
@@ -43,7 +42,7 @@ When the user invokes `/deep-gvr`:
 3. Execute Generator, Verifier, Reviser, and any Simulator work through Hermes `delegate_task`. Do not answer the research question directly from the parent context when a delegated role should handle it.
 4. Do not call `uv run deep-gvr run` or `uv run deep-gvr resume` from inside this skill. Those commands are the external wrapper that invokes this delegated orchestrator.
 5. If Tier 3 is expected, run `bash scripts/setup_mcp.sh --install --check` so `~/.hermes/config.yaml` has `mcp_servers.aristotle` and the local environment confirms `ARISTOTLE_API_KEY` plus Hermes MCP readiness.
-6. Persist or update the session evidence, checkpoint, and artifacts under the configured evidence directory.
+6. Persist or update the session evidence, checkpoint, and artifacts under the configured evidence directory. When `persist_to_memory` is enabled, ensure the session summary is also reflected in Hermes memory.
 7. Return only the structured JSON session summary requested by the wrapper, including the session ID, verdict, and evidence/checkpoint paths. When the delegated runtime can observe actual role-level routing or delegated MCP behavior, include that under a top-level `capability_evidence` object in the returned JSON summary.
 8. Treat `capability_evidence` as observed-runtime evidence, not intent. Use the runtime request's `role_routes` only as the requested target. Mark `per_subagent_model_routing.distinct_routes_verified=true` only when the delegated run can confirm that generator and verifier actually executed on distinct routes. Mark `subagent_mcp_inheritance.delegated_mcp_verified=true` only when the verifier actually exercised delegated Aristotle MCP access directly rather than receiving orchestrator-mediated Tier 3 results.
 9. If the delegated run cannot yet prove one of those capabilities from observed behavior, omit that capability entry or return it with the verified flag set to `false`; do not promote a capability to verified based only on configuration, probe overrides, or requested routes.
@@ -63,6 +62,7 @@ When the user invokes `/deep-gvr`:
 - session metadata: `~/.hermes/deep-gvr/sessions/index.json`
 - session checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
 - artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
+- Hermes memory file: `~/.hermes/memories/MEMORY.md`
 
 ## Implementation Notes
 
@@ -75,6 +75,7 @@ When the user invokes `/deep-gvr`:
 - The shipped Tier 3 path persists formal request, lifecycle, transport, and result artifacts so pending proof work can survive resume boundaries without resubmission.
 - The orchestrator mediates Tier 3 as verifier -> Aristotle proof lifecycle boundary -> verifier, persisting the formal request, lifecycle state, transport trace, and returned results under the session artifacts directory.
 - The repo-local `uv run deep-gvr ...` wrapper now opens one Hermes session preloaded with this skill; the live benchmark runner in `src/deep_gvr/evaluation.py` remains the explicit prompt-role harness.
+- The session store now derives `session_memory_summary.json` and `parallax_manifest.json` from the file-backed checkpoint/evidence log and, when `persist_to_memory` is enabled, upserts the session summary into `~/.hermes/memories/MEMORY.md`.
 - `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - Live eval now reads the same repo-local runtime config as the delegated CLI wrapper when `--config` is provided, so route tuning should happen in one config file instead of through benchmark-only overrides.

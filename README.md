@@ -34,7 +34,6 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 
 - `subagent-capability-closure`: per-subagent routing and verifier-side MCP access are still not real supported runtime capabilities. Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 - `remote-backend-completion`: Tier 2 is still local-first; Modal and SSH remain incomplete runtime paths. Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)
-- `evidence-system-completion`: evidence is still file-backed only; Hermes memory persistence and Parallax compatibility remain to be implemented. Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)
 
 ## Intended Public Surface
 
@@ -43,6 +42,8 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 - Config lives at `~/.hermes/deep-gvr/config.yaml`
 - Evidence lives under `~/.hermes/deep-gvr/sessions/<session_id>/`
 - Resume checkpoints live at `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
+- Hermes memory summaries append into `~/.hermes/memories/MEMORY.md` when `persist_to_memory: true`
+- A Parallax-compatible export manifest lives at `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/parallax_manifest.json`
 
 ## Working Style
 
@@ -95,7 +96,7 @@ uv run deep-gvr run "Explain why the surface code has a threshold." --prompt-pro
 uv run deep-gvr resume <session_id>
 ```
 
-The command now launches one Hermes session preloaded with the installed `deep-gvr` skill, passes the repo-local config/runtime request into that delegated orchestrator, and returns the structured session summary produced by the skill. The wrapper still records a local orchestrator transcript artifact alongside the skill-managed evidence directory.
+The command now launches one Hermes session preloaded with the installed `deep-gvr` skill, passes the repo-local config/runtime request into that delegated orchestrator, and returns the structured session summary produced by the skill. The wrapper still records a local orchestrator transcript artifact alongside the skill-managed evidence directory, derives `session_memory_summary.json` plus `parallax_manifest.json` under the session artifacts directory, and appends the session summary into `~/.hermes/memories/MEMORY.md` when `persist_to_memory` is enabled.
 Because the wrapper preloads `--skills deep-gvr`, the skill must be installed first with `scripts/install.sh`. `uv run deep-gvr init-config` still creates `~/.hermes/deep-gvr/config.yaml`, but it does not install the skill bundle.
 `--command-timeout-seconds` is now the delegated orchestrator timeout for the top-level Hermes session. The separate live benchmark harness keeps its own prompt-harness timeout policy.
 If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill runs can mediate Tier 3 requests through the shipped proof lifecycle and leave `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts in the session directory.

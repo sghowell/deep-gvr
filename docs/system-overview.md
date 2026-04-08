@@ -11,6 +11,8 @@
 - Config path: `~/.hermes/deep-gvr/config.yaml`
 - Evidence path: `~/.hermes/deep-gvr/sessions/<session_id>/`
 - Checkpoint path: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
+- Hermes memory path: `~/.hermes/memories/MEMORY.md`
+- Parallax manifest path: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/parallax_manifest.json`
 
 ## Core Components
 
@@ -41,6 +43,7 @@
 - Python 3.12 and `uv`
 - Sequential GVR loop first
 - Resume from the last complete checkpoint instead of replaying partial phases
+- File-backed artifacts remain the ground truth, while Hermes memory summaries and Parallax manifests are derived from those artifacts
 - Cross-model verification preferred, with prompt/temperature decorrelation as the fallback
 - Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report

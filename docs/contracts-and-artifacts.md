@@ -17,6 +17,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `EvidenceRecord`: append-only record for one GVR phase transition, including the effective provider/model path, routing mode, and any fallback temperature
 - `SessionCheckpoint`: resume-safe loop state for the last complete phase
 - `SessionIndex`: summary view of known sessions
+- `HermesMemorySummary`: derived session summary persisted as a session artifact and mirrored into Hermes memory when enabled
+- `ParallaxEvidenceManifest`: Parallax-compatible manifest derived from the checkpoint, evidence log, and artifact references
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
 
 ## Artifact Paths
@@ -38,11 +40,14 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `sessions/<session_id>/artifacts/<timestamp>_run_orchestrator_transcript.json`: delegated top-level Hermes session transcript for the shipped CLI wrapper
 - `sessions/<session_id>/artifacts/<timestamp>_run_capability_evidence.json`: delegated capability-evidence artifact emitted by the CLI wrapper when the delegated runtime returns observed role-routing or delegated-MCP evidence
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
+- `sessions/<session_id>/artifacts/session_memory_summary.json`: derived structured summary used for Hermes memory persistence
+- `sessions/<session_id>/artifacts/parallax_manifest.json`: Parallax-compatible manifest for the session evidence set
 - `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_lifecycle.json`: persisted Tier 3 proof-handle state for pending or completed proof work
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and Hermes MCP preflight details
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_results.json`: persisted Tier 3 returned formal results
+- `~/.hermes/memories/MEMORY.md`: Hermes memory document that now receives namespaced deep-gvr session summaries when `persist_to_memory` is enabled
 
 ## Alignment Rules
 

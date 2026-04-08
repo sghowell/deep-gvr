@@ -16,15 +16,16 @@ Start from `main` and implement this slice on `codex/evidence-system-completion`
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Implement Hermes memory persistence behind `persist_to_memory`.
-- [ ] Add Parallax-compatible evidence export or manifest generation.
-- [ ] Update docs, tests, and repo checks for the completed evidence system.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Implement Hermes memory persistence behind `persist_to_memory`.
+- [x] Add Parallax-compatible evidence export or manifest generation.
+- [x] Update docs, tests, and repo checks for the completed evidence system.
 
 ## Surprises & Discoveries
 
 - The current file-backed evidence model is already structured enough to serve as the source for memory summaries and Parallax exports.
 - The main architecture gap is integration and export, not a lack of session artifacts.
+- Hermes already uses `~/.hermes/memories/MEMORY.md` as a real memory document, so the repo can persist searchable session summaries there without patching Hermes or inventing a second memory location.
 
 ## Decision Log
 
@@ -34,7 +35,10 @@ Start from `main` and implement this slice on `codex/evidence-system-completion`
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Completed.
+- `SessionStore` now derives `session_memory_summary.json` plus `parallax_manifest.json` from the checkpoint/evidence log on every saved checkpoint.
+- When `persist_to_memory` is enabled, the derived session summary is upserted into Hermes memory at `~/.hermes/memories/MEMORY.md` with a stable `[deep-gvr:<session_id>]` marker so reruns remain idempotent.
+- The architecture ledger and repo checks now treat evidence-system completion as realized rather than an open retirement slice.
 
 ## Context and Orientation
 

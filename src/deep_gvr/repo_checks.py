@@ -69,7 +69,6 @@ REQUIRED_PROMPT_MARKERS = {
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "remote-backend-completion": "28-remote-backend-completion.md",
-    "evidence-system-completion": "29-evidence-system-completion.md",
     "release-surface-completion": "30-release-surface-completion.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
     "fanout-and-escalation": "32-fanout-and-escalation.md",
@@ -82,17 +81,14 @@ REQUIRED_RETIREMENT_REFERENCES = {
     "README.md": [
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
         "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
-        "Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)",
     ],
     "SKILL.md": [
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
         "Retirement slice: [plans/28-remote-backend-completion.md](plans/28-remote-backend-completion.md)",
-        "Retirement slice: [plans/29-evidence-system-completion.md](plans/29-evidence-system-completion.md)",
     ],
     "docs/capability-probes.md": [
         "Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)",
         "Retirement slice: [28-remote-backend-completion.md](../plans/28-remote-backend-completion.md)",
-        "Retirement slice: [29-evidence-system-completion.md](../plans/29-evidence-system-completion.md)",
     ],
 }
 
@@ -180,6 +176,8 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "sim_spec.template.json": "sim_spec.schema.json",
         "sim_results.template.json": "sim_results.schema.json",
         "evidence_record.template.json": "evidence.schema.json",
+        "hermes_memory_summary.template.json": "hermes_memory_summary.schema.json",
+        "parallax_manifest.template.json": "parallax_manifest.schema.json",
         "session_checkpoint.template.json": "session_checkpoint.schema.json",
         "session_index.template.json": "session_index.schema.json",
         "capability_probe.template.json": "capability_probe.schema.json",
