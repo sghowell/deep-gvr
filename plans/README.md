@@ -38,3 +38,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [33-domain-adapter-expansion.md](33-domain-adapter-expansion.md)
 - [34-aristotle-cli-fallback.md](34-aristotle-cli-fallback.md)
 - [35-mathcode-formal-backend.md](35-mathcode-formal-backend.md)
+- [36-node24-actions.md](36-node24-actions.md)
