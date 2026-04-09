@@ -13,6 +13,7 @@ from .contracts import (
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
+    BranchStrategy,
     CapabilityProbeResult,
     CandidateSolution,
     DeepGvrConfig,
@@ -488,6 +489,11 @@ class HermesPromptRoleRunner:
             "domain": request.domain,
             "literature_context": request.literature_context,
             "prior_verdicts": [item.to_dict() for item in request.prior_verdicts],
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
+            "trigger_flaws": list(request.trigger_flaws),
         }
         response, actual_route = self._run_role(
             role="generator",
@@ -560,6 +566,10 @@ class HermesPromptRoleRunner:
             "iteration": request.iteration,
             "candidate": request.candidate.to_dict(),
             "verification_report": request.verification_report.to_dict(),
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
         }
         response, actual_route = self._run_role(
             role="reviser",
@@ -1007,6 +1017,10 @@ def _run_fixture_case(
     routing_probe: CapabilityProbeResult,
 ) -> BenchmarkCaseResult:
     config = _benchmark_config(str(evidence_root / case.id))
+    if case.category == "orchestration_required":
+        config.loop.max_iterations = 3
+        config.loop.alternative_approach = True
+        config.loop.max_alternatives = 2
     session_store = SessionStore(config.evidence.directory)
     tier_runner = Tier1LoopRunner(
         config,
@@ -1581,6 +1595,25 @@ def _extract_json_object(text: str) -> dict[str, Any]:
 
 def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
     def generator(request: GenerationRequest) -> CandidateSolution:
+        if case.scenario == "orchestration_fanout_threshold":
+            if request.branch_strategy is BranchStrategy.PRIMARY:
+                hypothesis = (
+                    "The surface-code threshold claim follows from a generic unsupported threshold-theorem inference."
+                )
+            elif request.branch_strategy is BranchStrategy.ALTERNATIVE_APPROACH:
+                hypothesis = "The surface code has a threshold under standard depolarizing noise assumptions."
+            else:
+                hypothesis = "The threshold claim should be decomposed into smaller literature-backed subclaims."
+            return CandidateSolution(
+                hypothesis=hypothesis,
+                approach="Evaluate the claim against the deterministic orchestration fixture.",
+                technical_details=[f"Scenario fixture: {case.scenario} on {request.branch_strategy.value}."],
+                expected_results=["The benchmark verdict should match the known answer for this case."],
+                assumptions=["The deterministic fixture encodes the intended orchestration ground truth."],
+                limitations=["This release benchmark uses fixture agents instead of live Hermes subagents."],
+                references=["Fowler et al. 2012", "Dennis et al. 2002"],
+                revision_notes=[],
+            )
         return CandidateSolution(
             hypothesis=_hypothesis_for_case(case),
             approach="Evaluate the claim against the deterministic benchmark fixture.",
@@ -1593,6 +1626,17 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
         )
 
     def reviser(request: RevisionRequest) -> CandidateSolution:
+        if case.scenario == "orchestration_fanout_threshold" and request.branch_strategy is BranchStrategy.PRIMARY:
+            return CandidateSolution(
+                hypothesis="The surface-code threshold claim still relies on an unsupported generic threshold-theorem inference.",
+                approach="Patch the original unsupported argument without changing its core basis.",
+                technical_details=["The revision keeps leaning on the same unsupported theorem-level shortcut."],
+                expected_results=["The verifier should still reject the candidate and trigger fan-out."],
+                assumptions=["The benchmark fixture expects the primary path to remain unsupported."],
+                limitations=["This fixture revision intentionally fails to repair the core flaw."],
+                references=["Dennis et al. 2002"],
+                revision_notes=["Retried the same unsupported inference without changing the approach."],
+            )
         revised = request.candidate.to_dict()
         revised["revision_notes"] = list(request.candidate.revision_notes) + [
             "No benchmark revision path is defined for this fixture."
@@ -1660,6 +1704,15 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
                     flaws=[],
                     caveats=["Formal verification remained unavailable in the benchmark fixture."],
                     cannot_verify_reason="Tier 3 proof evidence was unavailable for this benchmark case.",
+                )
+            case "orchestration_fanout_threshold":
+                if (
+                    "threshold-theorem inference" in request.candidate.hypothesis
+                    and "unsupported" in request.candidate.hypothesis
+                ):
+                    return _flawed_tier1_report("The candidate keeps relying on the same unsupported threshold shortcut.")
+                return _verified_tier1_report(
+                    "The alternative literature-grounded branch matches the benchmark ground truth."
                 )
             case _:
                 raise ValueError(f"Unknown benchmark scenario {case.scenario!r}.")
@@ -1753,6 +1806,8 @@ def _hypothesis_for_case(case: BenchmarkCase) -> str:
             return "Majority decoding for odd repetition codes corrects up to (d-1)/2 bit flips."
         case "formal_unavailable_repetition_scaling":
             return "The repetition-code logical error rate scales as O(p^((d+1)/2))."
+        case "orchestration_fanout_threshold":
+            return "The surface-code threshold claim follows from a generic unsupported threshold-theorem inference."
         case _:
             return case.prompt
 

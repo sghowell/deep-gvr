@@ -14,5 +14,13 @@
     "scenario": "simulation_verified_distance5",
     "expected_verdict": "VERIFIED",
     "expected_tiers": [1, 2]
+  },
+  {
+    "id": "orchestration-fanout-threshold",
+    "category": "orchestration_required",
+    "prompt": "Assess the standard depolarizing-noise surface-code threshold claim, and if the first argument fails, switch to a materially different approach instead of repeating the same unsupported inference.",
+    "scenario": "orchestration_fanout_threshold",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1]
   }
 ]
