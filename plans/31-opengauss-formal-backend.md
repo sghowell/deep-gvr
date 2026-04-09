@@ -26,10 +26,10 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 - OpenGauss is a distinct operator flow from Aristotle, so this slice needs backend-specific setup and lifecycle docs, not just another enum value.
 - The benchmark suite should include at least one case that benefits from interactive/project-scoped proof work.
-- On this machine, the problem is currently earlier than Lean tooling: `./gauss doctor` from the raw checkout fails with `ModuleNotFoundError: No module named 'yaml'`, which means the repo launcher is not itself a valid installed runtime.
+- On this machine, the problem is currently earlier than Lean tooling: `./gauss doctor` from the raw checkout fails before real Gauss validation because required Python dependencies are missing. The exact missing module can vary by partial local environment state; the latest diagnostics run hit `prompt_toolkit`.
 - The upstream local installer is currently broken for both the script default target and the README-pinned target:
-  - `./scripts/install.sh --plain --skip-setup --noninteractive` fails because `https://morph.new/opengauss/yaml` returns `404 Not Found`
-  - `OPEN_GAUSS_INSTALL_TARGET=opengauss-0-2-2 ./scripts/install.sh --plain --skip-setup --noninteractive` also fails because `https://morph.new/opengauss-0-2-2/yaml` returns `404 Not Found`
+  - `./scripts/install.sh --plain --skip-setup --noninteractive` still follows through to a `404 Not Found` final Morph target
+  - `OPEN_GAUSS_INSTALL_TARGET=opengauss-0-2-2 ./scripts/install.sh --plain --skip-setup --noninteractive` also still follows through to a `404 Not Found` final Morph target
 - There is still no `~/.gauss/config.yaml`, no `gauss` on `PATH`, and no local `lean` / `lake` on this machine, so plan 31 is blocked on a valid upstream installation path before repo integration work can proceed honestly.
 
 ## Decision Log
@@ -44,6 +44,7 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 - Repo implementation is still pending.
 - As of April 9, 2026, this slice is blocked externally on the OpenGauss installation path rather than on deep-gvr runtime code. The installer wrapper is pointing at Morph targets that currently return `404`, so the local environment cannot yet produce a supported `gauss` installation to integrate against.
+- Plan 37 now provides a dedicated blocked-state diagnostics surface (`uv run python scripts/diagnose_opengauss.py --json`) so this slice can stay honestly blocked while still producing reproducible operator evidence.
 
 ## Context and Orientation
 
@@ -80,6 +81,7 @@ Targeted validation:
 uv run python -m unittest tests.test_formal tests.test_contracts -v
 cd ~/dev/OpenGauss && ./gauss doctor
 cd ~/dev/OpenGauss && ./scripts/install.sh --plain --skip-setup --noninteractive
+uv run python scripts/diagnose_opengauss.py --json
 ```
 
 Acceptance evidence:

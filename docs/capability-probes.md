@@ -39,6 +39,15 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results from the local MathCode CLI.
 - Implemented baseline: the shipped harness now maps MathCode CLI output into the same `formal_request`, `formal_transport`, and `formal_results` artifact family as Aristotle-backed proof attempts.
 
+### OpenGauss transport
+
+- Question: is there a healthy local OpenGauss install path and installed `gauss` runtime to unblock the later backend slice?
+- Default until proven otherwise: assume OpenGauss is blocked until there is an installed `gauss` binary plus `~/.gauss/config.yaml`, and use explicit diagnostics to distinguish that state from raw-checkout or upstream installer failures.
+- Current baseline: `scripts/run_capability_probes.py` now reports `opengauss_transport` as a blocked-state probe with local checkout, launcher, installer-script, installer-venv, installed-binary, and config details.
+- Operator path: run `uv run python scripts/diagnose_opengauss.py --json` to capture the local checkout state, an optional `./gauss doctor` result, and the current Morph target status in one report.
+- Preferred outcome: a working installed `gauss` runtime exists locally, so plan 31 can resume from a known-good operator baseline instead of a speculative installer story.
+- Current blocked state: on this machine the raw checkout still fails `./gauss doctor` before real Gauss validation because required Python dependencies are missing (latest local run: `prompt_toolkit`), and the published Morph targets still end in `404` after redirects.
+
 ### Session checkpoint and resume
 
 - Question: what minimal state is required to resume a run safely?
@@ -67,8 +76,9 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - `scripts/run_capability_probes.py` runs the readiness probes.
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
-- `src/deep_gvr/formal.py` contains the Tier 3 transport boundaries and config preflight helpers for Aristotle and MathCode.
+- `src/deep_gvr/formal.py` contains the Tier 3 transport boundaries and config preflight helpers for Aristotle, MathCode, and OpenGauss readiness inspection.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
+- `scripts/diagnose_opengauss.py` captures blocked-state OpenGauss diagnostics without pretending the backend is already integrated.
 - `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
 - `src/deep_gvr/release_surface.py` lifts analysis-adapter readiness into the release preflight report so missing dependencies are visible at install/operator time.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.

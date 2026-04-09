@@ -409,7 +409,7 @@ The Verifier identifies formalizable claims and, if Tier 3 is enabled, attempts 
 | OpenGauss | `/autoprove` / `/autoformalize` skill commands | Iterative proof development, project-scoped work |
 | MathCode CLI | `mathcode -p` / `./run -p` with structured output | Local Lean formalization and bundled AUTOLEAN proof attempts |
 
-For v0.1, Aristotle MCP remains the primary Tier 3 backend (simpler integration, no local Lean toolchain required). MathCode is now available as a local CLI backend for mathematical formalization work. OpenGauss remains a blocked external backend until the upstream local install path is healthy again.
+For v0.1, Aristotle MCP remains the primary Tier 3 backend (simpler integration, no local Lean toolchain required). MathCode is now available as a local CLI backend for mathematical formalization work. OpenGauss remains a blocked external backend until the upstream local install path is healthy again; use `uv run python scripts/diagnose_opengauss.py --json` to distinguish raw-checkout issues from installed-runtime or Morph-target failures.
 
 **Output format (Tier 3):**
 ```json
@@ -916,6 +916,7 @@ EOF
 # (Optional) Install OpenGauss for interactive proof engineering
 cd ~/.hermes/skills/
 git clone https://github.com/math-inc/OpenGauss.git opengauss
+uv run python scripts/diagnose_opengauss.py --json
 ```
 
 ### 8.3 Configuration
