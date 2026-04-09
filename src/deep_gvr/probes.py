@@ -133,6 +133,49 @@ def _package_available(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
 
+def probe_analysis_adapter_families() -> CapabilityProbeResult:
+    family_packages = {
+        "symbolic_math": ["sympy"],
+        "optimization": ["scipy", "ortools"],
+        "dynamics": ["scipy", "qutip"],
+        "qec_decoder_benchmark": ["numpy", "stim", "pymatching"],
+        "mbqc_graph_state": ["graphix"],
+        "photonic_linear_optics": ["perceval"],
+        "neutral_atom_control": ["pulser"],
+        "topological_qec_design": ["tqec"],
+        "zx_rewrite_verification": ["pyzx"],
+    }
+    family_readiness: dict[str, dict[str, object]] = {}
+    ready_families = 0
+    for family, packages in family_packages.items():
+        package_state = {package: _package_available(package) for package in packages}
+        family_ready = all(package_state.values())
+        if family_ready:
+            ready_families += 1
+        family_readiness[family] = {
+            "ready": family_ready,
+            "packages": package_state,
+        }
+    status = ProbeStatus.READY if ready_families == len(family_packages) else ProbeStatus.FALLBACK
+    summary = (
+        "All OSS analysis adapter families have their local Python dependencies available."
+        if status is ProbeStatus.READY
+        else "One or more OSS analysis adapter families are configured structurally but missing local Python dependencies."
+    )
+    return CapabilityProbeResult(
+        name="analysis_adapter_families",
+        status=status,
+        summary=summary,
+        preferred_outcome="Expose the full OSS analysis portfolio through explicit local adapter readiness.",
+        fallback="Install the missing OSS libraries or restrict runs to the ready adapter families.",
+        details={
+            "ready_family_count": ready_families,
+            "total_family_count": len(family_packages),
+            "families": family_readiness,
+        },
+    )
+
+
 def probe_backend_dispatch(runtime_config: DeepGvrConfig | None = None) -> CapabilityProbeResult:
     config = runtime_config or DeepGvrConfig()
     modal_config = config.verification.tier2.modal
@@ -156,9 +199,9 @@ def probe_backend_dispatch(runtime_config: DeepGvrConfig | None = None) -> Capab
 
     status = ProbeStatus.READY if local_ready else ProbeStatus.BLOCKED
     summary = (
-        "Backend dispatch is implemented for local, Modal, and SSH execution; probe details record which backends are configured in this environment."
+        "Backend dispatch is implemented for the QEC analysis path across local, Modal, and SSH execution; probe details record which backends are configured in this environment."
         if local_ready
-        else "No usable local Stim runtime was found for adapter execution."
+        else "No usable local QEC analysis runtime was found for adapter execution."
     )
 
     return CapabilityProbeResult(
@@ -201,6 +244,7 @@ def run_capability_probes(
         probe_mcp_inheritance(evidence.get("subagent_mcp_inheritance")),
         probe_aristotle_transport(),
         probe_checkpoint_resume(),
+        probe_analysis_adapter_families(),
         probe_backend_dispatch(runtime_config),
     ]
 

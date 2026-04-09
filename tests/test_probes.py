@@ -9,7 +9,13 @@ from unittest.mock import patch
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.contracts import DeepGvrConfig, ProbeStatus
-from deep_gvr.probes import probe_backend_dispatch, probe_mcp_inheritance, probe_model_routing, run_capability_probes
+from deep_gvr.probes import (
+    probe_analysis_adapter_families,
+    probe_backend_dispatch,
+    probe_mcp_inheritance,
+    probe_model_routing,
+    run_capability_probes,
+)
 from scripts.run_capability_probes import _load_capability_evidence
 
 
@@ -23,6 +29,7 @@ class ProbeTests(unittest.TestCase):
                 "subagent_mcp_inheritance",
                 "aristotle_transport",
                 "session_checkpoint_resume",
+                "analysis_adapter_families",
                 "backend_dispatch",
             ],
         )
@@ -87,6 +94,16 @@ class ProbeTests(unittest.TestCase):
         self.assertTrue(probe.details["modal_ready"])
         self.assertTrue(probe.details["ssh_ready"])
         self.assertTrue(probe.details["ssh_remote_workspace_configured"])
+
+    def test_analysis_adapter_probe_reports_family_readiness(self) -> None:
+        with patch("deep_gvr.probes._package_available") as package_available:
+            package_available.side_effect = lambda name: name not in {"graphix", "pyzx"}
+            probe = probe_analysis_adapter_families()
+
+        self.assertEqual(probe.status, ProbeStatus.FALLBACK)
+        self.assertFalse(probe.details["families"]["mbqc_graph_state"]["ready"])
+        self.assertFalse(probe.details["families"]["zx_rewrite_verification"]["ready"])
+        self.assertEqual(probe.details["ready_family_count"], 7)
 
     def test_load_capability_evidence_reads_top_level_json_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

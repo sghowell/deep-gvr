@@ -12,13 +12,14 @@ import yaml
 
 from .contracts import (
     DeepGvrConfig,
+    ProbeStatus,
     ReleaseCheck,
     ReleaseCheckStatus,
     ReleasePreflightReport,
     ReleasePublicationManifest,
 )
 from .json_schema import SchemaValidationError, validate
-from .probes import probe_aristotle_transport, probe_backend_dispatch
+from .probes import probe_analysis_adapter_families, probe_aristotle_transport, probe_backend_dispatch
 from .runtime_config import default_config_path, load_runtime_config
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
@@ -148,6 +149,7 @@ def collect_release_preflight(
     checks.append(config_check)
     checks.append(_check_hermes_cli())
     checks.append(_check_provider_credentials(runtime_config))
+    checks.append(_check_analysis_adapter_families(runtime_config))
     checks.append(_check_tier2_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
     checks.append(_check_publication_manifest(effective_root))
@@ -236,6 +238,7 @@ def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfi
             details={
                 "config_path": str(config_path),
                 "tier2_backend": runtime_config.verification.tier2.default_backend.value,
+                "default_adapter_family": runtime_config.verification.tier2.default_adapter_family,
                 "tier3_enabled": runtime_config.verification.tier3.enabled,
             },
             guidance="Keep the runtime config aligned with the checked-in YAML template.",
@@ -378,6 +381,61 @@ def _check_tier2_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
         summary=f"The selected Tier 2 backend ({selected_backend}) is not ready in this environment.",
         details={"selected_backend": selected_backend, **probe.details},
         guidance="Install or configure the selected backend prerequisites, or switch the default backend to one that is ready.",
+    )
+
+
+def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="analysis_adapter_families",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Analysis-adapter readiness cannot be evaluated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun release preflight.",
+        )
+
+    tier2 = runtime_config.verification.tier2
+    if not tier2.enabled:
+        return ReleaseCheck(
+            name="analysis_adapter_families",
+            status=ReleaseCheckStatus.READY,
+            summary="Tier 2 analysis is disabled in the runtime config, so adapter-family readiness is not required for operator use.",
+            details={"default_adapter_family": tier2.default_adapter_family},
+            guidance="Enable Tier 2 only after the required analysis adapter families are installed.",
+        )
+
+    probe = probe_analysis_adapter_families()
+    default_family = tier2.default_adapter_family
+    family_details = dict(probe.details.get("families", {}))
+    default_family_ready = bool(family_details.get(default_family, {}).get("ready"))
+    status = ReleaseCheckStatus.READY if probe.status is ProbeStatus.READY else ReleaseCheckStatus.ATTENTION
+    summary = (
+        "All configured OSS analysis adapter families have their local Python dependencies available."
+        if status is ReleaseCheckStatus.READY
+        else "One or more OSS analysis adapter families are missing local Python dependencies."
+    )
+    guidance = (
+        "Install the missing OSS analysis libraries before using those adapter families in live operator runs."
+        if status is ReleaseCheckStatus.ATTENTION
+        else "Rerun release preflight after changing the local Python environment or adapter-family defaults."
+    )
+    if not default_family_ready:
+        status = ReleaseCheckStatus.BLOCKED
+        summary = (
+            f"The configured default analysis adapter family ({default_family}) is not ready in this environment."
+        )
+        guidance = (
+            "Install the missing dependencies for the configured default adapter family or change the default to a ready family."
+        )
+    return ReleaseCheck(
+        name="analysis_adapter_families",
+        status=status,
+        summary=summary,
+        details={
+            "default_adapter_family": default_family,
+            "default_adapter_family_ready": default_family_ready,
+            **probe.details,
+        },
+        guidance=guidance,
     )
 
 

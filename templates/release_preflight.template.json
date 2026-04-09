@@ -26,6 +26,7 @@
       "details": {
         "config_path": "~/.hermes/deep-gvr/config.yaml",
         "tier2_backend": "local",
+        "default_adapter_family": "qec_decoder_benchmark",
         "tier3_enabled": false
       },
       "guidance": "Keep the runtime config aligned with the checked-in YAML template."
@@ -55,6 +56,29 @@
         "blocked_providers": ["openrouter"]
       },
       "guidance": "Export the expected provider API key before using the configured route in Hermes."
+    },
+    {
+      "name": "analysis_adapter_families",
+      "status": "attention",
+      "summary": "One or more OSS analysis adapter families are missing local Python dependencies.",
+      "details": {
+        "default_adapter_family": "qec_decoder_benchmark",
+        "default_adapter_family_ready": true,
+        "ready_family_count": 1,
+        "total_family_count": 9,
+        "families": {
+          "symbolic_math": { "ready": false, "packages": { "sympy": false } },
+          "optimization": { "ready": false, "packages": { "scipy": false, "ortools": false } },
+          "dynamics": { "ready": false, "packages": { "scipy": false, "qutip": false } },
+          "qec_decoder_benchmark": { "ready": true, "packages": { "numpy": true, "stim": true, "pymatching": true } },
+          "mbqc_graph_state": { "ready": false, "packages": { "graphix": false } },
+          "photonic_linear_optics": { "ready": false, "packages": { "perceval": false } },
+          "neutral_atom_control": { "ready": false, "packages": { "pulser": false } },
+          "topological_qec_design": { "ready": false, "packages": { "tqec": false } },
+          "zx_rewrite_verification": { "ready": false, "packages": { "pyzx": false } }
+        }
+      },
+      "guidance": "Install the missing OSS analysis libraries before using those adapter families in live operator runs."
     },
     {
       "name": "tier2_backend",

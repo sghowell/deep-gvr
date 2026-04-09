@@ -40,8 +40,48 @@
     "expected_tiers": [1]
   },
   {
+    "id": "symbolic-verified-equivalence",
+    "category": "analysis_required",
+    "prompt": "Claim that (x + 1)^2 is exactly equal to x^2 + 2x + 1.",
+    "scenario": "symbolic_verified_equivalence",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "symbolic-rejected-derivative",
+    "category": "analysis_required",
+    "prompt": "Claim that the derivative of x^3 is 2x^2.",
+    "scenario": "symbolic_rejected_derivative",
+    "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "optimization-verified-linear-program",
+    "category": "analysis_required",
+    "prompt": "Claim that the benchmark linear program minimizing x + 2y subject to x + y >= 3 and x,y >= 0 has optimum value 3.",
+    "scenario": "optimization_verified_linear_program",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "optimization-rejected-assignment",
+    "category": "analysis_required",
+    "prompt": "Claim that the benchmark 2x2 assignment problem with costs [[4,1],[2,3]] has optimum cost 7.",
+    "scenario": "optimization_rejected_assignment",
+    "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "dynamics-verified-decay",
+    "category": "analysis_required",
+    "prompt": "Claim that an exponential decay with rate 1 and initial value 1 falls below 0.2 by time t = 2.",
+    "scenario": "dynamics_verified_decay",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
     "id": "simulation-verified-distance5",
-    "category": "simulation_required",
+    "category": "analysis_required",
     "prompt": "Claim that the logical error rate decreases with code distance at physical error rate 0.001 in a rotated surface-code memory experiment.",
     "scenario": "simulation_verified_distance5",
     "expected_verdict": "VERIFIED",
@@ -49,10 +89,50 @@
   },
   {
     "id": "simulation-rejected-distance7",
-    "category": "simulation_required",
+    "category": "analysis_required",
     "prompt": "Claim that a rotated surface-code memory task at distance 7 and physical error rate 0.005 stays below 1e-4 logical error.",
     "scenario": "simulation_rejected_distance7",
     "expected_verdict": "FLAWS_FOUND",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "mbqc-verified-graphix-pattern",
+    "category": "analysis_required",
+    "prompt": "Claim that a simple two-qubit Clifford circuit transpiles to a non-empty MBQC measurement pattern.",
+    "scenario": "mbqc_verified_graphix_pattern",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "photonic-verified-basic-state",
+    "category": "analysis_required",
+    "prompt": "Claim that the benchmark photonic input state contains one photon across two modes.",
+    "scenario": "photonic_verified_basic_state",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "neutral-atom-verified-register",
+    "category": "analysis_required",
+    "prompt": "Claim that the benchmark 2x2 neutral-atom square register contains four qubits.",
+    "scenario": "neutral_atom_verified_register",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "tqec-verified-gallery-block-graph",
+    "category": "analysis_required",
+    "prompt": "Claim that the tqec Steane-encoding gallery construction exposes non-zero correlation surfaces.",
+    "scenario": "tqec_verified_gallery_block_graph",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 2]
+  },
+  {
+    "id": "zx-verified-qasm-rewrite",
+    "category": "analysis_required",
+    "prompt": "Claim that the one-qubit QASM circuit consisting of H followed by H is ZX-equivalent to the identity.",
+    "scenario": "zx_verified_qasm_rewrite",
+    "expected_verdict": "VERIFIED",
     "expected_tiers": [1, 2]
   },
   {

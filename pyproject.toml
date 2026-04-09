@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deep-gvr"
 version = "0.1.0"
-description = "Readiness scaffolding and contracts for the deep-gvr Hermes research harness."
+description = "An agentic generate-verify-revise research harness with OSS-backed analysis adapters."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
-authors = [{ name = "Zetetic Works Research Corporation" }]
+authors = [{ name = "Sean Howell" }]
 dependencies = [
     "pymatching>=2.3.1",
     "pyyaml>=6.0.3",
@@ -20,6 +20,19 @@ dependencies = [
 deep-gvr = "deep_gvr.cli:main"
 
 [project.optional-dependencies]
+analysis = [
+    "sympy>=1.13.0",
+    "scipy>=1.15.0",
+    "ortools>=9.12.0",
+]
+quantum_oss = [
+    "qutip>=5.1.0",
+    "graphix>=0.3.3",
+    "perceval-quandela>=1.1.0",
+    "pulser>=1.3.0",
+    "tqec>=0.1.0",
+    "pyzx>=0.8.0",
+]
 dev = []
 
 [tool.setuptools]
