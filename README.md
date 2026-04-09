@@ -9,6 +9,10 @@
 
 # deep-gvr
 
+[![CI](https://img.shields.io/github/actions/workflow/status/sghowell/deep-gvr/ci.yml?branch=main&label=CI)](https://github.com/sghowell/deep-gvr/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/sghowell/deep-gvr)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
+
 `deep-gvr` is a research skill for Hermes Agent that uses a generator-verifier-reviser loop to answer difficult technical questions with explicit analytical, computational, and formal verification.
 
 It is built for people who want more than a polished answer. `deep-gvr` is designed to show its work: what it claimed, how it checked the claim, what evidence it produced, and where it could not verify enough to be confident.
