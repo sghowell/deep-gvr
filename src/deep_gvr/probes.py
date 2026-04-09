@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
-from .formal import inspect_aristotle_transport
+from .formal import inspect_aristotle_transport, inspect_mathcode_transport
 
 
 def probe_model_routing(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
@@ -107,6 +107,37 @@ def probe_aristotle_transport() -> CapabilityProbeResult:
             "mcp_server_name": transport.mcp_server_name,
             "mcp_server_configured": transport.mcp_server_configured,
             "configured_mcp_servers": transport.configured_mcp_servers,
+        },
+    )
+
+
+def probe_mathcode_transport(runtime_config: DeepGvrConfig | None = None) -> CapabilityProbeResult:
+    config = runtime_config or DeepGvrConfig()
+    transport = inspect_mathcode_transport(
+        mathcode_root=config.verification.tier3.mathcode.root,
+        run_script=config.verification.tier3.mathcode.run_script,
+    )
+    if transport.ready:
+        status = ProbeStatus.READY
+        summary = "MathCode local CLI, AUTOLEAN, and lean-workspace are configured for local Tier 3 formal verification."
+    else:
+        status = ProbeStatus.FALLBACK
+        summary = "MathCode local formal transport is not fully configured; use another supported Tier 3 backend until the local checkout is ready."
+
+    return CapabilityProbeResult(
+        name="mathcode_transport",
+        status=status,
+        summary=summary,
+        preferred_outcome="Allow the orchestrator to dispatch Tier 3 proof attempts through the local MathCode CLI.",
+        fallback="Configure the local MathCode checkout and keep Tier 3 on another supported backend until it is ready.",
+        details={
+            "mathcode_root": transport.mathcode_root,
+            "mathcode_root_exists": transport.mathcode_root_exists,
+            "run_script": transport.run_script,
+            "run_script_exists": transport.run_script_exists,
+            "run_script_executable": transport.run_script_executable,
+            "autolean_exists": transport.autolean_exists,
+            "lean_workspace_exists": transport.lean_workspace_exists,
         },
     )
 
@@ -243,6 +274,7 @@ def run_capability_probes(
         probe_model_routing(evidence.get("per_subagent_model_routing")),
         probe_mcp_inheritance(evidence.get("subagent_mcp_inheritance")),
         probe_aristotle_transport(),
+        probe_mathcode_transport(runtime_config),
         probe_checkpoint_resume(),
         probe_analysis_adapter_families(),
         probe_backend_dispatch(runtime_config),

@@ -12,6 +12,7 @@ from deep_gvr.contracts import DeepGvrConfig, ProbeStatus
 from deep_gvr.probes import (
     probe_analysis_adapter_families,
     probe_backend_dispatch,
+    probe_mathcode_transport,
     probe_mcp_inheritance,
     probe_model_routing,
     run_capability_probes,
@@ -28,6 +29,7 @@ class ProbeTests(unittest.TestCase):
                 "per_subagent_model_routing",
                 "subagent_mcp_inheritance",
                 "aristotle_transport",
+                "mathcode_transport",
                 "session_checkpoint_resume",
                 "analysis_adapter_families",
                 "backend_dispatch",
@@ -104,6 +106,23 @@ class ProbeTests(unittest.TestCase):
         self.assertFalse(probe.details["families"]["mbqc_graph_state"]["ready"])
         self.assertFalse(probe.details["families"]["zx_rewrite_verification"]["ready"])
         self.assertEqual(probe.details["ready_family_count"], 7)
+
+    def test_mathcode_transport_probe_reports_ready_for_complete_local_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = Path(tmpdir) / "mathcode"
+            (mathcode_root / "AUTOLEAN").mkdir(parents=True, exist_ok=True)
+            (mathcode_root / "lean-workspace").mkdir(parents=True, exist_ok=True)
+            run_script = mathcode_root / "run"
+            run_script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            run_script.chmod(0o755)
+
+            config = DeepGvrConfig()
+            config.verification.tier3.mathcode.root = str(mathcode_root)
+            config.verification.tier3.mathcode.run_script = str(run_script)
+            probe = probe_mathcode_transport(config)
+
+        self.assertEqual(probe.status, ProbeStatus.READY)
+        self.assertTrue(probe.details["run_script_executable"])
 
     def test_load_capability_evidence_reads_top_level_json_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

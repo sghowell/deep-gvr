@@ -273,7 +273,11 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertEqual(
             [item.id for item in cases],
-            ["formal-proved-repetition-majority", "formal-unavailable-repetition-scaling"],
+            [
+                "formal-proved-repetition-majority",
+                "formal-unavailable-repetition-scaling",
+                "formal-mathcode-nat-add-zero",
+            ],
         )
 
     def test_load_benchmark_suite_filters_orchestration_category(self) -> None:
@@ -470,6 +474,19 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(case.actual_verdict, VerificationVerdict.VERIFIED)
         self.assertEqual(case.actual_tiers, [1])
         self.assertEqual(case.iterations, 3)
+
+    def test_run_benchmark_suite_handles_mathcode_formal_case(self) -> None:
+        report = run_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+            case_ids=["formal-mathcode-nat-add-zero"],
+        )
+
+        self.assertEqual(report.summary.total_cases, 1)
+        case = report.cases[0]
+        self.assertTrue(case.passed)
+        self.assertEqual(case.actual_verdict, VerificationVerdict.VERIFIED)
+        self.assertEqual(case.actual_tiers, [1, 3])
 
     def test_eval_cli_writes_results_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1316,7 +1333,7 @@ class EvaluationTests(unittest.TestCase):
     def test_live_mode_does_not_clip_formal_transport_to_live_role_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_root = Path(tmpdir) / "live-results"
-            with patch("deep_gvr.evaluation.AristotleFormalVerifier") as verifier_ctor:
+            with patch("deep_gvr.evaluation.build_formal_verifier") as verifier_ctor:
                 verifier_ctor.return_value = object()
                 report = run_benchmark_suite(
                     ROOT / "eval" / "known_problems.json",

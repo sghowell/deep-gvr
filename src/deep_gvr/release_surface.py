@@ -19,7 +19,7 @@ from .contracts import (
     ReleasePublicationManifest,
 )
 from .json_schema import SchemaValidationError, validate
-from .probes import probe_analysis_adapter_families, probe_aristotle_transport, probe_backend_dispatch
+from .probes import probe_analysis_adapter_families, probe_aristotle_transport, probe_backend_dispatch, probe_mathcode_transport
 from .runtime_config import default_config_path, load_runtime_config
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
@@ -453,9 +453,35 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
         return ReleaseCheck(
             name="tier3_transport",
             status=ReleaseCheckStatus.READY,
-            summary="Tier 3 is disabled in the runtime config, so Aristotle transport is not required for operator use.",
+            summary="Tier 3 is disabled in the runtime config, so the configured formal backend transport is not required for operator use.",
             details={"backend": tier3.backend, "hermes_config_path": str(hermes_config_path)},
-            guidance="Run bash scripts/setup_mcp.sh --install --check before enabling Tier 3.",
+            guidance="Verify the configured formal backend before enabling Tier 3 for operator use.",
+        )
+
+    if tier3.backend == "mathcode":
+        probe = probe_mathcode_transport(runtime_config)
+        if probe.status.value == "ready":
+            return ReleaseCheck(
+                name="tier3_transport",
+                status=ReleaseCheckStatus.READY,
+                summary="The configured Tier 3 transport is ready for local MathCode proof dispatch.",
+                details=probe.details,
+                guidance="Tier 3 proof attempts will use the configured MathCode root and run script on the shipped harness path.",
+            )
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Tier 3 is enabled, but the configured MathCode transport is not ready in this environment.",
+            details=probe.details,
+            guidance="Install or fix the local MathCode checkout and verify AUTOLEAN, lean-workspace, and the run script path before enabling Tier 3 live use.",
+        )
+    if tier3.backend != "aristotle":
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary=f"The configured Tier 3 backend ({tier3.backend}) is not implemented in the shipped release surface.",
+            details={"backend": tier3.backend},
+            guidance="Select a supported Tier 3 backend or complete the owning backend slice before operator use.",
         )
 
     probe = probe_aristotle_transport()

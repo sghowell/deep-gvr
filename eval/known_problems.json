@@ -152,6 +152,15 @@
     "expected_tiers": [1, 3]
   },
   {
+    "id": "formal-mathcode-nat-add-zero",
+    "category": "formalizable",
+    "prompt": "Formalize and prove that for every natural number n, 0 + n = n.",
+    "scenario": "formal_mathcode_nat_add_zero",
+    "formal_backend": "mathcode",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 3]
+  },
+  {
     "id": "orchestration-fanout-threshold",
     "category": "orchestration_required",
     "prompt": "Assess the standard depolarizing-noise surface-code threshold claim, and if the first argument fails, switch to a materially different approach instead of repeating the same unsupported inference.",

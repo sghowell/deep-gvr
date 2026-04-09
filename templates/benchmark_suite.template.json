@@ -30,5 +30,14 @@
     "scenario": "orchestration_fanout_threshold",
     "expected_verdict": "VERIFIED",
     "expected_tiers": [1]
+  },
+  {
+    "id": "formal-mathcode-nat-add-zero",
+    "category": "formalizable",
+    "prompt": "Formalize and prove that for every natural number n, 0 + n = n.",
+    "scenario": "formal_mathcode_nat_add_zero",
+    "formal_backend": "mathcode",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 3]
   }
 ]

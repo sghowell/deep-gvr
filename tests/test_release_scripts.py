@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 
 from tests import _path_setup  # noqa: F401
-from deep_gvr.release_surface import publication_manifest_errors
+from deep_gvr.release_surface import collect_release_preflight, publication_manifest_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -273,6 +273,47 @@ class ReleaseScriptTests(unittest.TestCase):
 
     def test_publication_manifest_matches_repo_metadata(self) -> None:
         self.assertEqual(publication_manifest_errors(ROOT), [])
+
+    def test_release_preflight_uses_mathcode_transport_when_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_dir = Path(tmpdir) / "skills"
+            hermes_home = Path(tmpdir) / ".hermes"
+            mathcode_root = Path(tmpdir) / "mathcode"
+            (mathcode_root / "AUTOLEAN").mkdir(parents=True, exist_ok=True)
+            (mathcode_root / "lean-workspace").mkdir(parents=True, exist_ok=True)
+            run_script = mathcode_root / "run"
+            run_script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            run_script.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh"), "--target", str(target_dir)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            config_path = hermes_home / "deep-gvr" / "config.yaml"
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            payload["verification"]["tier3"]["enabled"] = True
+            payload["verification"]["tier3"]["backend"] = "mathcode"
+            payload["verification"]["tier3"]["mathcode"]["root"] = str(mathcode_root)
+            payload["verification"]["tier3"]["mathcode"]["run_script"] = str(run_script)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            report = collect_release_preflight(
+                config_path=config_path,
+                skills_dir=target_dir,
+                hermes_config_path=hermes_home / "config.yaml",
+            )
+
+        tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
+        self.assertEqual(tier3_check.status.value, "ready")
+        self.assertIn("MathCode", tier3_check.summary)
 
 
 if __name__ == "__main__":

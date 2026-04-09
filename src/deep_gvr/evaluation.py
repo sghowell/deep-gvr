@@ -28,7 +28,7 @@ from .contracts import (
     VerificationVerdict,
 )
 from .domain_context import load_domain_context
-from .formal import AristotleFormalVerifier, FormalVerificationRequest, FormalVerifier
+from .formal import FormalVerificationRequest, FormalVerifier, build_formal_verifier
 from .live_runtime import resolve_live_role_timeout_seconds, resolve_live_role_toolsets
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
@@ -92,7 +92,7 @@ _BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
     "core-science": _CORE_SCIENCE_CASES,
     "photonic-mbqc": _PHOTONIC_MBQC_CASES,
     "quantum-oss": _QUANTUM_OSS_CASES,
-    "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "orchestration-fanout-threshold"),
+    "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "formal-mathcode-nat-add-zero", "orchestration-fanout-threshold"),
     "live-analytical-breadth": _LIVE_ANALYTICAL_BREADTH_CASES,
     "live-escalation-breadth": _LIVE_ESCALATION_BREADTH_CASES,
     "live-expansion": _LIVE_EXPANSION_CASES,
@@ -128,6 +128,7 @@ class BenchmarkCase:
     scenario: str
     expected_verdict: VerificationVerdict
     expected_tiers: list[int]
+    formal_backend: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkCase":
@@ -138,10 +139,14 @@ class BenchmarkCase:
             scenario=data["scenario"],
             expected_verdict=VerificationVerdict(data["expected_verdict"]),
             expected_tiers=[int(item) for item in data["expected_tiers"]],
+            formal_backend=data.get("formal_backend"),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return _serialize(self)
+        payload = _serialize(self)
+        if self.formal_backend is None:
+            payload.pop("formal_backend", None)
+        return payload
 
 
 @dataclass(slots=True)
@@ -1043,6 +1048,8 @@ def _run_fixture_case(
     routing_probe: CapabilityProbeResult,
 ) -> BenchmarkCaseResult:
     config = _benchmark_config(str(evidence_root / case.id))
+    if case.formal_backend:
+        config.verification.tier3.backend = case.formal_backend
     if case.category == "orchestration_required":
         config.loop.max_iterations = 3
         config.loop.alternative_approach = True
@@ -1126,6 +1133,8 @@ def _run_live_case(
     sessions_root = output_root / "sessions"
     case_root.mkdir(parents=True, exist_ok=True)
     config = _benchmark_config(str(sessions_root), base_config=base_config)
+    if case.formal_backend:
+        config.verification.tier3.backend = case.formal_backend
     domain, literature_context = load_domain_context(config)
     session_store = SessionStore(config.evidence.directory)
     tier_runner = Tier1LoopRunner(
@@ -1162,7 +1171,8 @@ def _run_live_case(
             verifier=live_runner.verifier,
             reviser=live_runner.reviser,
             analyzer=None,
-            formal_verifier=AristotleFormalVerifier(
+            formal_verifier=build_formal_verifier(
+                config.verification.tier3,
                 command_executor=executor,
                 hermes_binary=live_config.hermes_binary,
                 hermes_config_path=Path("~/.hermes/config.yaml").expanduser(),
@@ -1815,7 +1825,8 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             case "formal_proved_repetition_majority":
                 if request.formal_results is None:
                     return _formal_request_report(
-                        "For every odd repetition-code distance d, majority decoding corrects up to (d-1)/2 bit flips."
+                        "For every odd repetition-code distance d, majority decoding corrects up to (d-1)/2 bit flips.",
+                        backend=case.formal_backend or "aristotle",
                     )
                 return _verified_with_tier3(
                     list(request.formal_results),
@@ -1824,7 +1835,8 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             case "formal_unavailable_repetition_scaling":
                 if request.formal_results is None:
                     return _formal_request_report(
-                        "For the repetition code of odd distance d, the logical error rate is O(p^((d+1)/2))."
+                        "For the repetition code of odd distance d, the logical error rate is O(p^((d+1)/2)).",
+                        backend=case.formal_backend or "aristotle",
                     )
                 return VerificationReport(
                     verdict=VerificationVerdict.CANNOT_VERIFY,
@@ -1845,6 +1857,16 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
                     flaws=[],
                     caveats=["Formal verification remained unavailable in the benchmark fixture."],
                     cannot_verify_reason="Tier 3 proof evidence was unavailable for this benchmark case.",
+                )
+            case "formal_mathcode_nat_add_zero":
+                if request.formal_results is None:
+                    return _formal_request_report(
+                        "For every natural number n, 0 + n = n.",
+                        backend=case.formal_backend or "mathcode",
+                    )
+                return _verified_with_tier3(
+                    list(request.formal_results),
+                    "The MathCode-backed formal result confirms the natural-number identity.",
                 )
             case "orchestration_fanout_threshold":
                 if (
@@ -2000,6 +2022,17 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
                     proof_time_seconds=None,
                 )
             ]
+        if case.scenario == "formal_mathcode_nat_add_zero":
+            return [
+                Tier3ClaimResult(
+                    claim=request.claims[0].claim,
+                    backend=request.backend,
+                    proof_status=ProofStatus.PROVED,
+                    details="The benchmark fixture marks the MathCode theorem as proved.",
+                    lean_code="theorem zero_add_nat (n : Nat) : 0 + n = n := by simp",
+                    proof_time_seconds=0.8,
+                )
+            ]
         raise ValueError(f"Unexpected formal verifier call for {case.scenario!r}.")
 
     return FixtureAgents(
@@ -2051,6 +2084,8 @@ def _hypothesis_for_case(case: BenchmarkCase) -> str:
             return "Majority decoding for odd repetition codes corrects up to (d-1)/2 bit flips."
         case "formal_unavailable_repetition_scaling":
             return "The repetition-code logical error rate scales as O(p^((d+1)/2))."
+        case "formal_mathcode_nat_add_zero":
+            return "For every natural number n, 0 + n = n."
         case "orchestration_fanout_threshold":
             return "The surface-code threshold claim follows from a generic unsupported threshold-theorem inference."
         case _:
@@ -2273,7 +2308,7 @@ def _flawed_with_tier2(analysis_results: AnalysisResults, interpretation: str) -
     )
 
 
-def _formal_request_report(claim: str) -> VerificationReport:
+def _formal_request_report(claim: str, *, backend: str = "aristotle") -> VerificationReport:
     flaw = "Formal proof evidence is required before accepting the theorem claim."
     return VerificationReport(
         verdict=VerificationVerdict.FLAWS_FOUND,
@@ -2293,7 +2328,7 @@ def _formal_request_report(claim: str) -> VerificationReport:
         tier3=[
             Tier3ClaimResult(
                 claim=claim,
-                backend="aristotle",
+                backend=backend,
                 proof_status=ProofStatus.REQUESTED,
                 details="The benchmark fixture requests Tier 3 proof output.",
                 lean_code="",
