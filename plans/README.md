@@ -40,3 +40,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [35-mathcode-formal-backend.md](35-mathcode-formal-backend.md)
 - [36-node24-actions.md](36-node24-actions.md)
 - [37-opengauss-unblock-diagnostics.md](37-opengauss-unblock-diagnostics.md)
+- [38-human-docs-excellence.md](38-human-docs-excellence.md)

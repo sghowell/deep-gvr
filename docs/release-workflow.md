@@ -1,54 +1,57 @@
 # Release Workflow
 
-`deep-gvr` now ships a release-grade install, preflight, and publication bundle.
+This guide is for operators who want to install, validate, and publish the human-facing `deep-gvr` release surface.
 
-## Operator Path
+## 1. Install the Skill Bundle
 
-1. Install the skill bundle into Hermes:
+```bash
+bash scripts/install.sh
+```
 
-   ```bash
-   bash scripts/install.sh
-   ```
+If you want an isolated install tree for packaging or smoke testing, set `HERMES_HOME` first. The install and preflight helpers will use that tree instead of `~/.hermes`.
 
-   If you need an isolated Hermes home for packaging or smoke tests, set `HERMES_HOME` first and the install plus preflight helpers will use that tree instead of `~/.hermes`.
+## 2. Run Structural Preflight
 
-2. Run structural preflight to confirm the installed bundle, runtime config, and publication assets are present:
+```bash
+uv run python scripts/release_preflight.py --json
+```
 
-   ```bash
-   uv run python scripts/release_preflight.py --json
-   ```
+This checks the release bundle, config presence, and checked-in publication assets without assuming a live operator environment.
 
-3. Run operator preflight before live use:
+## 3. Run Operator Preflight
 
-   ```bash
-   uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
-   ```
+```bash
+uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+```
 
-4. If Tier 3 is enabled, install and validate Aristotle MCP transport:
+This verifies the installed skill bundle plus the live runtime path:
 
-   ```bash
-   bash scripts/setup_mcp.sh --install --check
-   ```
+- Hermes availability
+- config validity
+- provider readiness
+- selected Tier 2 backend readiness
+- selected Tier 3 backend readiness
 
-`--operator` fails unless the selected runtime path is actually ready for Hermes use. The default preflight mode only enforces structural release-surface completeness so it stays CI-safe.
+## 4. Enable Tier 3 if Needed
 
-## Publication Bundle
+For Aristotle:
 
-- Checked-in publication manifest: `release/agentskills.publication.json`
-- Source skill manifest: `SKILL.md`
-- Operator docs: `README.md`
-- Preflight helper: `scripts/release_preflight.py`
+```bash
+bash scripts/setup_mcp.sh --install --check
+```
 
-The publication manifest is validated against repo-local truth during repo checks. It is the checked-in source bundle for GitHub and agentskills.io release work.
+For MathCode, point the config at the local checkout and executable run wrapper, then re-run operator preflight.
+
+## 5. Publish the Bundle
+
+The checked-in publication bundle is:
+
+- `release/agentskills.publication.json`
+
+The release surface is designed so that the publication manifest, install path, and preflight path stay aligned.
 
 ## Auto Improve Policy
 
 The release bundle ships with `auto_improve: false`.
 
-To opt in:
-
-1. review the release bundle and operator docs
-2. set `auto_improve` to `true` in `release/agentskills.publication.json`
-3. republish the same validated bundle with human sign-off
-
-Do not enable `auto_improve` by default in the repository release surface.
+That is intentional. Enabling automatic self-modification is an explicit operator choice, not the default behavior of the public release surface.
