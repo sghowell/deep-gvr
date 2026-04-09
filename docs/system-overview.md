@@ -36,6 +36,7 @@
 - Tier 1 analytical verification always runs
 - Tier 2 empirical verification is triggered by quantitative claims
 - Tier 3 formal verification is triggered by formalizable claims
+- Repeated verification failure can now escalate into bounded alternative-approach or decomposition branches when enabled by config
 - Any failed applicable tier is a failed candidate
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
 - The Tier 2 backend surface uses the Stim adapter with PyMatching decoding across local, Modal, and SSH execution
@@ -45,7 +46,7 @@
 
 - No Hermes fork
 - Python 3.12 and `uv`
-- Sequential GVR loop first
+- Sequential single-branch execution remains the default happy path, with checkpoint-safe queued fan-out only after repeated failure
 - Resume from the last complete checkpoint instead of replaying partial phases
 - File-backed artifacts remain the ground truth, while Hermes memory summaries and Parallax manifests are derived from those artifacts
 - Cross-model verification preferred, with prompt/temperature decorrelation as the fallback

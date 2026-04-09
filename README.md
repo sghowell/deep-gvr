@@ -9,7 +9,7 @@
 
 `deep-gvr` is an agent-first research harness for Hermes Agent that implements a generator-verifier-reviser loop with tiered verification.
 
-The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a working Stim/PyMatching Tier 2 path across local, Modal, and SSH backends, and Tier 3 formal verification with persisted proof handles, polling, and resume-aware completion on the shipped harness path.
+The repository is intentionally structured for Codex-driven implementation. The current state is a working baseline: contracts, prompts, schemas, capability probes, execution plans, repository guardrails, a delegated Hermes skill-orchestrator command surface with checkpointed resume semantics, a checkpoint-safe bounded fan-out and escalation loop, a working Stim/PyMatching Tier 2 path across local, Modal, and SSH backends, and Tier 3 formal verification with persisted proof handles, polling, and resume-aware completion on the shipped harness path.
 Target-state alignment is tracked in [docs/architecture-status.md](docs/architecture-status.md); current substitutions are temporary gaps with owning retirement slices, not the intended long-term surface.
 
 ## What Exists Now
@@ -20,6 +20,7 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 - Indexed design docs in [docs/README.md](docs/README.md)
 - Typed Python contracts in `src/deep_gvr/`
 - Tier 1 loop helpers and session persistence in `src/deep_gvr/tier1.py`
+- Checkpoint-safe branch fan-out and escalation state in `src/deep_gvr/tier1.py` and `src/deep_gvr/contracts.py`
 - Delegated Hermes command boundary in `src/deep_gvr/orchestrator.py`
 - Local, Modal, and SSH Stim/PyMatching empirical verification in `adapters/stim_adapter.py`
 - Orchestrator-mediated Aristotle Tier 3 transport and fallback logic in `src/deep_gvr/formal.py`
@@ -114,7 +115,7 @@ If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill
 
 ## Evaluation Baseline
 
-The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. The committed CI-safe baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
+The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. That corpus now includes an orchestration-required case that exercises bounded fan-out after repeated primary-branch failure. The committed CI-safe baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
 
 The same runner now also supports live prompt-driven execution through the explicit prompt harness in `src/deep_gvr/evaluation.py`. A live smoke run writes a timestamped artifact directory under `eval/results/live/` and leaves the committed deterministic baseline untouched:
 

@@ -22,7 +22,7 @@ Given a research question, deep-gvr:
 
 1. **Generates** candidate solutions, hypotheses, or proof sketches grounded in literature and prior results
 2. **Verifies** those candidates through a decoupled adversarial process using up to three verification tiers: analytical (natural language reasoning), empirical (simulation), and formal (Lean 4 theorem proving)
-3. **Revises** candidates based on specific flaws identified by the Verifier, iterating until the result passes verification, the system admits failure, or the iteration budget is exhausted
+3. **Revises or escalates** candidates based on specific flaws identified by the Verifier, iterating until the result passes verification, the system admits failure, or the bounded iteration and branch budget is exhausted
 
 The first target domain is fault-tolerant quantum computing research, specifically photonic fusion-based quantum computing (FBQC) and quantum error correction (QEC). The architecture is domain-agnostic; the domain specialization lives entirely in the prompts and simulator adapters.
 
@@ -1090,6 +1090,8 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 | 4 | Formalization requirement | Tiered, not mandatory | Most early use cases are analytical/empirical |
 | 5 | Release model | Open source, MIT | First public release, enables public collaboration |
 | 6 | Name | deep-gvr | Descriptive, echoes deep research, says what it does |
+| 12 | Multi-hypothesis fan-out vs sequential | Keep one active branch by default, but allow checkpoint-safe queued fan-out after repeated failure | Preserves simple sequential behavior on the happy path while enabling bounded alternative and decomposition exploration |
+| 13 | Failure escalation policy | Record explicit escalation events and switch among bounded alternative or decomposition branches | Makes retries auditable and resume-safe instead of hiding them as implicit control flow |
 | 15 | Skill auto-improvement policy | Ship with `auto_improve: false` and require an explicit publication-manifest edit to enable it | Keeps the default release surface conservative while still allowing future opt-in |
 
 ### Open
@@ -1100,8 +1102,6 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 | 8 | Subagent MCP access | **P0** | Do delegated subagents inherit MCP tool access? Must verify. |
 | 10 | Session checkpoint/resume mechanics | P1 | Serialize loop state to session directory. Orchestrator reloads on `/deep-gvr resume <session_id>`. |
 | 11 | Lean 4 environment location | P2 | Aristotle API avoids local Lean for v0.1. OpenGauss needs local or Morph Cloud. |
-| 12 | Multi-hypothesis fan-out vs sequential | P2 | Start sequential. Fan-out is a v0.2 feature. |
-| 13 | Failure escalation policy | P1 | v0.1: log + structured report to user. v0.2: auto-decomposition. |
 | 14 | Domain knowledge static vs dynamic | P1 | Minimal static context + dynamic retrieval. domain/ files are brief reference cards, not textbooks. |
 | 16 | Contribution model | P2 | Accept adapter contributions freely. Prompt changes require review. |
 | 17 | Evaluation benchmark size | P1 | Target 10–15 problems across all categories for v0.1. |

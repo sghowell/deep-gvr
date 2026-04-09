@@ -14,7 +14,7 @@ deep-gvr is a Hermes skill procedure for agentic scientific research with a gene
 
 ## Current State
 
-The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
+The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, checkpoint-safe bounded fan-out/escalation state, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
 Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
 The shipped release surface now also includes `scripts/release_preflight.py` plus the checked-in publication bundle at `release/agentskills.publication.json`.
 Current target-state gaps are tracked in [docs/architecture-status.md](docs/architecture-status.md); the temporary runtime substitutions below each point to a retirement slice.
@@ -42,7 +42,7 @@ When the user invokes `/deep-gvr`:
 3. Execute Generator, Verifier, Reviser, and any Simulator work through Hermes `delegate_task`. Do not answer the research question directly from the parent context when a delegated role should handle it.
 4. Do not call `uv run deep-gvr run` or `uv run deep-gvr resume` from inside this skill. Those commands are the external wrapper that invokes this delegated orchestrator.
 5. If Tier 3 is expected, run `bash scripts/setup_mcp.sh --install --check` so `~/.hermes/config.yaml` has `mcp_servers.aristotle` and the local environment confirms `ARISTOTLE_API_KEY` plus Hermes MCP readiness.
-6. Persist or update the session evidence, checkpoint, and artifacts under the configured evidence directory. When `persist_to_memory` is enabled, ensure the session summary is also reflected in Hermes memory.
+6. Persist or update the session evidence, checkpoint, branch queue state, and artifacts under the configured evidence directory. When `persist_to_memory` is enabled, ensure the session summary is also reflected in Hermes memory.
 7. Return only the structured JSON session summary requested by the wrapper, including the session ID, verdict, and evidence/checkpoint paths. When the delegated runtime can observe actual role-level routing or delegated MCP behavior, include that under a top-level `capability_evidence` object in the returned JSON summary.
 8. Treat `capability_evidence` as observed-runtime evidence, not intent. Use the runtime request's `role_routes` only as the requested target. Mark `per_subagent_model_routing.distinct_routes_verified=true` only when the delegated run can confirm that generator and verifier actually executed on distinct routes. Mark `subagent_mcp_inheritance.delegated_mcp_verified=true` only when the verifier actually exercised delegated Aristotle MCP access directly rather than receiving orchestrator-mediated Tier 3 results.
 9. If the delegated run cannot yet prove one of those capabilities from observed behavior, omit that capability entry or return it with the verified flag set to `false`; do not promote a capability to verified based only on configuration, probe overrides, or requested routes.
@@ -69,6 +69,7 @@ When the user invokes `/deep-gvr`:
 - Tier 1 analytical verification is always required.
 - The verifier input must remain isolated to the candidate artifact plus iteration metadata.
 - Resume continues from the last complete phase recorded in `checkpoint.json`.
+- Repeated verifier failures can now spawn bounded alternative or decomposition branches when `loop.alternative_approach` is enabled. Those branch switches must be recorded explicitly as `escalate` evidence entries instead of hidden retries.
 - Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
 - The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
 - The shipped Stim adapter now supports local, Modal, and SSH execution behind the same normalized contract; actual backend readiness is environment-sensitive and is reported by `scripts/run_capability_probes.py`.

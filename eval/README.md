@@ -11,7 +11,7 @@ The evaluation directory contains both the deterministic readiness benchmark and
 
 ## Files
 
-- `known_problems.json`: benchmark corpus with expected verdicts and expected tiers
+- `known_problems.json`: benchmark corpus with expected verdicts, expected tiers, and one orchestration-required fan-out case
 - `run_eval.py`: deterministic and live benchmark runner
 - `results/baseline_results.json`: committed release baseline generated from the runner
 - `results/live/<run_id>/report.json`: live benchmark report for one prompt-driven run
@@ -79,3 +79,4 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 - known-incorrect claims that should fail verification
 - simulation-triggering claims that should request Tier 2
 - formalizable claims that should request Tier 3 when enabled
+- orchestration-required claims that should force bounded alternative-approach fan-out after repeated failure

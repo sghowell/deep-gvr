@@ -70,7 +70,6 @@ REQUIRED_PROMPT_MARKERS = {
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
-    "fanout-and-escalation": "32-fanout-and-escalation.md",
     "domain-adapter-expansion": "33-domain-adapter-expansion.md",
 }
 

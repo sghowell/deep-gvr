@@ -16,10 +16,10 @@ Start from `main` and implement this slice on `codex/fanout-and-escalation`. Mer
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
-- [ ] Add optional multi-hypothesis fan-out to the orchestrator state model.
-- [ ] Implement explicit failure escalation and decomposition policy.
-- [ ] Extend evidence, benchmarks, and docs for the expanded orchestration model.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Add optional multi-hypothesis fan-out to the orchestrator state model.
+- [x] Implement explicit failure escalation and decomposition policy.
+- [x] Extend evidence, benchmarks, and docs for the expanded orchestration model.
 
 ## Surprises & Discoveries
 
@@ -34,7 +34,9 @@ Start from `main` and implement this slice on `codex/fanout-and-escalation`. Mer
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- The loop now persists an active branch plus queued alternative/decomposition branches in the session checkpoint instead of treating repeated failure as an unstructured retry path.
+- Repeated failure now emits explicit `escalate` evidence records with bounded `fanout`, `switch_branch`, or `halt` actions, and deterministic benchmark coverage now includes an orchestration-required case.
+- Sequential execution still remains the default happy path; fan-out only appears after repeated failure and only within the configured alternative and iteration budgets.
 
 ## Context and Orientation
 

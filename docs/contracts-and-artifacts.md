@@ -14,8 +14,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `SimResults`: normalized simulation output
 - `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
 - `FormalProofLifecycle`: persisted Tier 3 proof-handle state for submission, polling, and resume
-- `EvidenceRecord`: append-only record for one GVR phase transition, including the effective provider/model path, routing mode, and any fallback temperature
-- `SessionCheckpoint`: resume-safe loop state for the last complete phase
+- `EvidenceRecord`: append-only record for one GVR phase transition, including branch identity, explicit escalation actions, the effective provider/model path, routing mode, and any fallback temperature
+- `SessionCheckpoint`: resume-safe loop state for the last complete phase, including active and queued hypothesis branches
 - `SessionIndex`: summary view of known sessions
 - `HermesMemorySummary`: derived session summary persisted as a session artifact and mirrored into Hermes memory when enabled
 - `ParallaxEvidenceManifest`: Parallax-compatible manifest derived from the checkpoint, evidence log, and artifact references
@@ -33,7 +33,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `domain/*.md`: concise domain context cards
 - `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
 - `scripts/release_preflight.py`: operator-facing release preflight helper for install, config, provider, backend, and Tier 3 readiness
-- `eval/known_problems.json`: deterministic release benchmark corpus
+- `eval/known_problems.json`: deterministic release benchmark corpus, including the orchestration-required fan-out case
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report
 - `eval/results/live/<run_id>/cases/<case_id>/candidate_solution.json`: live generator or reviser output for one benchmark case
