@@ -14,7 +14,7 @@ from typing import Any, Callable, Protocol
 
 import yaml
 
-from .contracts import FormalProofHandle, FormalProofLifecycle, ProofStatus, Tier3ClaimResult
+from .contracts import FormalProofHandle, FormalProofLifecycle, MathCodeConfig, ProofStatus, Tier3ClaimResult, Tier3Config
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_formal_query
 
 
@@ -42,6 +42,27 @@ class AristotleTransportStatus:
     @property
     def ready(self) -> bool:
         return self.hermes_available and self.aristotle_key_present and self.mcp_server_configured
+
+
+@dataclass(slots=True)
+class MathCodeTransportStatus:
+    mathcode_root: str
+    mathcode_root_exists: bool
+    run_script: str
+    run_script_exists: bool
+    run_script_executable: bool
+    autolean_exists: bool
+    lean_workspace_exists: bool
+
+    @property
+    def ready(self) -> bool:
+        return (
+            self.mathcode_root_exists
+            and self.run_script_exists
+            and self.run_script_executable
+            and self.autolean_exists
+            and self.lean_workspace_exists
+        )
 
 
 @dataclass(slots=True)
@@ -85,6 +106,14 @@ def default_hermes_config_path() -> Path:
     return Path("~/.hermes/config.yaml").expanduser()
 
 
+def default_mathcode_root() -> Path:
+    return Path("~/dev/mathcode").expanduser()
+
+
+def default_mathcode_run_script() -> Path:
+    return default_mathcode_root() / "run"
+
+
 def load_hermes_config(path: str | Path | None = None) -> dict[str, Any]:
     config_path = default_hermes_config_path() if path is None else Path(path).expanduser()
     if not config_path.exists():
@@ -115,6 +144,44 @@ def inspect_aristotle_transport(
         mcp_server_name=mcp_server_name,
         mcp_server_configured=isinstance(mcp_servers, dict) and mcp_server_name in mcp_servers,
         configured_mcp_servers=configured_servers,
+    )
+
+
+def _resolve_mathcode_root(path: str | Path | None) -> Path:
+    if path is None:
+        return default_mathcode_root()
+    return Path(path).expanduser()
+
+
+def _resolve_mathcode_run_script(path: str | Path | None, *, mathcode_root: Path) -> Path:
+    if path is None:
+        return default_mathcode_run_script()
+    candidate = Path(path).expanduser()
+    if candidate.is_absolute():
+        return candidate
+    if "/" in str(path):
+        return mathcode_root / candidate
+    located = shutil.which(str(path))
+    if located:
+        return Path(located)
+    return mathcode_root / candidate
+
+
+def inspect_mathcode_transport(
+    *,
+    mathcode_root: str | Path | None = None,
+    run_script: str | Path | None = None,
+) -> MathCodeTransportStatus:
+    root_path = _resolve_mathcode_root(mathcode_root)
+    run_path = _resolve_mathcode_run_script(run_script, mathcode_root=root_path)
+    return MathCodeTransportStatus(
+        mathcode_root=str(root_path),
+        mathcode_root_exists=root_path.exists(),
+        run_script=str(run_path),
+        run_script_exists=run_path.exists(),
+        run_script_executable=run_path.exists() and os.access(run_path, os.X_OK),
+        autolean_exists=(root_path / "AUTOLEAN").exists(),
+        lean_workspace_exists=(root_path / "lean-workspace").exists(),
     )
 
 
@@ -862,6 +929,346 @@ class AristotleFormalVerifier:
         )
 
 
+class MathCodeFormalVerifier:
+    def __init__(
+        self,
+        executor: Callable[[FormalVerificationRequest], FormalVerificationResultSet | list[Tier3ClaimResult]] | None = None,
+        *,
+        command_executor: CommandExecutor | None = None,
+        mathcode_root: str | Path | None = None,
+        run_script: str | Path | None = None,
+        prompt_root: str | Path = "prompts",
+        cwd: str | Path | None = None,
+        command_timeout_seconds: int | None = None,
+        prompt_profile: str = DEFAULT_PROMPT_PROFILE,
+    ) -> None:
+        self.executor = executor
+        self.command_executor = command_executor
+        self.mathcode_root = mathcode_root
+        self.run_script = run_script
+        self.prompt_root = Path(prompt_root)
+        self.cwd = Path(cwd) if cwd is not None else _repo_root()
+        self.command_timeout_seconds = command_timeout_seconds
+        self.prompt_profile = prompt_profile
+
+    def __call__(self, request: FormalVerificationRequest) -> FormalVerificationResultSet:
+        if request.backend != "mathcode":
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=f"Unsupported formal backend {request.backend!r} for the MathCode runner.",
+                proof_time_seconds=0.0,
+                artifact_status="unsupported_backend",
+            )
+
+        if self.executor is not None:
+            try:
+                outcome = self.executor(request)
+                if isinstance(outcome, FormalVerificationResultSet):
+                    return outcome
+                return FormalVerificationResultSet(
+                    results=list(outcome),
+                    pending=any(item.proof_status is ProofStatus.PENDING for item in outcome),
+                )
+            except TimeoutError:
+                return self._result_set(
+                    request,
+                    status=ProofStatus.TIMEOUT,
+                    details="MathCode formal verification timed out before a proof result was available.",
+                    proof_time_seconds=float(request.timeout_seconds),
+                    artifact_status="timeout",
+                )
+            except Exception as exc:  # pragma: no cover - defensive runtime boundary
+                return self._result_set(
+                    request,
+                    status=ProofStatus.ERROR,
+                    details=f"MathCode formal verification failed: {type(exc).__name__}: {exc}",
+                    proof_time_seconds=0.0,
+                    artifact_status="error",
+                )
+
+        transport = inspect_mathcode_transport(
+            mathcode_root=self.mathcode_root,
+            run_script=self.run_script,
+        )
+        unavailable_details = self._transport_unavailable_details(transport)
+        if unavailable_details is not None:
+            return self._result_set(
+                request,
+                status=ProofStatus.UNAVAILABLE,
+                details=unavailable_details,
+                proof_time_seconds=0.0,
+                artifact_status="unavailable",
+                transport=transport,
+            )
+
+        prompt_path = self._resolve_prompt_path() / "formalizer.md"
+        prompt_text = prompt_path.read_text(encoding="utf-8")
+        query = self._build_query(request, prompt_text=prompt_text, transport=transport)
+        command = [
+            transport.run_script,
+            "-p",
+            "--output-format",
+            "json",
+            "--json-schema",
+            json.dumps(self._output_schema(), separators=(",", ":")),
+            query,
+        ]
+        executor = self.command_executor or (
+            lambda current_command, current_cwd: _default_executor(
+                current_command,
+                current_cwd,
+                self.command_timeout_seconds if self.command_timeout_seconds is not None else request.timeout_seconds,
+                command_label="MathCode command",
+            )
+        )
+        command_result = executor(command, Path(transport.mathcode_root))
+        generated_file = _find_latest_mathcode_formalization(Path(transport.mathcode_root))
+        transport_artifact: dict[str, Any] = {
+            "transport": "mathcode_cli",
+            "status": "completed",
+            "backend": request.backend,
+            "mathcode_root": transport.mathcode_root,
+            "run_script": transport.run_script,
+            "autolean_exists": transport.autolean_exists,
+            "lean_workspace_exists": transport.lean_workspace_exists,
+            "prompt_path": str(prompt_path),
+            "command": list(command),
+            "query": query,
+            "response": command_result.stdout if command_result.returncode == 0 else f"{command_result.stdout}\n{command_result.stderr}".strip(),
+        }
+        if generated_file is not None:
+            transport_artifact["generated_lean_file"] = generated_file
+
+        if command_result.returncode != 0:
+            if command_result.returncode == 124 or "timed out" in command_result.stderr.lower():
+                transport_artifact["status"] = "timeout"
+                return self._result_set(
+                    request,
+                    status=ProofStatus.TIMEOUT,
+                    details=command_result.stderr.strip() or "MathCode formal verification timed out.",
+                    proof_time_seconds=float(request.timeout_seconds),
+                    artifact_status="timeout",
+                    transport=transport,
+                    transport_artifact=transport_artifact,
+                )
+            transport_artifact["status"] = "error"
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=(
+                    "MathCode formal verification failed through the local CLI: "
+                    f"{command_result.stderr.strip() or command_result.stdout.strip() or 'unknown error'}"
+                ),
+                proof_time_seconds=0.0,
+                artifact_status="error",
+                transport=transport,
+                transport_artifact=transport_artifact,
+            )
+
+        try:
+            payload = _extract_structured_payload(command_result.stdout)
+            raw_results = payload.get("results", [])
+            if not isinstance(raw_results, list):
+                raise ValueError("MathCode formal transport did not return a 'results' array.")
+            results = _normalize_formal_results(
+                request,
+                raw_results,
+                missing_result_detail="MathCode transport did not return a result for this claim.",
+            )
+        except Exception as exc:  # pragma: no cover - defensive runtime boundary
+            transport_artifact["status"] = "parse_error"
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=f"MathCode formal verification returned an unreadable payload: {type(exc).__name__}: {exc}",
+                proof_time_seconds=0.0,
+                artifact_status="parse_error",
+                transport=transport,
+                transport_artifact=transport_artifact,
+            )
+
+        return FormalVerificationResultSet(results=results, transport_artifact=transport_artifact)
+
+    def _resolve_prompt_path(self) -> Path:
+        if self.prompt_root.is_absolute():
+            return self.prompt_root
+        return _repo_root() / self.prompt_root
+
+    def _build_query(
+        self,
+        request: FormalVerificationRequest,
+        *,
+        prompt_text: str,
+        transport: MathCodeTransportStatus,
+    ) -> str:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "backend": request.backend,
+            "timeout_seconds": request.timeout_seconds,
+            "claims": [item.to_dict() for item in request.claims],
+        }
+        transport_lines = [
+            "- Selected backend: MathCode local CLI",
+            f"- MathCode root: {transport.mathcode_root}",
+            f"- AUTOLEAN available: {'yes' if transport.autolean_exists else 'no'}",
+            "- Return only structured JSON that matches the supplied JSON schema.",
+            "- If MathCode cannot complete the proof attempt, return unavailable or error rather than inventing proof success.",
+        ]
+        return build_formal_query(
+            prompt_text=prompt_text,
+            payload=payload,
+            transport_lines=transport_lines,
+            prompt_profile=self.prompt_profile,
+        )
+
+    def _output_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "required": ["results"],
+            "additionalProperties": False,
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["claim", "proof_status", "details", "lean_code"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "claim": {"type": "string"},
+                            "proof_status": {
+                                "type": "string",
+                                "enum": [
+                                    ProofStatus.REQUESTED.value,
+                                    ProofStatus.PENDING.value,
+                                    ProofStatus.PROVED.value,
+                                    ProofStatus.DISPROVED.value,
+                                    ProofStatus.TIMEOUT.value,
+                                    ProofStatus.ERROR.value,
+                                    ProofStatus.UNAVAILABLE.value,
+                                ],
+                            },
+                            "details": {"type": "string"},
+                            "lean_code": {"type": "string"},
+                            "proof_time_seconds": {"type": ["number", "null"]},
+                        },
+                    },
+                }
+            },
+        }
+
+    def _transport_unavailable_details(self, transport: MathCodeTransportStatus) -> str | None:
+        if not transport.mathcode_root_exists:
+            return (
+                f"MathCode root {transport.mathcode_root} does not exist; local MathCode formal verification is unavailable."
+            )
+        if not transport.run_script_exists:
+            return (
+                f"MathCode run script {transport.run_script} does not exist; local MathCode formal verification is unavailable."
+            )
+        if not transport.run_script_executable:
+            return (
+                f"MathCode run script {transport.run_script} is not executable; local MathCode formal verification is unavailable."
+            )
+        if not transport.autolean_exists:
+            return (
+                f"MathCode root {transport.mathcode_root} is missing AUTOLEAN/; local MathCode formal verification is unavailable."
+            )
+        if not transport.lean_workspace_exists:
+            return (
+                f"MathCode root {transport.mathcode_root} is missing lean-workspace/; local MathCode formal verification is unavailable."
+            )
+        return None
+
+    def _result_set(
+        self,
+        request: FormalVerificationRequest,
+        *,
+        status: ProofStatus,
+        details: str,
+        proof_time_seconds: float | None,
+        artifact_status: str,
+        transport: MathCodeTransportStatus | None = None,
+        transport_artifact: dict[str, Any] | None = None,
+    ) -> FormalVerificationResultSet:
+        artifact = dict(transport_artifact or {})
+        artifact.setdefault("transport", "mathcode_cli" if transport is not None else "injected_executor")
+        artifact.setdefault("status", artifact_status)
+        artifact.setdefault("backend", request.backend)
+        if transport is not None:
+            artifact.setdefault("mathcode_root", transport.mathcode_root)
+            artifact.setdefault("run_script", transport.run_script)
+            artifact.setdefault("autolean_exists", transport.autolean_exists)
+            artifact.setdefault("lean_workspace_exists", transport.lean_workspace_exists)
+        return FormalVerificationResultSet(
+            results=[
+                Tier3ClaimResult(
+                    claim=claim.claim,
+                    backend=request.backend,
+                    proof_status=status,
+                    details=details,
+                    lean_code=claim.lean_code,
+                    proof_time_seconds=proof_time_seconds,
+                )
+                for claim in request.claims
+            ],
+            transport_artifact=artifact,
+            pending=status is ProofStatus.PENDING,
+        )
+
+
+def build_formal_verifier(
+    tier3_config: Tier3Config,
+    *,
+    executor: Callable[[FormalVerificationRequest], FormalVerificationResultSet | list[Tier3ClaimResult]] | None = None,
+    command_executor: CommandExecutor | None = None,
+    cli_command_executor: CommandExecutor | None = None,
+    hermes_binary: str = "hermes",
+    aristotle_binary: str = "aristotle",
+    hermes_config_path: str | Path | None = None,
+    prompt_root: str | Path = "prompts",
+    cwd: str | Path | None = None,
+    command_timeout_seconds: int | None = None,
+    provider: str = "default",
+    model: str = "",
+    toolsets: list[str] | None = None,
+    skills: list[str] | None = None,
+    prompt_profile: str = DEFAULT_PROMPT_PROFILE,
+) -> FormalVerifier:
+    if tier3_config.backend == "aristotle":
+        return AristotleFormalVerifier(
+            executor=executor,
+            command_executor=command_executor,
+            cli_command_executor=cli_command_executor,
+            hermes_binary=hermes_binary,
+            aristotle_binary=aristotle_binary,
+            hermes_config_path=hermes_config_path,
+            prompt_root=prompt_root,
+            cwd=cwd,
+            command_timeout_seconds=command_timeout_seconds,
+            provider=provider,
+            model=model,
+            toolsets=toolsets,
+            skills=skills,
+            prompt_profile=prompt_profile,
+            prefer_lifecycle=True,
+        )
+    if tier3_config.backend == "mathcode":
+        mathcode_config = tier3_config.mathcode if isinstance(tier3_config.mathcode, MathCodeConfig) else MathCodeConfig()
+        return MathCodeFormalVerifier(
+            executor=executor,
+            command_executor=command_executor,
+            mathcode_root=mathcode_config.root,
+            run_script=mathcode_config.run_script,
+            prompt_root=prompt_root,
+            cwd=cwd,
+            command_timeout_seconds=command_timeout_seconds,
+            prompt_profile=prompt_profile,
+        )
+    raise ValueError(f"Unsupported formal backend {tier3_config.backend!r}.")
+
+
 def _default_executor(
     command: list[str],
     cwd: Path,
@@ -900,6 +1307,62 @@ def _extract_json_object(text: str) -> dict[str, Any]:
         if isinstance(payload, dict):
             return payload
     raise ValueError(f"Could not parse a JSON object from Hermes output: {text[:200]!r}")
+
+
+def _extract_structured_payload(text: str) -> dict[str, Any]:
+    payload = _extract_json_object(text)
+    structured_output = payload.get("structured_output")
+    if isinstance(structured_output, dict):
+        return structured_output
+    return payload
+
+
+def _normalize_formal_results(
+    request: FormalVerificationRequest,
+    raw_results: list[object],
+    *,
+    missing_result_detail: str,
+) -> list[Tier3ClaimResult]:
+    parsed: dict[str, Tier3ClaimResult] = {}
+    for item in raw_results:
+        if not isinstance(item, dict):
+            continue
+        payload = dict(item)
+        payload["backend"] = request.backend
+        model = Tier3ClaimResult.from_dict(payload)
+        parsed[model.claim] = model
+
+    results: list[Tier3ClaimResult] = []
+    for claim in request.claims:
+        if claim.claim in parsed:
+            results.append(parsed[claim.claim])
+            continue
+        results.append(
+            Tier3ClaimResult(
+                claim=claim.claim,
+                backend=request.backend,
+                proof_status=ProofStatus.ERROR,
+                details=missing_result_detail,
+                lean_code="",
+                proof_time_seconds=0.0,
+            )
+        )
+    return results
+
+
+def _find_latest_mathcode_formalization(mathcode_root: Path) -> dict[str, Any] | None:
+    formalizations_root = mathcode_root / "LeanFormalizations"
+    if not formalizations_root.exists():
+        return None
+    candidates = [path for path in formalizations_root.rglob("*.lean") if path.is_file()]
+    if not candidates:
+        return None
+    latest = max(candidates, key=lambda path: path.stat().st_mtime)
+    return {
+        "path": str(latest),
+        "relative_path": str(latest.relative_to(mathcode_root)),
+        "size_bytes": latest.stat().st_size,
+    }
 
 
 def _parse_aristotle_cli_submit_output(text: str) -> tuple[str, str]:

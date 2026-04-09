@@ -15,27 +15,31 @@ from deep_gvr.contracts import FormalProofHandle, FormalProofLifecycle, ProofSta
 from deep_gvr.formal import (
     AristotleFormalVerifier,
     AristotleTransportStatus,
+    MathCodeFormalVerifier,
+    MathCodeTransportStatus,
     CommandExecutionResult,
     FormalVerificationRequest,
+    build_formal_verifier,
     inspect_aristotle_transport,
+    inspect_mathcode_transport,
 )
 
 
-def _request() -> FormalVerificationRequest:
+def _request(*, backend: str = "aristotle") -> FormalVerificationRequest:
     return FormalVerificationRequest(
         session_id="session_formal",
         iteration=1,
         claims=[
             Tier3ClaimResult(
                 claim="forall d >= 1, a repetition code has distance d",
-                backend="aristotle",
+                backend=backend,
                 proof_status=ProofStatus.REQUESTED,
                 details="Formalization requested by verifier.",
                 lean_code="",
                 proof_time_seconds=None,
             )
         ],
-        backend="aristotle",
+        backend=backend,
         timeout_seconds=30,
     )
 
@@ -61,6 +65,16 @@ def _write_aristotle_result_dir(tmpdir: str, *, summary: str, lean_code: str) ->
     (project_dir / "Main.lean").write_text("import Mathlib\n", encoding="utf-8")
     (project_dir / "Proof.lean").write_text(lean_code, encoding="utf-8")
     return str(root)
+
+
+def _write_mathcode_root(tmpdir: str) -> Path:
+    root = Path(tmpdir) / "mathcode"
+    (root / "AUTOLEAN").mkdir(parents=True, exist_ok=True)
+    (root / "lean-workspace").mkdir(parents=True, exist_ok=True)
+    run_script = root / "run"
+    run_script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    run_script.chmod(0o755)
+    return root
 
 
 class AristotleFormalVerifierTests(unittest.TestCase):
@@ -373,6 +387,121 @@ class AristotleTransportInspectionTests(unittest.TestCase):
 
         self.assertTrue(status.ready)
         self.assertTrue(status.mcp_server_configured)
+
+
+class MathCodeFormalVerifierTests(unittest.TestCase):
+    def test_missing_mathcode_root_returns_unavailable(self) -> None:
+        request = _request(backend="mathcode")
+        result_set = MathCodeFormalVerifier(
+            mathcode_root="/tmp/does-not-exist-mathcode",
+            run_script="/tmp/does-not-exist-mathcode/run",
+        )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.UNAVAILABLE)
+        self.assertIn("does not exist", result_set.results[0].details)
+        self.assertEqual(result_set.transport_artifact["status"], "unavailable")
+
+    def test_executor_success_is_returned(self) -> None:
+        request = _request(backend="mathcode")
+
+        def executor(incoming: FormalVerificationRequest) -> list[Tier3ClaimResult]:
+            self.assertEqual(incoming.backend, "mathcode")
+            return [
+                Tier3ClaimResult(
+                    claim=incoming.claims[0].claim,
+                    backend="mathcode",
+                    proof_status=ProofStatus.PROVED,
+                    details="MathCode completed successfully.",
+                    lean_code="theorem zero_add_nat (n : Nat) : 0 + n = n := by simp",
+                    proof_time_seconds=1.0,
+                )
+            ]
+
+        result_set = MathCodeFormalVerifier(executor=executor)(request)
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertEqual(result_set.results[0].proof_time_seconds, 1.0)
+
+    def test_transport_parses_structured_output_envelope(self) -> None:
+        request = _request(backend="mathcode")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                self.assertEqual(cwd, mathcode_root)
+                self.assertEqual(command[1:5], ["-p", "--output-format", "json", "--json-schema"])
+                payload = {
+                    "type": "result",
+                    "subtype": "success",
+                    "structured_output": {
+                        "results": [
+                            {
+                                "claim": request.claims[0].claim,
+                                "proof_status": "proved",
+                                "details": "MathCode completed the proof.",
+                                "lean_code": "theorem zero_add_nat (n : Nat) : 0 + n = n := by simp",
+                                "proof_time_seconds": 1.25,
+                            }
+                        ]
+                    },
+                }
+                return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
+
+            result_set = MathCodeFormalVerifier(
+                command_executor=command_executor,
+                mathcode_root=mathcode_root,
+                run_script=mathcode_root / "run",
+            )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertEqual(result_set.results[0].proof_time_seconds, 1.25)
+        self.assertEqual(result_set.transport_artifact["transport"], "mathcode_cli")
+
+    def test_transport_timeout_maps_to_timeout_status(self) -> None:
+        request = _request(backend="mathcode")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                del command, cwd
+                return CommandExecutionResult(returncode=124, stdout="", stderr="MathCode command timed out after 30 seconds.")
+
+            result_set = MathCodeFormalVerifier(
+                command_executor=command_executor,
+                mathcode_root=mathcode_root,
+                run_script=mathcode_root / "run",
+            )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.TIMEOUT)
+        self.assertEqual(result_set.transport_artifact["status"], "timeout")
+
+    def test_build_formal_verifier_selects_mathcode_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+            verifier = build_formal_verifier(
+                type(
+                    "Tier3Stub",
+                    (),
+                    {
+                        "backend": "mathcode",
+                        "mathcode": type("MathCodeStub", (), {"root": str(mathcode_root), "run_script": str(mathcode_root / "run")})(),
+                    },
+                )()
+            )
+
+        self.assertIsInstance(verifier, MathCodeFormalVerifier)
+
+
+class MathCodeTransportInspectionTests(unittest.TestCase):
+    def test_inspect_transport_reports_ready_when_root_is_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+            status = inspect_mathcode_transport(
+                mathcode_root=mathcode_root,
+                run_script=mathcode_root / "run",
+            )
+
+        self.assertTrue(status.ready)
+        self.assertTrue(status.run_script_executable)
 
 
 if __name__ == "__main__":

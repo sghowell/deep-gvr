@@ -66,7 +66,16 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "backend": { "type": "string" },
-            "timeout_seconds": { "type": "integer" }
+            "timeout_seconds": { "type": "integer" },
+            "mathcode": {
+              "type": "object",
+              "required": ["root", "run_script"],
+              "additionalProperties": false,
+              "properties": {
+                "root": { "type": "string" },
+                "run_script": { "type": "string" }
+              }
+            }
           }
         }
       }

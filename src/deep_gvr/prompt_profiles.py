@@ -183,7 +183,7 @@ def build_formal_query(
         "results": [
             {
                 "claim": "string",
-                "backend": "aristotle",
+                "backend": "selected-backend",
                 "proof_status": "requested|pending|proved|disproved|timeout|error|unavailable",
                 "details": "string",
                 "lean_code": "string",
@@ -209,7 +209,7 @@ def build_formal_query(
     return "\n".join(
         [
             "# deep-gvr tier3 formal verification",
-            "Use Aristotle when available and return exactly one JSON object that matches the contract.",
+            "Use the selected formal backend and return exactly one JSON object that matches the contract.",
             prompt_text,
             "Response budget:",
             "- Return one result object per claim.",

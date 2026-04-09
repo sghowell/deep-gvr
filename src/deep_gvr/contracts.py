@@ -145,10 +145,17 @@ class Tier2Config:
 
 
 @dataclass(slots=True)
+class MathCodeConfig:
+    root: str = "~/dev/mathcode"
+    run_script: str = "~/dev/mathcode/run"
+
+
+@dataclass(slots=True)
 class Tier3Config:
     enabled: bool = False
     backend: str = "aristotle"
     timeout_seconds: int = 300
+    mathcode: MathCodeConfig = field(default_factory=MathCodeConfig)
 
 
 @dataclass(slots=True)
@@ -225,6 +232,10 @@ class DeepGvrConfig:
                     enabled=bool(verification["tier3"]["enabled"]),
                     backend=verification["tier3"]["backend"],
                     timeout_seconds=int(verification["tier3"]["timeout_seconds"]),
+                    mathcode=MathCodeConfig(
+                        root=verification["tier3"].get("mathcode", {}).get("root", "~/dev/mathcode"),
+                        run_script=verification["tier3"].get("mathcode", {}).get("run_script", "~/dev/mathcode/run"),
+                    ),
                 ),
             ),
             models=ModelsConfig(

@@ -35,10 +35,10 @@ from .contracts import (
 )
 from .evidence import build_memory_summary, build_parallax_manifest, hermes_memory_file, persist_memory_summary
 from .formal import (
-    AristotleFormalVerifier,
     FormalVerificationRequest,
     FormalVerificationResultSet,
     FormalVerifier,
+    build_formal_verifier,
 )
 from .routing import EffectiveModelRoute, RoutingPlan, build_routing_plan
 
@@ -1171,7 +1171,7 @@ class Tier1LoopRunner:
             lifecycle_state=lifecycle_state,
             enable_lifecycle=True,
         )
-        verifier = formal_verifier or AristotleFormalVerifier(prefer_lifecycle=True)
+        verifier = formal_verifier or build_formal_verifier(self.config.verification.tier3)
         outcome = verifier(request)
         if isinstance(outcome, FormalVerificationResultSet):
             result_set = outcome

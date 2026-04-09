@@ -23,6 +23,9 @@ verification:
     enabled: false
     backend: aristotle
     timeout_seconds: 300
+    mathcode:
+      root: ~/dev/mathcode
+      run_script: ~/dev/mathcode/run
 models:
   orchestrator:
     provider: default

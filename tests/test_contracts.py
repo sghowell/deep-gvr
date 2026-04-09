@@ -49,6 +49,19 @@ class ContractRoundTripTests(unittest.TestCase):
         model = DeepGvrConfig.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_config_round_trip_preserves_mathcode_settings(self) -> None:
+        payload = self._load_json("templates/config.template.json")
+        payload["verification"]["tier3"]["backend"] = "mathcode"
+        payload["verification"]["tier3"]["mathcode"]["root"] = "~/custom-mathcode"
+        payload["verification"]["tier3"]["mathcode"]["run_script"] = "~/custom-mathcode/run"
+
+        model = DeepGvrConfig.from_dict(payload)
+
+        self.assertEqual(model.verification.tier3.backend, "mathcode")
+        self.assertEqual(model.verification.tier3.mathcode.root, "~/custom-mathcode")
+        self.assertEqual(model.verification.tier3.mathcode.run_script, "~/custom-mathcode/run")
+        self.assertEqual(model.to_dict(), payload)
+
     def test_config_accepts_legacy_tier2_shape_without_modal_or_extended_ssh_fields(self) -> None:
         payload = self._load_json("templates/config.template.json")
         del payload["verification"]["tier2"]["modal"]

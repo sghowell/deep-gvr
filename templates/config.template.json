@@ -28,7 +28,11 @@
     "tier3": {
       "enabled": false,
       "backend": "aristotle",
-      "timeout_seconds": 300
+      "timeout_seconds": 300,
+      "mathcode": {
+        "root": "~/dev/mathcode",
+        "run_script": "~/dev/mathcode/run"
+      }
     }
   },
   "models": {
