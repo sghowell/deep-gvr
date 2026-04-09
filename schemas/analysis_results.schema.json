@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "required": [
+    "adapter_family",
+    "analysis_kind",
+    "adapter_name",
+    "adapter_version",
+    "timestamp",
+    "runtime_seconds",
+    "backend",
+    "summary",
+    "measurements",
+    "details",
+    "errors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "adapter_family": { "type": "string" },
+    "analysis_kind": { "type": "string" },
+    "adapter_name": { "type": "string" },
+    "adapter_version": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "runtime_seconds": { "type": "number" },
+    "backend": { "type": "string", "enum": ["local", "modal", "ssh"] },
+    "summary": { "type": "string" },
+    "measurements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "unit", "metadata"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": ["string", "number", "boolean", "null"] },
+          "unit": { "type": "string" },
+          "metadata": { "type": "object" }
+        }
+      }
+    },
+    "details": { "type": "object" },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -11,6 +11,9 @@ from unittest.mock import patch
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.contracts import (
+    AnalysisMeasurement,
+    AnalysisResults,
+    AnalysisSpec,
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
@@ -24,9 +27,6 @@ from deep_gvr.contracts import (
     ProbeStatus,
     ProofStatus,
     RoutingMode,
-    SimAnalysis,
-    SimSpec,
-    SimResults,
     Tier2Report,
     Tier1Report,
     Tier3ClaimResult,
@@ -40,10 +40,10 @@ from deep_gvr.formal import (
     FormalVerificationResultSet,
 )
 from deep_gvr.tier1 import (
+    AnalysisRequest,
     GenerationRequest,
     RevisionRequest,
     SessionStore,
-    SimulationRequest,
     Tier1LoopRunner,
     VerificationRequest,
     _load_stim_adapter_class,
@@ -526,7 +526,7 @@ class Tier1LoopTests(unittest.TestCase):
             def verifier(request: VerificationRequest):
                 nonlocal verify_calls
                 verify_calls += 1
-                if request.simulation_results is None:
+                if request.analysis_results is None:
                     return VerificationReport(
                         verdict=VerificationVerdict.FLAWS_FOUND,
                         tier1=Tier1Report(
@@ -542,11 +542,13 @@ class Tier1LoopTests(unittest.TestCase):
                             caveats=[],
                         ),
                         tier2=Tier2Report(
-                            simulation_requested=True,
+                            analysis_requested=True,
                             reason="The claim predicts a logical error rate.",
-                            simulation_spec={
-                                "simulator": "stim",
+                            analysis_spec={
+                                "adapter_family": "qec_decoder_benchmark",
+                                "analysis_kind": "rotated_surface_code_memory",
                                 "task": {
+                                    "engine": "stim",
                                     "code": "surface_code",
                                     "task_type": "rotated_memory_z",
                                     "distance": [3, 5],
@@ -570,7 +572,7 @@ class Tier1LoopTests(unittest.TestCase):
                         cannot_verify_reason=None,
                     )
 
-                self.assertIsNotNone(request.simulation_results)
+                self.assertIsNotNone(request.analysis_results)
                 return VerificationReport(
                     verdict=VerificationVerdict.VERIFIED,
                     tier1=Tier1Report(
@@ -586,10 +588,10 @@ class Tier1LoopTests(unittest.TestCase):
                         caveats=[],
                     ),
                     tier2=Tier2Report(
-                        simulation_requested=True,
+                        analysis_requested=True,
                         reason="The claim predicts a logical error rate.",
-                        simulation_spec=None,
-                        results=request.simulation_results.to_dict(),
+                        analysis_spec=None,
+                        results=request.analysis_results.to_dict(),
                         interpretation="The simulated trend supports the candidate.",
                     ),
                     tier3=[],
@@ -601,23 +603,31 @@ class Tier1LoopTests(unittest.TestCase):
             def reviser(request: RevisionRequest):
                 return _candidate("Unexpected revision")
 
-            def simulator(request: SimulationRequest):
+            def analyzer(request: AnalysisRequest):
                 nonlocal simulator_calls
                 simulator_calls += 1
                 self.assertEqual(request.backend, Backend.LOCAL)
-                return SimResults(
-                    simulator="stim",
+                return AnalysisResults(
+                    adapter_family="qec_decoder_benchmark",
+                    analysis_kind=request.analysis_spec.analysis_kind,
+                    adapter_name="qec_decoder_benchmark",
                     adapter_version="0.1.0",
                     timestamp="2026-03-26T11:00:00Z",
                     runtime_seconds=0.2,
                     backend=Backend.LOCAL,
-                    data=[],
-                    analysis=SimAnalysis(
-                        threshold_estimate=0.003,
-                        threshold_method="monotonic_distance_improvement",
-                        below_threshold_distances=[5],
-                        scaling_exponent=None,
-                    ),
+                    summary="The QEC analysis trend supports the candidate.",
+                    measurements=[
+                        AnalysisMeasurement(
+                            name="threshold_estimate",
+                            value=0.003,
+                            unit="",
+                            metadata={
+                                "method": "monotonic_distance_improvement",
+                                "below_threshold_distances": [5],
+                            },
+                        )
+                    ],
+                    details={"engine": "stim"},
                     errors=[],
                 )
 
@@ -626,7 +636,7 @@ class Tier1LoopTests(unittest.TestCase):
                 generator=generator,
                 verifier=verifier,
                 reviser=reviser,
-                simulator=simulator,
+                analyzer=analyzer,
                 session_id="session_tier2_verify",
             )
 
@@ -639,8 +649,8 @@ class Tier1LoopTests(unittest.TestCase):
             checkpoint = runner.session_store.load_checkpoint("session_tier2_verify")
             self.assertGreaterEqual(len(checkpoint.artifacts), 2)
             evidence = runner.session_store.read_evidence("session_tier2_verify")
-            self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
-            self.assertIsNotNone(evidence[1].simulation_results)
+            self.assertEqual([record.phase for record in evidence], ["generate", "analyze", "verify"])
+            self.assertIsNotNone(evidence[1].analysis_results)
 
     def test_load_stim_adapter_class_restores_repo_root_import_path(self) -> None:
         repo_root = str(Path(__file__).resolve().parents[1])
@@ -673,7 +683,7 @@ class Tier1LoopTests(unittest.TestCase):
             else:
                 sys.modules["adapters.stim_adapter"] = original_stim_adapter
 
-    def test_run_simulation_request_passes_tier2_backend_config_to_stim_adapter(self) -> None:
+    def test_run_analysis_request_passes_tier2_backend_config_to_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config = self._config(tmpdir)
             config.verification.tier2.default_backend = Backend.SSH
@@ -691,29 +701,29 @@ class Tier1LoopTests(unittest.TestCase):
                 def run(self, spec, backend):
                     captured["spec"] = spec
                     captured["backend"] = backend
-                    return SimResults(
-                        simulator="stim",
+                    return AnalysisResults(
+                        adapter_family="qec_decoder_benchmark",
+                        analysis_kind=spec.analysis_kind,
+                        adapter_name="qec_decoder_benchmark",
                         adapter_version="0.1.0",
                         timestamp="2026-04-07T12:00:00Z",
                         runtime_seconds=0.5,
                         backend=backend,
-                        data=[],
-                        analysis=SimAnalysis(
-                            threshold_estimate=None,
-                            threshold_method="fixture_remote_backend",
-                            below_threshold_distances=[],
-                            scaling_exponent=None,
-                        ),
+                        summary="Fixture remote backend analysis.",
+                        measurements=[],
+                        details={"task": spec.task},
                         errors=[],
                     )
 
-            request = SimulationRequest(
+            request = AnalysisRequest(
                 session_id="session_remote_backend",
                 iteration=1,
-                sim_spec=SimSpec.from_dict(
+                analysis_spec=AnalysisSpec.from_dict(
                     {
-                        "simulator": "stim",
+                        "adapter_family": "qec_decoder_benchmark",
+                        "analysis_kind": "rotated_surface_code_memory",
                         "task": {
+                            "engine": "stim",
                             "code": "surface_code",
                             "task_type": "rotated_memory_z",
                             "distance": [3],
@@ -732,15 +742,19 @@ class Tier1LoopTests(unittest.TestCase):
                 backend=Backend.SSH,
             )
 
-            with patch("deep_gvr.tier1._load_stim_adapter_class", return_value=FakeStimAdapter):
-                results = runner._run_simulation_request(request)
+            def fake_builder(adapter_family, *, tier2_config):
+                self.assertEqual(adapter_family, "qec_decoder_benchmark")
+                return FakeStimAdapter(tier2_config=tier2_config)
+
+            with patch("deep_gvr.tier1._load_analysis_adapter_builder", return_value=fake_builder):
+                results = runner._run_analysis_request(request)
 
             self.assertEqual(results.backend, Backend.SSH)
             self.assertEqual(captured["backend"], Backend.SSH)
             self.assertEqual(captured["tier2_config"].ssh.host, "gpu-node")
             self.assertEqual(captured["tier2_config"].ssh.remote_workspace, "/srv/deep-gvr")
 
-    def test_invalid_simulation_spec_becomes_structured_simulation_error(self) -> None:
+    def test_invalid_analysis_spec_becomes_structured_analysis_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             runner = Tier1LoopRunner(self._config(tmpdir), routing_probe=self._routing_probe(ProbeStatus.READY))
             verify_calls = 0
@@ -751,7 +765,7 @@ class Tier1LoopTests(unittest.TestCase):
             def verifier(request: VerificationRequest):
                 nonlocal verify_calls
                 verify_calls += 1
-                if request.simulation_results is None:
+                if request.analysis_results is None:
                     return VerificationReport(
                         verdict=VerificationVerdict.FLAWS_FOUND,
                         tier1=Tier1Report(
@@ -767,9 +781,9 @@ class Tier1LoopTests(unittest.TestCase):
                             caveats=[],
                         ),
                         tier2=Tier2Report(
-                            simulation_requested=True,
+                            analysis_requested=True,
                             reason="The claim predicts a logical error rate.",
-                            simulation_spec={
+                            analysis_spec={
                                 "type": "monte_carlo_threshold",
                                 "code": "toric_code",
                                 "distances": [8, 12],
@@ -784,8 +798,8 @@ class Tier1LoopTests(unittest.TestCase):
                         cannot_verify_reason=None,
                     )
 
-                self.assertIsNotNone(request.simulation_results)
-                self.assertTrue(request.simulation_results.errors)
+                self.assertIsNotNone(request.analysis_results)
+                self.assertTrue(request.analysis_results.errors)
                 return VerificationReport(
                     verdict=VerificationVerdict.CANNOT_VERIFY,
                     tier1=Tier1Report(
@@ -801,10 +815,10 @@ class Tier1LoopTests(unittest.TestCase):
                         caveats=["Simulation request payload was invalid."],
                     ),
                     tier2=Tier2Report(
-                        simulation_requested=True,
+                        analysis_requested=True,
                         reason="The claim predicts a logical error rate.",
-                        simulation_spec=None,
-                        results=request.simulation_results.to_dict(),
+                        analysis_spec=None,
+                        results=request.analysis_results.to_dict(),
                         interpretation="The verifier-provided simulation spec was invalid.",
                     ),
                     tier3=[],
@@ -821,7 +835,7 @@ class Tier1LoopTests(unittest.TestCase):
                 generator=generator,
                 verifier=verifier,
                 reviser=reviser,
-                simulator=None,
+                analyzer=None,
                 session_id="session_tier2_invalid_spec",
             )
 
@@ -830,15 +844,15 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertIsNotNone(result.final_report.tier2)
             self.assertIsNotNone(result.final_report.tier2.results)
             self.assertIn(
-                "Verifier returned an invalid simulation_spec",
+                "Verifier returned an invalid analysis_spec",
                 result.final_report.tier2.results["errors"][0],
             )
             evidence = runner.session_store.read_evidence("session_tier2_invalid_spec")
-            self.assertEqual([record.phase for record in evidence], ["generate", "simulate", "verify"])
-            self.assertIsNotNone(evidence[1].simulation_results)
+            self.assertEqual([record.phase for record in evidence], ["generate", "analyze", "verify"])
+            self.assertIsNotNone(evidence[1].analysis_results)
             self.assertIn(
-                "Verifier returned an invalid simulation_spec",
-                evidence[1].simulation_results["errors"][0],
+                "Verifier returned an invalid analysis_spec",
+                evidence[1].analysis_results["errors"][0],
             )
 
     def test_formal_request_runs_mediator_and_reverifies(self) -> None:

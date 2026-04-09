@@ -3,20 +3,30 @@
   "run_id": "baseline",
   "runner_backend": "fixture",
   "output_root": "eval/results",
-  "enabled_tiers": [1, 2, 3],
+  "enabled_tiers": [
+    1,
+    2,
+    3
+  ],
   "generated_at": "2026-03-26T00:00:00Z",
   "suite_path": "eval/known_problems.json",
   "routing_probe_status": "fallback",
   "cases": [
     {
       "mode": "deterministic",
-      "id": "known-correct-surface-threshold",
-      "category": "known_correct",
-      "scenario": "known_correct_surface_threshold",
+      "id": "symbolic-verified-equivalence",
+      "category": "analysis_required",
+      "scenario": "symbolic_verified_equivalence",
       "expected_verdict": "VERIFIED",
       "actual_verdict": "VERIFIED",
-      "expected_tiers": [1],
-      "actual_tiers": [1],
+      "expected_tiers": [
+        1,
+        2
+      ],
+      "actual_tiers": [
+        1,
+        2
+      ],
       "iterations": 1,
       "passed": true,
       "strict_verdict_match": true,
@@ -27,7 +37,7 @@
       "routing_mode": "temperature_decorrelation",
       "provider": "default",
       "model_used": "configured-by-hermes",
-      "session_id": "eval_known-correct-surface-threshold",
+      "session_id": "eval_symbolic-verified-equivalence",
       "artifacts": [],
       "runtime_seconds": 0.0,
       "error": null,

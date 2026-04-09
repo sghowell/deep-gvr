@@ -13,7 +13,7 @@
   "flaws": [
     "The quantitative claim is underspecified."
   ],
-  "simulation_results": null,
+  "analysis_results": null,
   "formal_verification_results": null,
   "model_used": "deepseek-r1",
   "provider": "openrouter",

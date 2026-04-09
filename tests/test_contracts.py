@@ -9,6 +9,8 @@ import yaml
 from tests import _path_setup  # noqa: F401
 
 from deep_gvr.contracts import (
+    AnalysisResults,
+    AnalysisSpec,
     CandidateSolution,
     CapabilityProbeResult,
     DeepGvrConfig,
@@ -71,6 +73,11 @@ class ContractRoundTripTests(unittest.TestCase):
         model = VerificationReport.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_analysis_spec_round_trip(self) -> None:
+        payload = self._load_json("templates/analysis_spec.template.json")
+        model = AnalysisSpec.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_sim_spec_round_trip(self) -> None:
         payload = self._load_json("templates/sim_spec.template.json")
         model = SimSpec.from_dict(payload)
@@ -100,6 +107,11 @@ class ContractRoundTripTests(unittest.TestCase):
         self.assertEqual(model.task.noise_model, "depolarizing")
         self.assertEqual(model.task.shots_per_point, 100_000)
         self.assertEqual(model.resources.max_parallel, 4)
+
+    def test_analysis_results_round_trip(self) -> None:
+        payload = self._load_json("templates/analysis_results.template.json")
+        model = AnalysisResults.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
 
     def test_sim_results_round_trip(self) -> None:
         payload = self._load_json("templates/sim_results.template.json")
@@ -176,6 +188,16 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_benchmark_suite_fixture_validates(self) -> None:
         schema = self._load_json("schemas/benchmark_suite.schema.json")
         fixture = self._load_json("templates/benchmark_suite.template.json")
+        validate(fixture, schema)
+
+    def test_analysis_spec_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/analysis_spec.schema.json")
+        fixture = self._load_json("templates/analysis_spec.template.json")
+        validate(fixture, schema)
+
+    def test_analysis_results_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/analysis_results.schema.json")
+        fixture = self._load_json("templates/analysis_results.template.json")
         validate(fixture, schema)
 
     def test_eval_results_fixture_validates(self) -> None:

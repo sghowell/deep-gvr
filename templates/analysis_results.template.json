@@ -1,0 +1,37 @@
+{
+  "adapter_family": "qec_decoder_benchmark",
+  "analysis_kind": "rotated_surface_code_memory",
+  "adapter_name": "qec_decoder_benchmark",
+  "adapter_version": "0.1.0",
+  "timestamp": "2026-04-08T00:00:00Z",
+  "runtime_seconds": 1.25,
+  "backend": "local",
+  "summary": "Stim produced 3 QEC datapoint(s) for rotated_memory_z.",
+  "measurements": [
+    {
+      "name": "logical_error_rate",
+      "value": 0.00021,
+      "unit": "",
+      "metadata": {
+        "distance": 5,
+        "rounds": 10,
+        "physical_error_rate": 0.003,
+        "shots": 10000,
+        "errors_observed": 2,
+        "decoder": "pymatching"
+      }
+    },
+    {
+      "name": "threshold_estimate",
+      "value": 0.005,
+      "unit": "",
+      "metadata": {
+        "method": "crossing_estimate"
+      }
+    }
+  ],
+  "details": {
+    "engine": "stim"
+  },
+  "errors": []
+}

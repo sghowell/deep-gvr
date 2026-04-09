@@ -10,7 +10,7 @@
     },
     "tier2": {
       "enabled": true,
-      "default_simulator": "stim",
+      "default_adapter_family": "qec_decoder_benchmark",
       "default_backend": "local",
       "timeout_seconds": 3600,
       "modal": {

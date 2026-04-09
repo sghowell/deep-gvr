@@ -10,6 +10,8 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Protocol
 
 from .contracts import (
+    AnalysisMeasurement,
+    AnalysisResults,
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
@@ -19,8 +21,6 @@ from .contracts import (
     DeepGvrConfig,
     ProbeStatus,
     ProofStatus,
-    SimAnalysis,
-    SimResults,
     Tier1Report,
     Tier2Report,
     Tier3ClaimResult,
@@ -35,11 +35,11 @@ from .probes import probe_model_routing
 from .routing import EffectiveModelRoute, build_live_routing_plan
 from .runtime_config import load_runtime_config
 from .tier1 import (
+    AnalysisRequest,
     GenerationRequest,
     RevisionRequest,
     SessionPaths,
     SessionStore,
-    SimulationRequest,
     Tier1LoopRunner,
     VerificationRequest,
 )
@@ -66,7 +66,33 @@ _LIVE_EXPANSION_CASES: tuple[str, ...] = (
     "simulation-verified-distance5",
     "formal-proved-repetition-majority",
 )
+_CORE_SCIENCE_CASES: tuple[str, ...] = (
+    "symbolic-verified-equivalence",
+    "symbolic-rejected-derivative",
+    "optimization-verified-linear-program",
+    "optimization-rejected-assignment",
+    "dynamics-verified-decay",
+)
+_PHOTONIC_MBQC_CASES: tuple[str, ...] = (
+    "mbqc-verified-graphix-pattern",
+    "photonic-verified-basic-state",
+    "neutral-atom-verified-register",
+)
+_QUANTUM_OSS_CASES: tuple[str, ...] = (
+    "simulation-verified-distance5",
+    "simulation-rejected-distance7",
+    "mbqc-verified-graphix-pattern",
+    "photonic-verified-basic-state",
+    "neutral-atom-verified-register",
+    "tqec-verified-gallery-block-graph",
+    "zx-verified-qasm-rewrite",
+    "formal-proved-repetition-majority",
+)
 _BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
+    "core-science": _CORE_SCIENCE_CASES,
+    "photonic-mbqc": _PHOTONIC_MBQC_CASES,
+    "quantum-oss": _QUANTUM_OSS_CASES,
+    "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "orchestration-fanout-threshold"),
     "live-analytical-breadth": _LIVE_ANALYTICAL_BREADTH_CASES,
     "live-escalation-breadth": _LIVE_ESCALATION_BREADTH_CASES,
     "live-expansion": _LIVE_EXPANSION_CASES,
@@ -427,7 +453,7 @@ class FixtureAgents:
     generator: GeneratorFn
     verifier: VerifierFn
     reviser: ReviserFn
-    simulator: Any | None = None
+    analyzer: Any | None = None
     formal_verifier: FormalVerifier | None = None
 
 
@@ -519,7 +545,7 @@ class HermesPromptRoleRunner:
             "session_id": request.session_id,
             "iteration": request.iteration,
             "candidate": request.candidate.to_dict(),
-            "simulation_results": request.simulation_results.to_dict() if request.simulation_results else None,
+            "analysis_results": request.analysis_results.to_dict() if request.analysis_results else None,
             "formal_results": [item.to_dict() for item in request.formal_results] if request.formal_results else None,
         }
         response, actual_route = self._run_role(
@@ -535,9 +561,9 @@ class HermesPromptRoleRunner:
                     "caveats": ["string"],
                 },
                 "tier2": {
-                    "simulation_requested": "boolean",
+                    "analysis_requested": "boolean",
                     "reason": "string",
-                    "simulation_spec": "object | null",
+                    "analysis_spec": "object | null",
                     "results": "object | null",
                     "interpretation": "string | null",
                 },
@@ -644,7 +670,7 @@ class HermesPromptRoleRunner:
                     resolve_live_role_timeout_seconds(
                         role,
                         self.config.command_timeout_seconds,
-                        has_simulation_results=bool(payload.get("simulation_results")),
+                        has_analysis_results=bool(payload.get("analysis_results")),
                         has_formal_results=bool(payload.get("formal_results")),
                     ),
                 )
@@ -1033,7 +1059,7 @@ def _run_fixture_case(
         generator=agents.generator,
         verifier=agents.verifier,
         reviser=agents.reviser,
-        simulator=agents.simulator,
+        analyzer=agents.analyzer,
         formal_verifier=agents.formal_verifier,
         session_id=f"eval_{case.id}",
     )
@@ -1135,7 +1161,7 @@ def _run_live_case(
             generator=live_runner.generator,
             verifier=live_runner.verifier,
             reviser=live_runner.reviser,
-            simulator=None,
+            analyzer=None,
             formal_verifier=AristotleFormalVerifier(
                 command_executor=executor,
                 hermes_binary=live_config.hermes_binary,
@@ -1650,27 +1676,142 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             case "known_incorrect_surface_threshold_5pct" | "known_incorrect_color_codes_all_noise_models":
                 return _flawed_tier1_report("The claim contradicts established benchmark knowledge.")
             case "simulation_verified_distance5":
-                if request.simulation_results is None:
-                    return _simulation_request_report(
+                if request.analysis_results is None:
+                    return _analysis_request_report(
                         reason="Empirical confirmation is required for the quantitative claim.",
+                        adapter_family="qec_decoder_benchmark",
+                        analysis_kind="rotated_surface_code_memory",
                         distance=[3, 5],
                         error_rate=0.001,
                     )
                 return _verified_with_tier2(
-                    request.simulation_results,
+                    request.analysis_results,
                     "The simulated trend supports the claimed logical-error behavior.",
                 )
             case "simulation_rejected_distance7":
-                if request.simulation_results is None:
-                    return _simulation_request_report(
+                if request.analysis_results is None:
+                    return _analysis_request_report(
                         reason="Empirical confirmation is required for the quantitative claim.",
+                        adapter_family="qec_decoder_benchmark",
+                        analysis_kind="rotated_surface_code_memory",
                         distance=[5, 7],
                         error_rate=0.005,
                     )
                 return _flawed_with_tier2(
-                    request.simulation_results,
+                    request.analysis_results,
                     "The simulated logical error rate does not support the claim.",
                 )
+            case "symbolic_verified_equivalence":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A symbolic equivalence check is required for the algebraic claim.",
+                        adapter_family="symbolic_math",
+                        analysis_kind="expression_equivalence",
+                        task={"lhs": "(x + 1)**2", "rhs": "x**2 + 2*x + 1"},
+                    )
+                return _verified_with_tier2(request.analysis_results, "The symbolic analysis confirms the identity.")
+            case "symbolic_rejected_derivative":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A symbolic derivative check is required for the calculus claim.",
+                        adapter_family="symbolic_math",
+                        analysis_kind="derivative_check",
+                        task={
+                            "expression": "x**3",
+                            "symbol": "x",
+                            "expected_derivative": "2*x**2",
+                        },
+                    )
+                return _flawed_with_tier2(request.analysis_results, "The symbolic derivative does not match the claim.")
+            case "optimization_verified_linear_program":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A solver-backed optimum check is required for the optimization claim.",
+                        adapter_family="optimization",
+                        analysis_kind="linear_program",
+                        task={
+                            "objective": [1, 2],
+                            "goal": "min",
+                            "A_ub": [[-1, -1]],
+                            "b_ub": [-3],
+                            "bounds": [[0, None], [0, None]],
+                        },
+                    )
+                return _verified_with_tier2(request.analysis_results, "The optimization analysis confirms the optimum claim.")
+            case "optimization_rejected_assignment":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A solver-backed assignment check is required for the combinatorial claim.",
+                        adapter_family="optimization",
+                        analysis_kind="assignment_problem",
+                        task={"cost_matrix": [[4, 1], [2, 3]]},
+                    )
+                return _flawed_with_tier2(request.analysis_results, "The assignment optimum does not match the claim.")
+            case "dynamics_verified_decay":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="Numerical integration is required for the dynamics claim.",
+                        adapter_family="dynamics",
+                        analysis_kind="ode_final_value",
+                        task={
+                            "equation": "exponential_decay",
+                            "initial": 1.0,
+                            "rate": 1.0,
+                            "t_span": [0.0, 2.0],
+                            "sample_times": [0.0, 1.0, 2.0],
+                        },
+                    )
+                return _verified_with_tier2(request.analysis_results, "The dynamics analysis confirms the decay trend.")
+            case "mbqc_verified_graphix_pattern":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="Graph-state transpilation is required for the MBQC claim.",
+                        adapter_family="mbqc_graph_state",
+                        analysis_kind="transpile_pattern",
+                        task={"qubits": 2, "gates": [{"gate": "h", "qubit": 0}, {"gate": "h", "qubit": 1}]},
+                    )
+                return _verified_with_tier2(request.analysis_results, "The MBQC analysis confirms the pattern construction.")
+            case "photonic_verified_basic_state":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A photonic state check is required for the linear-optics claim.",
+                        adapter_family="photonic_linear_optics",
+                        analysis_kind="basic_state_summary",
+                        task={"input_state": [1, 0], "modes": 2, "processor_backend": "SLOS"},
+                    )
+                return _verified_with_tier2(request.analysis_results, "The photonic analysis confirms the mode and photon counts.")
+            case "neutral_atom_verified_register":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A neutral-atom register construction check is required for the control claim.",
+                        adapter_family="neutral_atom_control",
+                        analysis_kind="register_sequence_summary",
+                        task={"layout": "square", "side": 2, "spacing": 5.0},
+                    )
+                return _verified_with_tier2(request.analysis_results, "The neutral-atom analysis confirms the register construction.")
+            case "tqec_verified_gallery_block_graph":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A topological-QEC design check is required for the block-graph claim.",
+                        adapter_family="topological_qec_design",
+                        analysis_kind="gallery_block_graph",
+                        task={
+                            "gallery_module": "tqec.gallery.steane_encoding",
+                            "gallery_function": "steane_encoding",
+                        },
+                    )
+                return _verified_with_tier2(request.analysis_results, "The tqec gallery analysis confirms the block-graph construction.")
+            case "zx_verified_qasm_rewrite":
+                if request.analysis_results is None:
+                    return _analysis_request_report_generic(
+                        reason="A ZX rewrite check is required for the circuit-equivalence claim.",
+                        adapter_family="zx_rewrite_verification",
+                        analysis_kind="qasm_rewrite_summary",
+                        task={
+                            "qasm": "OPENQASM 2.0; include \"qelib1.inc\"; qreg q[1]; h q[0]; h q[0];"
+                        },
+                    )
+                return _verified_with_tier2(request.analysis_results, "The ZX rewrite confirms the circuit-equivalence claim.")
             case "formal_proved_repetition_majority":
                 if request.formal_results is None:
                     return _formal_request_report(
@@ -1717,40 +1858,124 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
             case _:
                 raise ValueError(f"Unknown benchmark scenario {case.scenario!r}.")
 
-    def simulator(request: SimulationRequest) -> SimResults:
+    def analyzer(request: AnalysisRequest) -> AnalysisResults:
         if case.scenario == "simulation_verified_distance5":
-            return SimResults(
-                simulator="stim",
+            return AnalysisResults(
+                adapter_family="qec_decoder_benchmark",
+                analysis_kind=request.analysis_spec.analysis_kind,
+                adapter_name="qec_decoder_benchmark",
                 adapter_version="0.1.0",
                 timestamp=_DETERMINISTIC_TIMESTAMP,
                 runtime_seconds=0.2,
                 backend=Backend.LOCAL,
-                data=[],
-                analysis=SimAnalysis(
-                    threshold_estimate=0.001,
-                    threshold_method="fixture_supports_claim",
-                    below_threshold_distances=[5],
-                    scaling_exponent=None,
-                ),
+                summary="The deterministic QEC analysis supports the distance-ordering claim.",
+                measurements=[
+                    AnalysisMeasurement(
+                        name="threshold_estimate",
+                        value=0.001,
+                        unit="",
+                        metadata={"method": "fixture_supports_claim", "below_threshold_distances": [5]},
+                    )
+                ],
+                details={"engine": "stim", "fixture": case.scenario},
                 errors=[],
             )
         if case.scenario == "simulation_rejected_distance7":
-            return SimResults(
-                simulator="stim",
+            return AnalysisResults(
+                adapter_family="qec_decoder_benchmark",
+                analysis_kind=request.analysis_spec.analysis_kind,
+                adapter_name="qec_decoder_benchmark",
                 adapter_version="0.1.0",
                 timestamp=_DETERMINISTIC_TIMESTAMP,
                 runtime_seconds=0.2,
                 backend=Backend.LOCAL,
-                data=[],
-                analysis=SimAnalysis(
-                    threshold_estimate=0.005,
-                    threshold_method="fixture_refutes_claim",
-                    below_threshold_distances=[],
-                    scaling_exponent=None,
-                ),
+                summary="The deterministic QEC analysis refutes the target logical-error claim.",
+                measurements=[
+                    AnalysisMeasurement(
+                        name="threshold_estimate",
+                        value=0.005,
+                        unit="",
+                        metadata={"method": "fixture_refutes_claim", "below_threshold_distances": []},
+                    )
+                ],
+                details={"engine": "stim", "fixture": case.scenario},
                 errors=[],
             )
-        raise ValueError(f"Unexpected simulator call for {case.scenario!r}.")
+        if case.scenario == "symbolic_verified_equivalence":
+            return _fixture_analysis_results(
+                "symbolic_math",
+                "expression_equivalence",
+                "The symbolic expressions simplify to the same form.",
+                [AnalysisMeasurement(name="equivalent", value=True, unit="", metadata={})],
+            )
+        if case.scenario == "symbolic_rejected_derivative":
+            return _fixture_analysis_results(
+                "symbolic_math",
+                "derivative_check",
+                "The claimed derivative is incorrect.",
+                [AnalysisMeasurement(name="derivative_matches", value=False, unit="", metadata={})],
+            )
+        if case.scenario == "optimization_verified_linear_program":
+            return _fixture_analysis_results(
+                "optimization",
+                "linear_program",
+                "The linear program optimum is 3.",
+                [AnalysisMeasurement(name="objective_value", value=3.0, unit="", metadata={})],
+            )
+        if case.scenario == "optimization_rejected_assignment":
+            return _fixture_analysis_results(
+                "optimization",
+                "assignment_problem",
+                "The assignment optimum is 3, not the claimed higher value.",
+                [AnalysisMeasurement(name="objective_value", value=3, unit="", metadata={})],
+            )
+        if case.scenario == "dynamics_verified_decay":
+            return _fixture_analysis_results(
+                "dynamics",
+                "ode_final_value",
+                "The exponential-decay final value is below the claimed threshold.",
+                [AnalysisMeasurement(name="final_value", value=0.1353, unit="", metadata={})],
+            )
+        if case.scenario == "mbqc_verified_graphix_pattern":
+            return _fixture_analysis_results(
+                "mbqc_graph_state",
+                "transpile_pattern",
+                "The Graphix transpilation produced a non-empty measurement pattern.",
+                [AnalysisMeasurement(name="command_count", value=6, unit="", metadata={})],
+            )
+        if case.scenario == "photonic_verified_basic_state":
+            return _fixture_analysis_results(
+                "photonic_linear_optics",
+                "basic_state_summary",
+                "The photonic input state has one photon over two modes.",
+                [AnalysisMeasurement(name="photon_count", value=1, unit="", metadata={})],
+            )
+        if case.scenario == "neutral_atom_verified_register":
+            return _fixture_analysis_results(
+                "neutral_atom_control",
+                "register_sequence_summary",
+                "The Pulser-style register contains four qubits.",
+                [AnalysisMeasurement(name="qubit_count", value=4, unit="", metadata={})],
+            )
+        if case.scenario == "tqec_verified_gallery_block_graph":
+            return _fixture_analysis_results(
+                "topological_qec_design",
+                "gallery_block_graph",
+                "The tqec gallery graph exposes correlation surfaces.",
+                [AnalysisMeasurement(name="correlation_surface_count", value=7, unit="", metadata={})],
+            )
+        if case.scenario == "zx_verified_qasm_rewrite":
+            return _fixture_analysis_results(
+                "zx_rewrite_verification",
+                "qasm_rewrite_summary",
+                "The ZX rewrite preserves the circuit while reducing the two-qubit count.",
+                [
+                    AnalysisMeasurement(name="two_qubit_count_before", value=0, unit="", metadata={}),
+                    AnalysisMeasurement(name="two_qubit_count_after", value=0, unit="", metadata={}),
+                    AnalysisMeasurement(name="equivalent", value=True, unit="", metadata={}),
+                ],
+            )
+        raise ValueError(f"Unexpected analysis-adapter call for {case.scenario!r}.")
 
     def formal_verifier(request: FormalVerificationRequest) -> list[Tier3ClaimResult]:
         if case.scenario == "formal_proved_repetition_majority":
@@ -1781,7 +2006,7 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
         generator=generator,
         verifier=verifier,
         reviser=reviser,
-        simulator=simulator if case.scenario.startswith("simulation_") else None,
+        analyzer=analyzer if 2 in case.expected_tiers else None,
         formal_verifier=formal_verifier if case.scenario.startswith("formal_") else None,
     )
 
@@ -1802,6 +2027,26 @@ def _hypothesis_for_case(case: BenchmarkCase) -> str:
             return "At physical error rate 0.001, the logical error rate decreases with distance in the rotated surface code."
         case "simulation_rejected_distance7":
             return "At physical error rate 0.005, a distance-7 rotated memory experiment stays below 1e-4 logical error."
+        case "symbolic_verified_equivalence":
+            return "The identity (x + 1)^2 = x^2 + 2x + 1 holds exactly."
+        case "symbolic_rejected_derivative":
+            return "The derivative of x^3 is 2x^2."
+        case "optimization_verified_linear_program":
+            return "The optimum of the benchmark linear program is 3."
+        case "optimization_rejected_assignment":
+            return "The benchmark assignment problem has optimum cost 7."
+        case "dynamics_verified_decay":
+            return "An exponential decay with rate 1 reaches a value below 0.2 by t = 2."
+        case "mbqc_verified_graphix_pattern":
+            return "A simple two-qubit Clifford circuit transpiles to a non-empty MBQC pattern."
+        case "photonic_verified_basic_state":
+            return "The benchmark photonic state contains one photon over two modes."
+        case "neutral_atom_verified_register":
+            return "A 2x2 neutral-atom square register contains four qubits."
+        case "tqec_verified_gallery_block_graph":
+            return "The tqec Steane-encoding gallery graph exposes non-zero correlation surfaces."
+        case "zx_verified_qasm_rewrite":
+            return "Applying H twice on one qubit is ZX-equivalent to the identity."
         case "formal_proved_repetition_majority":
             return "Majority decoding for odd repetition codes corrects up to (d-1)/2 bit flips."
         case "formal_unavailable_repetition_scaling":
@@ -1847,8 +2092,15 @@ def _flawed_tier1_report(detail: str) -> VerificationReport:
     )
 
 
-def _simulation_request_report(*, reason: str, distance: list[int], error_rate: float) -> VerificationReport:
-    flaw = "Simulation evidence is required before accepting the quantitative claim."
+def _analysis_request_report(
+    *,
+    reason: str,
+    adapter_family: str,
+    analysis_kind: str,
+    distance: list[int],
+    error_rate: float,
+) -> VerificationReport:
+    flaw = "Tier 2 analysis evidence is required before accepting the quantitative claim."
     return VerificationReport(
         verdict=VerificationVerdict.FLAWS_FOUND,
         tier1=Tier1Report(
@@ -1864,11 +2116,13 @@ def _simulation_request_report(*, reason: str, distance: list[int], error_rate: 
             caveats=[],
         ),
         tier2=Tier2Report(
-            simulation_requested=True,
+            analysis_requested=True,
             reason=reason,
-            simulation_spec={
-                "simulator": "stim",
+            analysis_spec={
+                "adapter_family": adapter_family,
+                "analysis_kind": analysis_kind,
                 "task": {
+                    "engine": "stim",
                     "code": "surface_code",
                     "task_type": "rotated_memory_z",
                     "distance": distance,
@@ -1893,7 +2147,74 @@ def _simulation_request_report(*, reason: str, distance: list[int], error_rate: 
     )
 
 
-def _verified_with_tier2(sim_results: SimResults, interpretation: str) -> VerificationReport:
+def _analysis_request_report_generic(
+    *,
+    reason: str,
+    adapter_family: str,
+    analysis_kind: str,
+    task: dict[str, Any],
+) -> VerificationReport:
+    flaw = "Tier 2 analysis evidence is required before accepting the claim."
+    return VerificationReport(
+        verdict=VerificationVerdict.FLAWS_FOUND,
+        tier1=Tier1Report(
+            checks=[
+                AnalyticalCheck(
+                    check="computational_support",
+                    status=AnalyticalStatus.UNCERTAIN,
+                    detail="The benchmark case requires a Tier 2 analysis adapter check.",
+                )
+            ],
+            overall=VerificationVerdict.FLAWS_FOUND,
+            flaws=[flaw],
+            caveats=[],
+        ),
+        tier2=Tier2Report(
+            analysis_requested=True,
+            reason=reason,
+            analysis_spec={
+                "adapter_family": adapter_family,
+                "analysis_kind": analysis_kind,
+                "task": task,
+                "resources": {
+                    "timeout_seconds": 60,
+                    "max_parallel": 1,
+                },
+            },
+            results=None,
+            interpretation=None,
+        ),
+        tier3=[],
+        flaws=[flaw],
+        caveats=[],
+        cannot_verify_reason=None,
+    )
+
+
+def _fixture_analysis_results(
+    adapter_family: str,
+    analysis_kind: str,
+    summary: str,
+    measurements: list[AnalysisMeasurement],
+    *,
+    details: dict[str, Any] | None = None,
+) -> AnalysisResults:
+    return AnalysisResults(
+        adapter_family=adapter_family,
+        analysis_kind=analysis_kind,
+        adapter_name=adapter_family,
+        adapter_version="0.1.0",
+        timestamp=_DETERMINISTIC_TIMESTAMP,
+        runtime_seconds=0.2,
+        backend=Backend.LOCAL,
+        summary=summary,
+        measurements=measurements,
+        details=dict(details or {}),
+        errors=[],
+    )
+
+
+def _verified_with_tier2(analysis_results: AnalysisResults, interpretation: str) -> VerificationReport:
     return VerificationReport(
         verdict=VerificationVerdict.VERIFIED,
         tier1=Tier1Report(
@@ -1909,10 +2230,10 @@ def _verified_with_tier2(sim_results: SimResults, interpretation: str) -> Verifi
             caveats=[],
         ),
         tier2=Tier2Report(
-            simulation_requested=True,
+            analysis_requested=True,
             reason="The quantitative claim requires empirical confirmation.",
-            simulation_spec=None,
-            results=sim_results.to_dict(),
+            analysis_spec=None,
+            results=analysis_results.to_dict(),
             interpretation=interpretation,
         ),
         tier3=[],
@@ -1922,7 +2243,7 @@ def _verified_with_tier2(sim_results: SimResults, interpretation: str) -> Verifi
     )
 
 
-def _flawed_with_tier2(sim_results: SimResults, interpretation: str) -> VerificationReport:
+def _flawed_with_tier2(analysis_results: AnalysisResults, interpretation: str) -> VerificationReport:
     flaw = "The Tier 2 benchmark result refutes the claim."
     return VerificationReport(
         verdict=VerificationVerdict.FLAWS_FOUND,
@@ -1939,10 +2260,10 @@ def _flawed_with_tier2(sim_results: SimResults, interpretation: str) -> Verifica
             caveats=[],
         ),
         tier2=Tier2Report(
-            simulation_requested=True,
+            analysis_requested=True,
             reason="The quantitative claim requires empirical confirmation.",
-            simulation_spec=None,
-            results=sim_results.to_dict(),
+            analysis_spec=None,
+            results=analysis_results.to_dict(),
             interpretation=interpretation,
         ),
         tier3=[],

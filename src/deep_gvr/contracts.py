@@ -89,6 +89,7 @@ _SIM_NOISE_MODEL_ALIASES = {
 }
 _SIM_MAX_SHOTS_PER_POINT = 100_000
 _SIM_MAX_PARALLEL = 4
+_ANALYSIS_MAX_PARALLEL = 4
 
 
 def _normalize_sim_noise_model(value: str) -> str:
@@ -136,7 +137,7 @@ class ModalConfig:
 @dataclass(slots=True)
 class Tier2Config:
     enabled: bool = True
-    default_simulator: str = "stim"
+    default_adapter_family: str = "qec_decoder_benchmark"
     default_backend: Backend = Backend.LOCAL
     timeout_seconds: int = 3600
     modal: ModalConfig = field(default_factory=ModalConfig)
@@ -194,6 +195,7 @@ class DeepGvrConfig:
         tier2 = verification["tier2"]
         modal = tier2.get("modal") or {}
         ssh = tier2.get("ssh") or {}
+        default_adapter_family = tier2.get("default_adapter_family") or tier2.get("default_simulator") or "qec_decoder_benchmark"
         return cls(
             loop=LoopConfig(
                 max_iterations=int(data["loop"]["max_iterations"]),
@@ -204,7 +206,7 @@ class DeepGvrConfig:
                 tier1=TierToggleConfig(enabled=bool(verification["tier1"]["enabled"])),
                 tier2=Tier2Config(
                     enabled=bool(tier2["enabled"]),
-                    default_simulator=tier2["default_simulator"],
+                    default_adapter_family=default_adapter_family,
                     default_backend=Backend(tier2["default_backend"]),
                     timeout_seconds=int(tier2["timeout_seconds"]),
                     modal=ModalConfig(
@@ -310,24 +312,38 @@ class Tier1Report:
 
 @dataclass(slots=True)
 class Tier2Report:
-    simulation_requested: bool
+    analysis_requested: bool
     reason: str
-    simulation_spec: dict[str, Any] | None = None
+    analysis_spec: dict[str, Any] | None = None
     results: dict[str, Any] | None = None
     interpretation: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Tier2Report":
+        analysis_requested = data.get("analysis_requested")
+        if analysis_requested is None:
+            analysis_requested = data.get("simulation_requested", False)
+        analysis_spec = data.get("analysis_spec")
+        if analysis_spec is None:
+            analysis_spec = data.get("simulation_spec")
         return cls(
-            simulation_requested=bool(data["simulation_requested"]),
+            analysis_requested=bool(analysis_requested),
             reason=data["reason"],
-            simulation_spec=data.get("simulation_spec"),
+            analysis_spec=analysis_spec,
             results=data.get("results"),
             interpretation=data.get("interpretation"),
         )
 
     def to_dict(self) -> dict[str, Any]:
         return _serialize(self)
+
+    @property
+    def simulation_requested(self) -> bool:
+        return self.analysis_requested
+
+    @property
+    def simulation_spec(self) -> dict[str, Any] | None:
+        return self.analysis_spec
 
 
 @dataclass(slots=True)
@@ -435,6 +451,104 @@ class VerificationReport:
 
     def to_dict(self) -> dict[str, Any]:
         return _serialize(self)
+
+
+@dataclass(slots=True)
+class AnalysisResources:
+    timeout_seconds: int
+    max_parallel: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AnalysisResources":
+        return cls(
+            timeout_seconds=int(data["timeout_seconds"]),
+            max_parallel=_bounded_positive_int(data["max_parallel"], maximum=_ANALYSIS_MAX_PARALLEL),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class AnalysisSpec:
+    adapter_family: str
+    analysis_kind: str
+    task: dict[str, Any]
+    resources: AnalysisResources
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AnalysisSpec":
+        return cls(
+            adapter_family=data.get("adapter_family") or data.get("simulator") or "qec_decoder_benchmark",
+            analysis_kind=data.get("analysis_kind") or data.get("task", {}).get("task_type") or "analysis",
+            task=dict(data["task"]),
+            resources=AnalysisResources.from_dict(data["resources"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+    @property
+    def simulator(self) -> str:
+        return self.adapter_family
+
+
+@dataclass(slots=True)
+class AnalysisMeasurement:
+    name: str
+    value: str | int | float | bool | None
+    unit: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AnalysisMeasurement":
+        return cls(
+            name=data["name"],
+            value=data.get("value"),
+            unit=data.get("unit", ""),
+            metadata=dict(data.get("metadata", {})),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class AnalysisResults:
+    adapter_family: str
+    analysis_kind: str
+    adapter_name: str
+    adapter_version: str
+    timestamp: str
+    runtime_seconds: float
+    backend: Backend
+    summary: str
+    measurements: list[AnalysisMeasurement]
+    details: dict[str, Any] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AnalysisResults":
+        return cls(
+            adapter_family=data.get("adapter_family") or data.get("simulator") or "qec_decoder_benchmark",
+            analysis_kind=data.get("analysis_kind") or data.get("details", {}).get("task_type") or "analysis",
+            adapter_name=data.get("adapter_name") or data.get("simulator") or "",
+            adapter_version=data["adapter_version"],
+            timestamp=data["timestamp"],
+            runtime_seconds=float(data["runtime_seconds"]),
+            backend=Backend(data["backend"]),
+            summary=data.get("summary", ""),
+            measurements=[AnalysisMeasurement.from_dict(item) for item in data.get("measurements", [])],
+            details=dict(data.get("details", {})),
+            errors=list(data.get("errors", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+    @property
+    def simulator(self) -> str:
+        return self.adapter_family
 
 
 @dataclass(slots=True)
@@ -619,7 +733,7 @@ class EvidenceRecord:
     verdict: VerificationVerdict | None
     tiers_applied: list[int]
     flaws: list[str]
-    simulation_results: dict[str, Any] | None
+    analysis_results: dict[str, Any] | None
     formal_verification_results: list[dict[str, Any]] | None
     model_used: str
     provider: str
@@ -652,7 +766,7 @@ class EvidenceRecord:
             verdict=VerificationVerdict(verdict) if verdict else None,
             tiers_applied=[int(item) for item in data.get("tiers_applied", [])],
             flaws=list(data.get("flaws", [])),
-            simulation_results=data.get("simulation_results"),
+            analysis_results=data.get("analysis_results") or data.get("simulation_results"),
             formal_verification_results=data.get("formal_verification_results"),
             model_used=data.get("model_used", ""),
             provider=data.get("provider", ""),

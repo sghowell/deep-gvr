@@ -182,10 +182,14 @@ def _infer_asset_kind(path: str) -> str:
         return "session_memory_summary"
     if name == "parallax_manifest.json":
         return "parallax_manifest"
+    if "_analysis_spec." in name:
+        return "tier2_analysis_spec"
+    if "_analysis_results." in name:
+        return "tier2_analysis_results"
     if "_simulation_spec." in name:
-        return "tier2_simulation_spec"
+        return "tier2_analysis_spec"
     if "_simulation_results." in name:
-        return "tier2_simulation_results"
+        return "tier2_analysis_results"
     if "_formal_request." in name:
         return "tier3_formal_request"
     if "_formal_lifecycle." in name:

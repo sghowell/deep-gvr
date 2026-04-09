@@ -28,10 +28,11 @@
         },
         "tier2": {
           "type": "object",
-          "required": ["enabled", "default_simulator", "default_backend", "timeout_seconds", "ssh"],
+          "required": ["enabled", "default_backend", "timeout_seconds", "ssh"],
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
+            "default_adapter_family": { "type": "string" },
             "default_simulator": { "type": "string" },
             "default_backend": { "type": "string", "enum": ["local", "modal", "ssh"] },
             "timeout_seconds": { "type": "integer" },

@@ -122,7 +122,7 @@ def _build_compact_verifier_query(
                 '{"verdict":"VERIFIED|FLAWS_FOUND|CANNOT_VERIFY",'
                 '"tier1":{"checks":[{"check":"...","status":"pass|fail|uncertain","detail":"..."}],'
                 '"overall":"VERIFIED|FLAWS_FOUND|CANNOT_VERIFY","flaws":["..."],"caveats":["..."]},'
-                '"tier2":{"simulation_requested":false,"reason":"...","simulation_spec":null},'
+                '"tier2":{"analysis_requested":false,"reason":"...","analysis_spec":null},'
                 '"tier3":[],'
                 '"flaws":["..."],"caveats":["..."],"cannot_verify_reason":null}'
             ),
@@ -149,11 +149,11 @@ def _compact_verifier_payload_lines(payload: dict[str, Any]) -> list[str]:
         *_candidate_list_lines("limitations", candidate.get("limitations", [])),
         *_candidate_list_lines("references", candidate.get("references", [])),
     ]
-    simulation_results = payload.get("simulation_results")
-    if simulation_results is None:
-        lines.append("simulation_results: none")
+    analysis_results = payload.get("analysis_results")
+    if analysis_results is None:
+        lines.append("analysis_results: none")
     else:
-        lines.append(f"simulation_results: {dump_prompt_json(simulation_results, profile='compact')}")
+        lines.append(f"analysis_results: {dump_prompt_json(analysis_results, profile='compact')}")
     formal_results = payload.get("formal_results")
     if not formal_results:
         lines.append("formal_results: none")

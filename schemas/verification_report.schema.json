@@ -30,12 +30,12 @@
     },
     "tier2": {
       "type": ["object", "null"],
-      "required": ["simulation_requested", "reason", "simulation_spec", "results", "interpretation"],
+      "required": ["analysis_requested", "reason", "analysis_spec", "results", "interpretation"],
       "additionalProperties": false,
       "properties": {
-        "simulation_requested": { "type": "boolean" },
+        "analysis_requested": { "type": "boolean" },
         "reason": { "type": "string" },
-        "simulation_spec": { "type": ["object", "null"] },
+        "analysis_spec": { "type": ["object", "null"] },
         "results": { "type": ["object", "null"] },
         "interpretation": { "type": ["string", "null"] }
       }

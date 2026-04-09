@@ -13,12 +13,12 @@ from tests import _path_setup  # noqa: F401
 
 from deep_gvr.cli import load_runtime_config
 from deep_gvr.contracts import (
+    AnalysisMeasurement,
+    AnalysisResults,
     Backend,
     CandidateSolution,
     DeepGvrConfig,
     ProbeStatus,
-    SimAnalysis,
-    SimResults,
     VerificationVerdict,
 )
 from deep_gvr.evaluation import (
@@ -295,9 +295,32 @@ class EvaluationTests(unittest.TestCase):
 
     def test_available_benchmark_subsets_expose_breadth_groups(self) -> None:
         subsets = available_benchmark_subsets()
+        self.assertIn("core-science", subsets)
+        self.assertIn("photonic-mbqc", subsets)
+        self.assertIn("quantum-oss", subsets)
+        self.assertIn("analysis-full", subsets)
         self.assertIn("live-analytical-breadth", subsets)
         self.assertIn("live-escalation-breadth", subsets)
         self.assertIn("live-full", subsets)
+        self.assertEqual(
+            subsets["core-science"],
+            (
+                "symbolic-verified-equivalence",
+                "symbolic-rejected-derivative",
+                "optimization-verified-linear-program",
+                "optimization-rejected-assignment",
+                "dynamics-verified-decay",
+            ),
+        )
+        self.assertEqual(
+            subsets["photonic-mbqc"],
+            (
+                "mbqc-verified-graphix-pattern",
+                "photonic-verified-basic-state",
+                "neutral-atom-verified-register",
+            ),
+        )
+        self.assertIn("zx-verified-qasm-rewrite", subsets["quantum-oss"])
         self.assertEqual(
             subsets["live-analytical-breadth"],
             (
@@ -330,6 +353,16 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(
             [item.id for item in cases],
             list(available_benchmark_subsets()["live-analytical-breadth"]),
+        )
+
+    def test_load_benchmark_suite_filters_core_science_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="core-science",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["core-science"]),
         )
 
     def test_load_benchmark_suite_filters_escalation_breadth_subset(self) -> None:
@@ -983,7 +1016,7 @@ class EvaluationTests(unittest.TestCase):
             compact_query,
         )
         self.assertIn(
-            "For simulation-driven quantitative claims, prefer the smallest falsifiable prediction the simulator can actually check",
+            "For Tier-2-driven quantitative claims, prefer the smallest falsifiable prediction the selected analysis adapter can actually check",
             compact_query,
         )
         self.assertIn(
@@ -1011,11 +1044,11 @@ class EvaluationTests(unittest.TestCase):
             compact_query,
         )
         self.assertIn(
-            "For small-distance simulator-backed claims, keep the hypothesis on the ordering the prompt actually asks for",
+            "For small-distance analysis-backed claims, keep the hypothesis on the ordering the prompt actually asks for",
             compact_query,
         )
         self.assertIn(
-            "prefer direct ordering checks over ratio targets or straight-line-fit claims",
+            "In `expected_results`, prefer direct checks over ratio targets or fit-quality claims",
             compact_query,
         )
         self.assertIn(
@@ -1093,7 +1126,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report.verdict, VerificationVerdict.VERIFIED)
         self.assertEqual(mocked_executor.call_args.args[2], 150)
 
-    def test_verifier_with_simulation_results_uses_followup_timeout_floor(self) -> None:
+    def test_verifier_with_analysis_results_uses_followup_timeout_floor(self) -> None:
         runner = HermesPromptRoleRunner(
             LiveEvalConfig(command_timeout_seconds=5),
             prompt_root=ROOT / "prompts",
@@ -1111,19 +1144,24 @@ class EvaluationTests(unittest.TestCase):
                 references=["Reference"],
             ),
             route=EffectiveModelRoute(provider="default", model="configured-by-hermes"),
-            simulation_results=SimResults(
-                simulator="stim",
+            analysis_results=AnalysisResults(
+                adapter_family="qec_decoder_benchmark",
+                analysis_kind="rotated_surface_code_memory",
+                adapter_name="qec_decoder_benchmark",
                 adapter_version="0.1.0",
                 timestamp="2026-03-27T00:00:00Z",
                 runtime_seconds=0.1,
                 backend=Backend.LOCAL,
-                data=[],
-                analysis=SimAnalysis(
-                    threshold_estimate=0.001,
-                    threshold_method="monotonic_distance_improvement",
-                    below_threshold_distances=[5],
-                    scaling_exponent=None,
-                ),
+                summary="Follow-up QEC analysis results are attached.",
+                measurements=[
+                    AnalysisMeasurement(
+                        name="threshold_estimate",
+                        value=0.001,
+                        unit="",
+                        metadata={"method": "monotonic_distance_improvement"},
+                    )
+                ],
+                details={},
                 errors=[],
             ),
         )
@@ -1182,7 +1220,7 @@ class EvaluationTests(unittest.TestCase):
                 "references": ["Dennis et al. 2002", "Fowler et al. 2012"],
                 "revision_notes": ["Numbers are paired with noise-model qualifiers."],
             },
-            "simulation_results": None,
+            "analysis_results": None,
             "formal_results": None,
         }
         route_notes = ["Use prompt separation plus temperature decorrelation and record the limitation."]
@@ -1197,9 +1235,9 @@ class EvaluationTests(unittest.TestCase):
                 "caveats": ["string"],
             },
             "tier2": {
-                "simulation_requested": "boolean",
+                "analysis_requested": "boolean",
                 "reason": "string",
-                "simulation_spec": "object | null",
+                "analysis_spec": "object | null",
                 "results": "object | null",
                 "interpretation": "string | null",
             },
@@ -1252,7 +1290,7 @@ class EvaluationTests(unittest.TestCase):
             verifier_query,
         )
         self.assertIn(
-            "emit the normalized repo-local `simulation_spec`, use the canonical Stim noise-model string `depolarizing`",
+            "emit the normalized repo-local `analysis_spec`, use the canonical Stim noise-model string `depolarizing`",
             verifier_query,
         )
         self.assertIn("shots_per_point <= 100000", verifier_query)

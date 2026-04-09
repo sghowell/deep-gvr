@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "required": ["adapter_family", "analysis_kind", "task", "resources"],
+  "additionalProperties": false,
+  "properties": {
+    "adapter_family": { "type": "string" },
+    "analysis_kind": { "type": "string" },
+    "task": { "type": "object" },
+    "resources": {
+      "type": "object",
+      "required": ["timeout_seconds", "max_parallel"],
+      "additionalProperties": false,
+      "properties": {
+        "timeout_seconds": { "type": "integer" },
+        "max_parallel": { "type": "integer" }
+      }
+    }
+  }
+}

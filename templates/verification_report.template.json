@@ -21,11 +21,13 @@
     "caveats": []
   },
   "tier2": {
-    "simulation_requested": true,
+    "analysis_requested": true,
     "reason": "The candidate makes a quantitative claim about logical error rate.",
-    "simulation_spec": {
-      "simulator": "stim",
+    "analysis_spec": {
+      "adapter_family": "qec_decoder_benchmark",
+      "analysis_kind": "rotated_surface_code_memory",
       "task": {
+        "engine": "stim",
         "code": "surface_code",
         "task_type": "rotated_memory_z",
         "distance": [3, 5, 7],

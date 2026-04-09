@@ -10,6 +10,8 @@ from typing import Callable, Protocol
 from uuid import uuid4
 
 from .contracts import (
+    AnalysisResults,
+    AnalysisSpec,
     Backend,
     BranchStatus,
     BranchStrategy,
@@ -25,9 +27,6 @@ from .contracts import (
     SessionCheckpoint,
     SessionIndex,
     SessionSummary,
-    SimAnalysis,
-    SimResults,
-    SimSpec,
     Tier2Report,
     Tier3ClaimResult,
     VerificationHistoryEntry,
@@ -59,18 +58,20 @@ def _relative_to_root(root: Path, path: Path) -> str:
         return str(path)
 
 
+def _load_analysis_adapter_builder() -> Callable[..., object]:
+    repo_root = str(Path(__file__).resolve().parents[2])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    module = importlib.import_module("adapters.registry")
+    return getattr(module, "build_analysis_adapter")
+
+
 def _load_stim_adapter_class():
-    try:
-        from adapters.stim_adapter import StimAdapter
-    except ModuleNotFoundError as exc:
-        if exc.name not in {"adapters", "adapters.stim_adapter"}:
-            raise
-        repo_root = Path(__file__).resolve().parents[2]
-        if str(repo_root) not in sys.path:
-            sys.path.insert(0, str(repo_root))
-        module = importlib.import_module("adapters.stim_adapter")
-        return module.StimAdapter
-    return StimAdapter
+    repo_root = str(Path(__file__).resolve().parents[2])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    module = importlib.import_module("adapters.stim_adapter")
+    return getattr(module, "StimAdapter")
 
 
 @dataclass(slots=True)
@@ -94,8 +95,12 @@ class VerificationRequest:
     iteration: int
     candidate: CandidateSolution
     route: EffectiveModelRoute
-    simulation_results: SimResults | None = None
+    analysis_results: AnalysisResults | None = None
     formal_results: list[Tier3ClaimResult] | None = None
+
+    @property
+    def simulation_results(self) -> AnalysisResults | None:
+        return self.analysis_results
 
 
 @dataclass(slots=True)
@@ -127,16 +132,24 @@ class Reviser(Protocol):
 
 
 @dataclass(slots=True)
-class SimulationRequest:
+class AnalysisRequest:
     session_id: str
     iteration: int
-    sim_spec: SimSpec
+    analysis_spec: AnalysisSpec
     backend: Backend
 
+    @property
+    def sim_spec(self) -> AnalysisSpec:
+        return self.analysis_spec
 
-class Simulator(Protocol):
-    def __call__(self, request: SimulationRequest) -> SimResults:
+
+class Analyzer(Protocol):
+    def __call__(self, request: AnalysisRequest) -> AnalysisResults:
         ...
+
+
+SimulationRequest = AnalysisRequest
+Simulator = Analyzer
 
 
 @dataclass(slots=True, frozen=True)
@@ -365,12 +378,14 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
-        simulator: Simulator | None = None,
+        analyzer: Analyzer | None = None,
+        simulator: Analyzer | None = None,
         formal_verifier: FormalVerifier | None = None,
         literature_context: list[str] | tuple[str, ...] = (),
         domain: str | None = None,
         session_id: str | None = None,
     ) -> Tier1RunResult:
+        resolved_analyzer = analyzer or simulator
         checkpoint = self.session_store.initialize_session(
             problem=problem,
             domain=domain or self.config.domain.default,
@@ -383,7 +398,7 @@ class Tier1LoopRunner:
             generator=generator,
             verifier=verifier,
             reviser=reviser,
-            simulator=simulator,
+            analyzer=resolved_analyzer,
             formal_verifier=formal_verifier,
         )
 
@@ -394,16 +409,18 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
-        simulator: Simulator | None = None,
+        analyzer: Analyzer | None = None,
+        simulator: Analyzer | None = None,
         formal_verifier: FormalVerifier | None = None,
     ) -> Tier1RunResult:
+        resolved_analyzer = analyzer or simulator
         checkpoint = self.session_store.load_checkpoint(session_id)
         return self._drive(
             checkpoint,
             generator=generator,
             verifier=verifier,
             reviser=reviser,
-            simulator=simulator,
+            analyzer=resolved_analyzer,
             formal_verifier=formal_verifier,
         )
 
@@ -414,7 +431,7 @@ class Tier1LoopRunner:
         generator: Generator,
         verifier: Verifier,
         reviser: Reviser,
-        simulator: Simulator | None,
+        analyzer: Analyzer | None,
         formal_verifier: FormalVerifier | None,
     ) -> Tier1RunResult:
         while checkpoint.next_phase != "complete":
@@ -422,7 +439,7 @@ class Tier1LoopRunner:
                 checkpoint = self._generate(checkpoint, generator)
                 continue
             if checkpoint.next_phase == "verify":
-                checkpoint = self._verify(checkpoint, verifier, simulator, formal_verifier)
+                checkpoint = self._verify(checkpoint, verifier, analyzer, formal_verifier)
                 if checkpoint.next_phase == "formalize":
                     break
                 continue
@@ -609,7 +626,7 @@ class Tier1LoopRunner:
         self,
         checkpoint: SessionCheckpoint,
         verifier: Verifier,
-        simulator: Simulator | None,
+        analyzer: Analyzer | None,
         formal_verifier: FormalVerifier | None,
     ) -> SessionCheckpoint:
         candidate = self._require_candidate(checkpoint)
@@ -620,10 +637,10 @@ class Tier1LoopRunner:
             route=self.routing_plan.verifier,
         )
         report = verifier(request)
-        simulation_results = None
+        analysis_results = None
         formal_results: list[Tier3ClaimResult] | None = None
-        if self._should_run_simulation(report):
-            simulation_results = self._simulate(checkpoint, report, simulator)
+        if self._should_run_analysis(report):
+            analysis_results = self._analyze(checkpoint, report, analyzer)
         if self._should_run_formal(report):
             checkpoint.verification_report = report
             outcome = self._formalize(
@@ -649,7 +666,7 @@ class Tier1LoopRunner:
             verifier=verifier,
             base_report=report,
             candidate=candidate,
-            simulation_results=simulation_results,
+            analysis_results=analysis_results,
             formal_results=formal_results,
             initial_request=request,
         )
@@ -685,7 +702,7 @@ class Tier1LoopRunner:
             verifier=verifier,
             base_report=report,
             candidate=candidate,
-            simulation_results=None,
+            analysis_results=None,
             formal_results=outcome.results,
             initial_request=None,
         )
@@ -697,7 +714,7 @@ class Tier1LoopRunner:
         verifier: Verifier,
         base_report: VerificationReport,
         candidate: CandidateSolution,
-        simulation_results: SimResults | None,
+        analysis_results: AnalysisResults | None,
         formal_results: list[Tier3ClaimResult] | None,
         initial_request: VerificationRequest | None,
     ) -> SessionCheckpoint:
@@ -708,18 +725,18 @@ class Tier1LoopRunner:
             candidate=candidate,
             route=self.routing_plan.verifier,
         )
-        if simulation_results is not None or formal_results is not None:
+        if analysis_results is not None or formal_results is not None:
             request = VerificationRequest(
                 session_id=checkpoint.session_id,
                 iteration=checkpoint.current_iteration,
                 candidate=candidate,
                 route=self.routing_plan.verifier,
-                simulation_results=simulation_results,
+                analysis_results=analysis_results,
                 formal_results=formal_results,
             )
             report = verifier(request)
-            if simulation_results is not None:
-                self._attach_simulation_results(report, simulation_results)
+            if analysis_results is not None:
+                self._attach_analysis_results(report, analysis_results)
             if formal_results is not None:
                 self._attach_formal_results(report, formal_results)
 
@@ -745,7 +762,7 @@ class Tier1LoopRunner:
                 flaws=list(report.flaws),
                 input_summary=f"Hypothesis: {candidate.hypothesis}",
                 output_summary=self._verification_summary(report),
-                simulation_results=simulation_results,
+                analysis_results=analysis_results,
                 formal_results=formal_results,
                 route=request.route,
                 branch=active_branch,
@@ -904,7 +921,7 @@ class Tier1LoopRunner:
         flaws: list[str],
         input_summary: str,
         output_summary: str,
-        simulation_results: SimResults | None = None,
+        analysis_results: AnalysisResults | None = None,
         formal_results: list[Tier3ClaimResult] | None = None,
         route: EffectiveModelRoute | None = None,
         branch: HypothesisBranch | None = None,
@@ -926,7 +943,7 @@ class Tier1LoopRunner:
             verdict=verdict,
             tiers_applied=tiers_applied,
             flaws=flaws,
-            simulation_results=simulation_results.to_dict() if simulation_results is not None else None,
+            analysis_results=analysis_results.to_dict() if analysis_results is not None else None,
             formal_verification_results=[item.to_dict() for item in formal_results] if formal_results is not None else None,
             model_used=resolved_route.model,
             provider=resolved_route.provider,
@@ -948,12 +965,12 @@ class Tier1LoopRunner:
             return self.routing_plan.verifier
         if phase == "escalate":
             return self.routing_plan.orchestrator
-        if phase == "simulate":
+        if phase == "analyze":
             return EffectiveModelRoute(
                 provider="adapter",
-                model=self.config.verification.tier2.default_simulator,
+                model=self.config.verification.tier2.default_adapter_family,
                 routing_mode=RoutingMode.DIRECT,
-                notes=["Simulation routing is handled by the adapter boundary."],
+                notes=["Tier 2 analysis routing is handled by the adapter boundary."],
             )
         if phase == "formalize":
             return EffectiveModelRoute(
@@ -967,7 +984,7 @@ class Tier1LoopRunner:
     def _tiers_applied(self, report: VerificationReport) -> list[int]:
         tiers = [1]
         if report.tier2 is not None and (
-            report.tier2.simulation_requested or report.tier2.results is not None or report.tier2.simulation_spec is not None
+            report.tier2.analysis_requested or report.tier2.results is not None or report.tier2.analysis_spec is not None
         ):
             tiers.append(2)
         if report.tier3:
@@ -978,7 +995,7 @@ class Tier1LoopRunner:
         if report.verdict is VerificationVerdict.VERIFIED:
             caveat_text = "; ".join(report.caveats) or "No caveats recorded."
             if report.tier2 and report.tier2.results is not None:
-                interpretation = report.tier2.interpretation or "Simulation results were incorporated."
+                interpretation = report.tier2.interpretation or "Analysis results were incorporated."
                 if report.tier3 and all(item.proof_status is not ProofStatus.REQUESTED for item in report.tier3):
                     return (
                         f"Verified with Tier 2 and Tier 3 evidence. {interpretation} "
@@ -1011,12 +1028,12 @@ class Tier1LoopRunner:
             raise ValueError("A verification report is required before revision.")
         return checkpoint.verification_report
 
-    def _should_run_simulation(self, report: VerificationReport) -> bool:
+    def _should_run_analysis(self, report: VerificationReport) -> bool:
         return bool(
             self.config.verification.tier2.enabled
             and report.tier2 is not None
-            and report.tier2.simulation_requested
-            and report.tier2.simulation_spec is not None
+            and report.tier2.analysis_requested
+            and report.tier2.analysis_spec is not None
             and report.tier2.results is None
         )
 
@@ -1027,102 +1044,112 @@ class Tier1LoopRunner:
             and any(item.proof_status in {ProofStatus.REQUESTED, ProofStatus.PENDING} for item in report.tier3)
         )
 
-    def _simulate(
+    def _analyze(
         self,
         checkpoint: SessionCheckpoint,
         report: VerificationReport,
-        simulator: Simulator | None,
-    ) -> SimResults:
+        analyzer: Analyzer | None,
+    ) -> AnalysisResults:
         tier2 = report.tier2
-        if tier2 is None or tier2.simulation_spec is None:
-            raise ValueError("Simulation mediation requires a Tier 2 spec.")
+        if tier2 is None or tier2.analysis_spec is None:
+            raise ValueError("Tier 2 analysis mediation requires an analysis spec.")
 
-        sim_spec_payload = dict(tier2.simulation_spec)
+        analysis_spec_payload = dict(tier2.analysis_spec)
         try:
-            sim_spec = SimSpec.from_dict(sim_spec_payload)
+            analysis_spec = AnalysisSpec.from_dict(analysis_spec_payload)
         except (KeyError, TypeError, ValueError) as exc:
-            sim_results = SimResults(
-                simulator=str(sim_spec_payload.get("simulator", self.config.verification.tier2.default_simulator)),
+            analysis_results = AnalysisResults(
+                adapter_family=str(
+                    analysis_spec_payload.get("adapter_family", self.config.verification.tier2.default_adapter_family)
+                ),
+                analysis_kind=str(analysis_spec_payload.get("analysis_kind", "analysis")),
+                adapter_name=str(analysis_spec_payload.get("adapter_family", "unknown")),
                 adapter_version="0.1.0",
                 timestamp=self._timestamp(),
                 runtime_seconds=0.0,
                 backend=self.config.verification.tier2.default_backend,
-                data=[],
-                analysis=_empty_sim_analysis("invalid_spec"),
-                errors=[
-                    f"Verifier returned an invalid simulation_spec: {type(exc).__name__}: {exc}",
-                ],
+                summary="Verifier returned an invalid analysis spec.",
+                measurements=[],
+                details={"task": analysis_spec_payload.get("task", {})},
+                errors=[f"Verifier returned an invalid analysis_spec: {type(exc).__name__}: {exc}"],
             )
         else:
-            request = SimulationRequest(
+            request = AnalysisRequest(
                 session_id=checkpoint.session_id,
                 iteration=checkpoint.current_iteration,
-                sim_spec=sim_spec,
+                analysis_spec=analysis_spec,
                 backend=self.config.verification.tier2.default_backend,
             )
-            sim_results = simulator(request) if simulator is not None else self._run_simulation_request(request)
-            sim_spec_payload = sim_spec.to_dict()
+            analysis_results = analyzer(request) if analyzer is not None else self._run_analysis_request(request)
+            analysis_spec_payload = analysis_spec.to_dict()
 
         spec_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
-            f"iteration_{checkpoint.current_iteration}_simulation_spec.json",
-            sim_spec_payload,
+            f"iteration_{checkpoint.current_iteration}_analysis_spec.json",
+            analysis_spec_payload,
         )
         results_artifact = self.session_store.write_artifact_json(
             checkpoint.session_id,
-            f"iteration_{checkpoint.current_iteration}_simulation_results.json",
-            sim_results.to_dict(),
+            f"iteration_{checkpoint.current_iteration}_analysis_results.json",
+            analysis_results.to_dict(),
         )
         checkpoint.artifacts = self._merge_artifacts(checkpoint.artifacts, [spec_artifact, results_artifact])
         checkpoint.last_updated = self._timestamp()
-        checkpoint.result_summary = f"Completed Tier 2 simulation for candidate {checkpoint.current_iteration}."
+        checkpoint.result_summary = f"Completed Tier 2 analysis for candidate {checkpoint.current_iteration}."
 
         self.session_store.append_evidence(
             checkpoint.session_id,
             self._evidence_record(
                 checkpoint=checkpoint,
-                phase="simulate",
+                phase="analyze",
                 verdict=None,
                 tiers_applied=[2],
                 flaws=[],
-                input_summary=f"Simulation requested: {tier2.reason}",
-                output_summary=self._simulation_summary(sim_results),
-                simulation_results=sim_results,
+                input_summary=f"Analysis requested: {tier2.reason}",
+                output_summary=self._analysis_summary(analysis_results),
+                analysis_results=analysis_results,
             ),
         )
         self.session_store.save_checkpoint(checkpoint)
-        return sim_results
+        return analysis_results
 
-    def _run_simulation_request(self, request: SimulationRequest) -> SimResults:
-        if request.sim_spec.simulator != self.config.verification.tier2.default_simulator:
-            return SimResults(
-                simulator=request.sim_spec.simulator,
+    def _run_analysis_request(self, request: AnalysisRequest) -> AnalysisResults:
+        build_analysis_adapter = _load_analysis_adapter_builder()
+        adapter = build_analysis_adapter(
+            request.analysis_spec.adapter_family,
+            tier2_config=self.config.verification.tier2,
+        )
+        if adapter is None:
+            return AnalysisResults(
+                adapter_family=request.analysis_spec.adapter_family,
+                analysis_kind=request.analysis_spec.analysis_kind,
+                adapter_name=request.analysis_spec.adapter_family,
                 adapter_version="0.1.0",
                 timestamp=self._timestamp(),
                 runtime_seconds=0.0,
                 backend=request.backend,
-                data=[],
-                analysis=_empty_sim_analysis("adapter_not_available"),
+                summary="The requested adapter family is not configured in this environment.",
+                measurements=[],
+                details={"task": request.analysis_spec.task},
                 errors=[
-                    f"Simulator {request.sim_spec.simulator!r} is not configured in this environment.",
+                    f"Adapter family {request.analysis_spec.adapter_family!r} is not configured in this environment.",
                 ],
             )
+        return adapter.run(request.analysis_spec, request.backend)
 
-        return _load_stim_adapter_class()(tier2_config=self.config.verification.tier2).run(request.sim_spec, request.backend)
-
-    def _attach_simulation_results(self, report: VerificationReport, sim_results: SimResults) -> None:
+    def _attach_analysis_results(self, report: VerificationReport, analysis_results: AnalysisResults) -> None:
         if report.tier2 is None:
             report.tier2 = Tier2Report(
-                simulation_requested=True,
-                reason="Simulation was executed by the orchestrator.",
-                simulation_spec=None,
-                results=sim_results.to_dict(),
+                analysis_requested=True,
+                reason="Tier 2 analysis was executed by the orchestrator.",
+                analysis_spec=None,
+                results=analysis_results.to_dict(),
                 interpretation=None,
             )
             return
 
         if report.tier2.results is None:
-            report.tier2.results = sim_results.to_dict()
+            report.tier2.results = analysis_results.to_dict()
 
     def _formalize(
         self,
@@ -1228,12 +1255,13 @@ class Tier1LoopRunner:
         merged.extend(results_by_claim.values())
         report.tier3 = merged
 
-    def _simulation_summary(self, sim_results: SimResults) -> str:
-        if sim_results.errors:
-            return f"Simulation returned errors: {'; '.join(sim_results.errors)}"
+    def _analysis_summary(self, analysis_results: AnalysisResults) -> str:
+        if analysis_results.errors:
+            return f"Analysis returned errors: {'; '.join(analysis_results.errors)}"
         return (
-            f"Simulation produced {len(sim_results.data)} data point(s) via {sim_results.simulator} on "
-            f"{sim_results.backend.value}; threshold method={sim_results.analysis.threshold_method}."
+            f"Analysis via {analysis_results.adapter_family} ({analysis_results.analysis_kind}) on "
+            f"{analysis_results.backend.value} produced {len(analysis_results.measurements)} measurement(s). "
+            f"{analysis_results.summary}"
         )
 
     def _formal_summary(self, result_set: FormalVerificationResultSet) -> str:
@@ -1251,12 +1279,3 @@ class Tier1LoopRunner:
 
     def _timestamp(self) -> str:
         return _isoformat(self.clock())
-
-
-def _empty_sim_analysis(method: str) -> SimAnalysis:
-    return SimAnalysis(
-        threshold_estimate=None,
-        threshold_method=method,
-        below_threshold_distances=[],
-        scaling_exponent=None,
-    )

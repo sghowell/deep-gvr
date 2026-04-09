@@ -1,0 +1,19 @@
+{
+  "adapter_family": "qec_decoder_benchmark",
+  "analysis_kind": "rotated_surface_code_memory",
+  "task": {
+    "engine": "stim",
+    "code": "surface_code",
+    "task_type": "rotated_memory_z",
+    "distance": [3, 5, 7],
+    "rounds_per_distance": "2d",
+    "noise_model": "depolarizing",
+    "error_rates": [0.003, 0.005, 0.007],
+    "decoder": "pymatching",
+    "shots_per_point": 10000
+  },
+  "resources": {
+    "timeout_seconds": 900,
+    "max_parallel": 2
+  }
+}

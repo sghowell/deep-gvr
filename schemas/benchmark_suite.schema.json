@@ -8,7 +8,7 @@
       "id": { "type": "string", "minLength": 1 },
       "category": {
         "type": "string",
-        "enum": ["known_correct", "known_incorrect", "simulation_required", "formalizable", "orchestration_required"]
+        "enum": ["known_correct", "known_incorrect", "analysis_required", "formalizable", "orchestration_required"]
       },
       "prompt": { "type": "string", "minLength": 1 },
       "scenario": { "type": "string", "minLength": 1 },

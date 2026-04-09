@@ -1,6 +1,10 @@
 """deep-gvr contracts, probes, and Tier 1 loop helpers."""
 
 from .contracts import (
+    AnalysisMeasurement,
+    AnalysisResources,
+    AnalysisResults,
+    AnalysisSpec,
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
@@ -54,6 +58,8 @@ from .formal import (
 from .probes import run_capability_probes
 from .routing import EffectiveModelRoute, RoutingPlan, build_live_routing_plan, build_routing_plan
 from .tier1 import (
+    AnalysisRequest,
+    Analyzer,
     GenerationRequest,
     RevisionRequest,
     SimulationRequest,
@@ -66,6 +72,12 @@ from .tier1 import (
 )
 
 __all__ = [
+    "AnalysisMeasurement",
+    "AnalysisRequest",
+    "AnalysisResources",
+    "AnalysisResults",
+    "AnalysisSpec",
+    "Analyzer",
     "AnalyticalCheck",
     "AnalyticalStatus",
     "Backend",
