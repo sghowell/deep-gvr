@@ -37,3 +37,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [32-fanout-and-escalation.md](32-fanout-and-escalation.md)
 - [33-domain-adapter-expansion.md](33-domain-adapter-expansion.md)
 - [34-aristotle-cli-fallback.md](34-aristotle-cli-fallback.md)
+- [35-mathcode-formal-backend.md](35-mathcode-formal-backend.md)

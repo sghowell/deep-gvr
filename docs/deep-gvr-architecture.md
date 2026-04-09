@@ -399,7 +399,7 @@ Note: Because Hermes subagents can't delegate to other subagents, the Verifier c
 - Claims about experimental results
 - Software architecture decisions
 
-The Verifier identifies formalizable claims and, if Tier 3 is enabled and the ARISTOTLE_API_KEY is configured, attempts formalization via the Aristotle MCP server or OpenGauss.
+The Verifier identifies formalizable claims and, if Tier 3 is enabled, attempts formalization via the configured backend: Aristotle MCP, OpenGauss, or MathCode.
 
 **Two verification backends:**
 
@@ -407,15 +407,16 @@ The Verifier identifies formalizable claims and, if Tier 3 is enabled and the AR
 |---|---|---|
 | Aristotle MCP | `prove` / `formalize` MCP tools | Single theorems, fire-and-forget, hard problems |
 | OpenGauss | `/autoprove` / `/autoformalize` skill commands | Iterative proof development, project-scoped work |
+| MathCode CLI | `mathcode -p` / `./run -p` with structured output | Local Lean formalization and bundled AUTOLEAN proof attempts |
 
-For v0.1, Aristotle MCP is the primary Tier 3 backend (simpler integration, no local Lean toolchain required). OpenGauss integration is Phase 2.
+For v0.1, Aristotle MCP is the primary Tier 3 backend (simpler integration, no local Lean toolchain required). OpenGauss and MathCode integration are Phase 2 local/proof-work backends.
 
 **Output format (Tier 3):**
 ```json
 {
   "tier": 3,
   "method": "formal",
-  "backend": "aristotle" | "opengauss",
+  "backend": "aristotle" | "opengauss" | "mathcode",
   "claim": "string (the mathematical statement)",
   "lean_code": "string (if generated)",
   "proof_status": "pending" | "proved" | "disproved" | "timeout" | "error",

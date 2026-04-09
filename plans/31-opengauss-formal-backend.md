@@ -16,7 +16,8 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 ## Progress
 
-- [ ] Add the new plan and index it from `plans/README.md`.
+- [x] Add the new plan and index it from `plans/README.md`.
+- [x] Diagnose the current local OpenGauss installer failure mode.
 - [ ] Add backend selection and contracts for OpenGauss.
 - [ ] Implement the OpenGauss transport and operator workflow.
 - [ ] Extend docs, tests, and benchmarks for the new formal backend.
@@ -25,16 +26,24 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 - OpenGauss is a distinct operator flow from Aristotle, so this slice needs backend-specific setup and lifecycle docs, not just another enum value.
 - The benchmark suite should include at least one case that benefits from interactive/project-scoped proof work.
+- On this machine, the problem is currently earlier than Lean tooling: `./gauss doctor` from the raw checkout fails with `ModuleNotFoundError: No module named 'yaml'`, which means the repo launcher is not itself a valid installed runtime.
+- The upstream local installer is currently broken for both the script default target and the README-pinned target:
+  - `./scripts/install.sh --plain --skip-setup --noninteractive` fails because `https://morph.new/opengauss/yaml` returns `404 Not Found`
+  - `OPEN_GAUSS_INSTALL_TARGET=opengauss-0-2-2 ./scripts/install.sh --plain --skip-setup --noninteractive` also fails because `https://morph.new/opengauss-0-2-2/yaml` returns `404 Not Found`
+- There is still no `~/.gauss/config.yaml`, no `gauss` on `PATH`, and no local `lean` / `lake` on this machine, so plan 31 is blocked on a valid upstream installation path before repo integration work can proceed honestly.
 
 ## Decision Log
 
 - Aristotle remains the primary default formal backend unless a case or config selects OpenGauss explicitly.
 - OpenGauss must reuse the same Tier 3 result contracts where possible.
 - Backend choice must be explicit in evidence and benchmark artifacts.
+- If the upstream OpenGauss installer/distribution path is broken, this slice stays blocked rather than weakening the target or pretending the local environment is ready.
+- A separate MathCode integration slice may proceed in parallel, but it does not retire the OpenGauss architecture target.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Repo implementation is still pending.
+- As of April 9, 2026, this slice is blocked externally on the OpenGauss installation path rather than on deep-gvr runtime code. The installer wrapper is pointing at Morph targets that currently return `404`, so the local environment cannot yet produce a supported `gauss` installation to integrate against.
 
 ## Context and Orientation
 
@@ -69,6 +78,8 @@ Targeted validation:
 
 ```bash
 uv run python -m unittest tests.test_formal tests.test_contracts -v
+cd ~/dev/OpenGauss && ./gauss doctor
+cd ~/dev/OpenGauss && ./scripts/install.sh --plain --skip-setup --noninteractive
 ```
 
 Acceptance evidence:
@@ -97,4 +108,4 @@ Acceptance evidence:
 
 - Depends on the completed formal lifecycle work from plan 27.
 - Touches formal backend contracts, transport code, docs, and benchmark cases.
-- Requires external OpenGauss environment and operator setup.
+- Requires a valid upstream OpenGauss installation path, a working local `gauss` runtime, and operator setup.
