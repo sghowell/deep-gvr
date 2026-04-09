@@ -4,7 +4,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 
 ## Core Contracts
 
-- `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, domain defaults, and backend runtime config for Modal and SSH Tier 2 execution
+- `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, domain defaults, backend runtime config for Tier 2 execution, and Tier 3 backend selection including local MathCode settings
 - `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface, including any observed delegated `capability_evidence`
 - `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
@@ -14,7 +14,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `AnalysisResults`: normalized Tier 2 analysis output
 - `SimSpec`: internal Stim/PyMatching request used inside the `qec_decoder_benchmark` family
 - `SimResults`: internal Stim/PyMatching output used inside the `qec_decoder_benchmark` family
-- `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
+- `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the selected formal backend
 - `FormalProofLifecycle`: persisted Tier 3 proof-handle state for submission, polling, and resume
 - `EvidenceRecord`: append-only record for one GVR phase transition, including branch identity, explicit escalation actions, the effective provider/model path, routing mode, and any fallback temperature
 - `SessionCheckpoint`: resume-safe loop state for the last complete phase, including active and queued hypothesis branches
@@ -51,7 +51,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `sessions/<session_id>/artifacts/iteration_<n>_analysis_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_lifecycle.json`: persisted Tier 3 proof-handle state for pending or completed proof work
-- `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and Hermes MCP preflight details
+- `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and backend-specific preflight details
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_results.json`: persisted Tier 3 returned formal results
 - `~/.hermes/memories/MEMORY.md`: Hermes memory document that now receives namespaced deep-gvr session summaries when `persist_to_memory` is enabled
 

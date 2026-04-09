@@ -30,6 +30,15 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
 - Implemented baseline: Tier 3 now persists `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts so proof polling can resume without starting over.
 
+### MathCode transport
+
+- Question: can the orchestrator dispatch local MathCode proof attempts through the configured repo-local CLI?
+- Default until proven otherwise: assume MathCode is unavailable unless the configured local checkout exposes an executable run script plus `AUTOLEAN/` and `lean-workspace/`.
+- Current baseline: `scripts/run_capability_probes.py` now reports `mathcode_transport` separately from Aristotle, using the Tier 3 runtime config to inspect the configured MathCode root and run script.
+- Operator path: set `verification.tier3.backend: mathcode`, then point `verification.tier3.mathcode.root` and `verification.tier3.mathcode.run_script` at the local checkout before running `scripts/release_preflight.py --operator`.
+- Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results from the local MathCode CLI.
+- Implemented baseline: the shipped harness now maps MathCode CLI output into the same `formal_request`, `formal_transport`, and `formal_results` artifact family as Aristotle-backed proof attempts.
+
 ### Session checkpoint and resume
 
 - Question: what minimal state is required to resume a run safely?
@@ -58,7 +67,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - `scripts/run_capability_probes.py` runs the readiness probes.
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
-- `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
+- `src/deep_gvr/formal.py` contains the Tier 3 transport boundaries and config preflight helpers for Aristotle and MathCode.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
 - `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
 - `src/deep_gvr/release_surface.py` lifts analysis-adapter readiness into the release preflight report so missing dependencies are visible at install/operator time.

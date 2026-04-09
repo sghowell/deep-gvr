@@ -23,9 +23,9 @@ the feature branch.
 ## Progress
 
 - [x] Add the new plan and index it from `plans/README.md`.
-- [ ] Add formal backend selection and contracts for MathCode.
-- [ ] Implement the MathCode transport and operator workflow.
-- [ ] Extend docs, tests, and benchmarks for the MathCode backend.
+- [x] Add formal backend selection and contracts for MathCode.
+- [x] Implement the MathCode transport and operator workflow.
+- [x] Extend docs, tests, and benchmarks for the MathCode backend.
 
 ## Surprises & Discoveries
 
@@ -40,6 +40,9 @@ the feature branch.
   `LeanFormalizations/`, which means the deep-gvr transport should treat it as a
   local CLI backend with explicit artifact capture instead of assuming MCP or
   delegated subagent semantics.
+- The local CLI returns a stable JSON envelope with top-level metadata and a
+  `structured_output` payload, so the transport can depend on schema-shaped
+  output instead of scraping prose.
 - MathCode is built for mathematical formalization specifically, so benchmark
   coverage should initially focus on theorem-style or proof-obligation cases
   rather than trying to force every formalizable claim through it.
@@ -58,7 +61,13 @@ the feature branch.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- MathCode is now selectable as a real Tier 3 backend through the shipped config
+  surface, probe set, release preflight, deterministic benchmark suite, and
+  formal transport code.
+- The integration reuses the existing Tier 3 artifact family instead of adding
+  MathCode-only artifacts, which keeps session evidence coherent across formal
+  backends.
+- OpenGauss remains blocked external and unchanged by this slice.
 
 ## Context and Orientation
 

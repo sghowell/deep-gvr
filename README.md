@@ -23,7 +23,7 @@ Target-state alignment is tracked in [docs/architecture-status.md](docs/architec
 - Checkpoint-safe branch fan-out and escalation state in `src/deep_gvr/tier1.py` and `src/deep_gvr/contracts.py`
 - Delegated Hermes command boundary in `src/deep_gvr/orchestrator.py`
 - OSS analysis adapters in `adapters/`, including symbolic math, optimization, dynamics, QEC benchmarking, MBQC, photonic, neutral-atom, topological-QEC, and ZX rewrite families
-- Orchestrator-mediated Aristotle Tier 3 transport and fallback logic in `src/deep_gvr/formal.py`
+- Tier 3 formal backends in `src/deep_gvr/formal.py`, including Aristotle lifecycle transport and the local MathCode CLI path
 - JSON schemas in `schemas/`
 - Prompt and skill procedure in `prompts/` and `SKILL.md`
 - Capability probes and validation scripts in `scripts/`
@@ -86,8 +86,8 @@ uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gv
 
 The install helper now also creates `~/.hermes/deep-gvr/config.yaml` from the repo defaults when that file does not already exist.
 `scripts/release_preflight.py` is the release-grade operator check for the installed bundle. In default mode it verifies the structural release surface without requiring live provider credentials or Hermes itself, so it is safe for CI and packaging checks. `--operator` raises the bar to actual runtime readiness for the configured path: installed skill bundle, valid config, Hermes CLI presence, explicit provider credentials, selected Tier 2 backend readiness, Tier 3 transport readiness when enabled, checked-in publication manifest, and the shipped `auto_improve: false` policy.
-For Tier 3, `scripts/setup_mcp.sh --install` adds the expected `mcp_servers.aristotle` block to `~/.hermes/config.yaml` without duplicating an existing entry, `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry, and `scripts/setup_mcp.sh --print-snippet` prints the same block without modifying the config.
-If you plan to enable Tier 3 in `~/.hermes/deep-gvr/config.yaml`, run `scripts/setup_mcp.sh --install --check` before the operator preflight.
+For Tier 3 with `backend: aristotle`, `scripts/setup_mcp.sh --install` adds the expected `mcp_servers.aristotle` block to `~/.hermes/config.yaml` without duplicating an existing entry, `scripts/setup_mcp.sh --check` verifies the key plus the Hermes MCP config entry, and `scripts/setup_mcp.sh --print-snippet` prints the same block without modifying the config.
+If you plan to enable Tier 3 with Aristotle in `~/.hermes/deep-gvr/config.yaml`, run `scripts/setup_mcp.sh --install --check` before the operator preflight. If you plan to use `backend: mathcode`, set `verification.tier3.mathcode.root` and `verification.tier3.mathcode.run_script` to the local checkout and let release preflight validate `AUTOLEAN/`, `lean-workspace/`, and the executable run script.
 For Tier 2 remote backends, the runtime config now also carries `verification.tier2.modal.cli_bin`, `verification.tier2.modal.stub_path`, and the SSH fields `host`, `user`, `key_path`, `remote_workspace`, and `python_bin`. Modal readiness depends on the configured CLI plus stub path; SSH readiness depends on `ssh` and `scp` plus a populated remote workspace config.
 The optional extras `analysis` and `quantum_oss` install the broader OSS adapter-family dependencies. `scripts/release_preflight.py --operator` now reports `analysis_adapter_families` explicitly so missing local libraries are surfaced as operator-state instead of silent non-support.
 
@@ -113,11 +113,11 @@ uv run deep-gvr resume <session_id>
 The command now launches one Hermes session preloaded with the installed `deep-gvr` skill, passes the repo-local config/runtime request into that delegated orchestrator, and returns the structured session summary produced by the skill. The wrapper still records a local orchestrator transcript artifact alongside the skill-managed evidence directory, derives `session_memory_summary.json` plus `parallax_manifest.json` under the session artifacts directory, and appends the session summary into `~/.hermes/memories/MEMORY.md` when `persist_to_memory` is enabled.
 Because the wrapper preloads `--skills deep-gvr`, the skill must be installed first with `scripts/install.sh`. `uv run deep-gvr init-config` still creates `~/.hermes/deep-gvr/config.yaml`, but it does not install the skill bundle.
 `--command-timeout-seconds` is now the delegated orchestrator timeout for the top-level Hermes session. The separate live benchmark harness keeps its own prompt-harness timeout policy.
-If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill runs can mediate Tier 3 requests through the shipped proof lifecycle and leave `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts in the session directory.
+If Aristotle transport is configured in `~/.hermes/config.yaml`, delegated skill runs can mediate Tier 3 requests through the shipped proof lifecycle and leave `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts in the session directory. If the runtime config selects `backend: mathcode`, the same artifact family records the local MathCode CLI transport and returned Lean proof output.
 
 ## Evaluation Baseline
 
-The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. That corpus now includes core-science analysis cases, OSS quantum analysis cases, and an orchestration-required case that exercises bounded fan-out after repeated primary-branch failure. The committed CI-safe baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
+The release baseline uses the deterministic fixture-backed benchmark suite in `eval/known_problems.json`. That corpus now includes core-science analysis cases, OSS quantum analysis cases, MathCode-backed formal cases, and an orchestration-required case that exercises bounded fan-out after repeated primary-branch failure. The committed CI-safe baseline result is `eval/results/baseline_results.json`, generated with `--routing-probe fallback` to match the documented current routing baseline.
 
 The same runner now also supports live prompt-driven execution through the explicit prompt harness in `src/deep_gvr/evaluation.py`. A live smoke run writes a timestamped artifact directory under `eval/results/live/` and leaves the committed deterministic baseline untouched:
 

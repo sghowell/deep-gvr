@@ -401,7 +401,7 @@ Note: Because Hermes subagents can't delegate to other subagents, the Verifier c
 
 The Verifier identifies formalizable claims and, if Tier 3 is enabled, attempts formalization via the configured backend: Aristotle MCP, OpenGauss, or MathCode.
 
-**Two verification backends:**
+**Three verification backends:**
 
 | Backend | Invocation | Best For |
 |---|---|---|
@@ -409,7 +409,7 @@ The Verifier identifies formalizable claims and, if Tier 3 is enabled, attempts 
 | OpenGauss | `/autoprove` / `/autoformalize` skill commands | Iterative proof development, project-scoped work |
 | MathCode CLI | `mathcode -p` / `./run -p` with structured output | Local Lean formalization and bundled AUTOLEAN proof attempts |
 
-For v0.1, Aristotle MCP is the primary Tier 3 backend (simpler integration, no local Lean toolchain required). OpenGauss and MathCode integration are Phase 2 local/proof-work backends.
+For v0.1, Aristotle MCP remains the primary Tier 3 backend (simpler integration, no local Lean toolchain required). MathCode is now available as a local CLI backend for mathematical formalization work. OpenGauss remains a blocked external backend until the upstream local install path is healthy again.
 
 **Output format (Tier 3):**
 ```json
@@ -951,8 +951,11 @@ verification:
       python_bin: python3
   tier3:
     enabled: false             # Formal verification (requires ARISTOTLE_API_KEY)
-    backend: aristotle         # aristotle | opengauss
+    backend: aristotle         # aristotle | mathcode | opengauss
     timeout_seconds: 300       # Per-proof timeout
+    mathcode:
+      root: ~/dev/mathcode
+      run_script: ~/dev/mathcode/run
 
 # Model routing (cross-model verification)
 models:

@@ -41,7 +41,7 @@
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
 - The Tier 2 adapter surface is registry-driven and currently includes symbolic math, optimization, dynamics, QEC benchmarking, MBQC graph-state, photonic linear-optics, neutral-atom control, topological-QEC design, and ZX rewrite families
 - The `qec_decoder_benchmark` family uses the Stim adapter with PyMatching decoding across local, Modal, and SSH execution
-- The Tier 3 baseline persists proof submission, polling, and resume state through the orchestrator, using Aristotle proof handles plus recorded transport artifacts when the environment is configured
+- The Tier 3 baseline persists proof submission, polling, and resume state through the orchestrator, using Aristotle proof handles when applicable plus recorded transport artifacts for Aristotle and MathCode
 
 ## Early Defaults
 
