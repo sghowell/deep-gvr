@@ -10,11 +10,11 @@ metadata:
 
 # deep-gvr
 
-deep-gvr is a Hermes skill procedure for agentic scientific research with a generator-verifier-reviser loop.
+deep-gvr is a Hermes skill procedure for agentic scientific research with a generator-verifier-reviser loop and OSS-backed analysis adapters.
 
 ## Current State
 
-The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, checkpoint-safe bounded fan-out/escalation state, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
+The repo now includes a runnable `deep-gvr` command surface in `src/deep_gvr/cli.py`, backed by the delegated Hermes orchestrator wrapper in `src/deep_gvr/orchestrator.py`, append-only evidence logging, checkpoint-based resume, checkpoint-safe bounded fan-out/escalation state, a generalized Tier 2 analysis boundary with OSS scientific and quantum adapter families, and a Tier 3 proof lifecycle that persists Aristotle submission, polling, and resume state.
 Live Hermes prompt execution now defaults to a `compact` prompt profile so benchmark and CLI runs carry less scaffolding by default.
 The shipped release surface now also includes `scripts/release_preflight.py` plus the checked-in publication bundle at `release/agentskills.publication.json`.
 Current target-state gaps are tracked in [docs/architecture-status.md](docs/architecture-status.md); the temporary runtime substitutions below each point to a retirement slice.
@@ -70,16 +70,17 @@ When the user invokes `/deep-gvr`:
 - The verifier input must remain isolated to the candidate artifact plus iteration metadata.
 - Resume continues from the last complete phase recorded in `checkpoint.json`.
 - Repeated verifier failures can now spawn bounded alternative or decomposition branches when `loop.alternative_approach` is enabled. Those branch switches must be recorded explicitly as `escalate` evidence entries instead of hidden retries.
-- Tier 2 empirical verification is claim-driven through the simulator adapter boundary.
-- The orchestrator mediates Tier 2 as verifier -> simulator adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
-- The shipped Stim adapter now supports local, Modal, and SSH execution behind the same normalized contract; actual backend readiness is environment-sensitive and is reported by `scripts/run_capability_probes.py`.
+- Tier 2 computational verification is claim-driven through the analysis adapter boundary.
+- The orchestrator mediates Tier 2 as verifier -> analysis adapter -> verifier, persisting both the spec and normalized results under the session artifacts directory.
+- The shipped analysis registry now includes symbolic math, optimization, dynamics, QEC benchmark, MBQC/Graphix, Perceval photonic, Pulser neutral-atom, tqec, and PyZX families.
+- The `qec_decoder_benchmark` family still supports local, Modal, and SSH execution behind the same normalized contract; actual backend readiness is environment-sensitive and is reported by `scripts/run_capability_probes.py`.
 - Tier 3 formal verification is claim-driven and degrades gracefully when unavailable.
 - The shipped Tier 3 path persists formal request, lifecycle, transport, and result artifacts so pending proof work can survive resume boundaries without resubmission.
 - The orchestrator mediates Tier 3 as verifier -> Aristotle proof lifecycle boundary -> verifier, persisting the formal request, lifecycle state, transport trace, and returned results under the session artifacts directory.
 - The repo-local `uv run deep-gvr ...` wrapper now opens one Hermes session preloaded with this skill; the live benchmark runner in `src/deep_gvr/evaluation.py` remains the explicit prompt-role harness.
 - The session store now derives `session_memory_summary.json` and `parallax_manifest.json` from the file-backed checkpoint/evidence log and, when `persist_to_memory` is enabled, upserts the session summary into `~/.hermes/memories/MEMORY.md`.
 - `scripts/setup_mcp.sh --install` is the idempotent operator path for adding `mcp_servers.aristotle` before Tier 3 live runs.
-- `scripts/release_preflight.py --operator` is the release-grade operator check for the installed skill bundle, configured routes, selected Tier 2 backend, and Tier 3 readiness.
+- `scripts/release_preflight.py --operator` is the release-grade operator check for the installed skill bundle, configured routes, analysis-adapter family readiness, selected Tier 2 backend, and Tier 3 readiness.
 - The checked-in publication bundle ships with `auto_improve: false`; only enable it by editing `release/agentskills.publication.json` after human review.
 - Cross-model verification is preferred. The effective route is derived from `models.orchestrator`, `models.generator`, `models.verifier`, and `models.reviser` plus the routing probe.
 - Live eval now reads the same repo-local runtime config as the delegated CLI wrapper when `--config` is provided, so route tuning should happen in one config file instead of through benchmark-only overrides.
@@ -101,7 +102,7 @@ When the user invokes `/deep-gvr`:
 - The same accepted-refutation scoring now also covers simulation-backed direct refutations when the live run clearly disproves the benchmark claim.
 - The accepted-refutation scoring now also recognizes conservative explicit refutations of the 5% circuit-level threshold claim when they clearly reject the claim and ground it in a sub-1% or `~0.6-0.8%` literature range.
 - Live case results now expose `strict_verdict_match`, `verdict_accepted`, `tiers_matched_expected`, `accepted_refutation`, and an explicit `outcome`, and repeated eval runs write a `consistency_report.json` so stability is measured structurally instead of from free-form notes.
-- For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without attached `simulation_results`, the live verifier guidance now defaults to requesting Tier 2.
+- For analysis-testable claims without attached `analysis_results`, the live verifier guidance now defaults to requesting Tier 2.
 - For compact theorem or asymptotic proof claims, the live prompts now avoid unnecessary Tier 2 escalation and force `CANNOT_VERIFY` when the core theorem only has failed Tier 3 proof results.
 - The current remaining blocker for repeated `live-analytical-breadth` on this machine is operational, not repo-local: Hermes is rejecting the active `nous/claude-opus-4-6` provider path with HTTP 401 during generator calls. Retirement slice for the remaining delegated-capability closure: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)
 

@@ -21,10 +21,10 @@ deep-gvr is an autonomous scientific research skill for Hermes Agent that implem
 Given a research question, deep-gvr:
 
 1. **Generates** candidate solutions, hypotheses, or proof sketches grounded in literature and prior results
-2. **Verifies** those candidates through a decoupled adversarial process using up to three verification tiers: analytical (natural language reasoning), empirical (simulation), and formal (Lean 4 theorem proving)
+2. **Verifies** those candidates through a decoupled adversarial process using up to three verification tiers: analytical (natural language reasoning), computational/empirical analysis, and formal (Lean 4 theorem proving)
 3. **Revises or escalates** candidates based on specific flaws identified by the Verifier, iterating until the result passes verification, the system admits failure, or the bounded iteration and branch budget is exhausted
 
-The first target domain is fault-tolerant quantum computing research, specifically photonic fusion-based quantum computing (FBQC) and quantum error correction (QEC). The architecture is domain-agnostic; the domain specialization lives entirely in the prompts and simulator adapters.
+The architecture is domain-agnostic; domain specialization lives in prompts, domain-context cards, and Tier 2 analysis adapters. The current first-wave portfolio is OSS-first and broader than quantum alone: symbolic math, optimization, dynamics, and several quantum analysis families including QEC benchmarking, MBQC/graph-state analysis, photonic linear optics, neutral-atom control, topological-QEC design, and ZX rewrite/equivalence checking.
 
 ### 1.2 What deep-gvr Is Not
 
@@ -38,9 +38,9 @@ The first target domain is fault-tolerant quantum computing research, specifical
 
 2. **Tiered verification, not mandatory formalization.** Not every claim is amenable to formal proof. The Verifier selects the appropriate verification tier based on claim type. Analytical verification (Tier 1) always runs. Empirical (Tier 2) and formal (Tier 3) run when applicable.
 
-3. **Lightweight means no code changes to Hermes.** deep-gvr is a skill bundle. It uses Hermes's existing primitives: `delegate_task` for the GVR roles, `terminal` for simulation, MCP for formal verification, memory for evidence persistence. Nothing is patched or forked.
+3. **Lightweight means no code changes to Hermes.** deep-gvr is a skill bundle. It uses Hermes's existing primitives: `delegate_task` for the GVR roles, `terminal` for analysis execution, MCP for formal verification, memory for evidence persistence. Nothing is patched or forked.
 
-4. **Simulator-agnostic from day one.** The Simulator subagent dispatches through an adapter layer. Swapping Stim for a custom FBQC simulator requires only a new adapter, not a prompt rewrite.
+4. **Analysis-adapter-agnostic from day one.** The Tier 2 Analyzer dispatches through an adapter layer. Swapping Stim/QEC work for symbolic math, optimization, Graphix, Perceval, Pulser, tqec, PyZX, or future OSS families requires a new adapter, not a prompt rewrite.
 
 5. **Admit failure explicitly.** A system that always claims to have solved the problem is worse than useless. The Verifier can output CANNOT VERIFY, and the Orchestrator can halt with a structured failure report. This is a reliability feature, not a limitation.
 
@@ -52,11 +52,11 @@ The first target domain is fault-tolerant quantum computing research, specifical
 |---|---|
 | Gemini Deep Think base model | Any model via OpenRouter / Nous Portal / OpenAI |
 | Single model for all GVR roles | Cross-model verification (different providers for G vs V) |
-| Natural language verification only | Tiered: analytical + empirical (Stim) + formal (Aristotle/OpenGauss) |
+| Natural language verification only | Tiered: analytical + OSS analysis adapters + formal (Aristotle/OpenGauss) |
 | Google Search for literature | Hermes web_search + web_fetch |
 | Proprietary, closed | MIT, open source |
 | Standalone system | Hermes Agent skill (agentskills.io compatible) |
-| Math-focused | Science-focused (initial: quantum computing) |
+| Math-focused | Science-focused (initial: quantum + broader OSS analysis domains) |
 | Inference-time scaling (proprietary) | Model-level reasoning (extended thinking modes where available) |
 
 ---
@@ -562,19 +562,24 @@ class StimAdapter:
         ...
 ```
 
-### 4.4 Future Adapters
+### 4.4 OSS Analysis Families
 
-Custom FBQC simulators plug in through the same interface:
+First-wave OSS analysis families plug in through the same interface:
 
 ```
 adapters/
-  stim_adapter.py          # v0.1 — surface code, stabilizer circuits
-  fbqc_adapter.py          # future — fusion network topology simulators
-  decoder_adapter.py       # future — ML decoder training/evaluation
-  resource_state_adapter.py # future — photonic resource state optimization
+  qec_decoder_benchmark_adapter.py   # Stim/PyMatching-backed QEC analysis
+  symbolic_math_adapter.py           # SymPy-backed symbolic checks
+  optimization_adapter.py            # OR-Tools + SciPy/HiGHS
+  dynamics_adapter.py                # SciPy ODE + QuTiP
+  mbqc_graph_state_adapter.py        # Graphix
+  photonic_linear_optics_adapter.py  # Perceval
+  neutral_atom_control_adapter.py    # Pulser
+  topological_qec_design_adapter.py  # tqec
+  zx_rewrite_verification_adapter.py # PyZX
 ```
 
-Each adapter is a standalone Python module. The Simulator subagent selects the adapter based on the simulation spec's `simulator` field.
+Each adapter is a standalone Python module. The Tier 2 Analyzer selects the adapter based on the analysis spec's `adapter_family` field. Broad ecosystems such as Qiskit, Cirq, and PennyLane are treated as future interoperability targets rather than first-wave adapter-family definitions.
 
 ### 4.5 Backend Dispatch
 
@@ -689,13 +694,13 @@ Each line in the session's `.jsonl` file:
 {
   "iteration": 1,
   "timestamp": "2026-03-26T10:30:00Z",
-  "phase": "generate" | "verify" | "revise" | "simulate",
+  "phase": "generate" | "verify" | "revise" | "analyze",
   "input_summary": "string (truncated input description)",
   "output_summary": "string (truncated output description)",
   "verdict": null | "VERIFIED" | "FLAWS_FOUND" | "CANNOT_VERIFY",
   "tiers_applied": [1] | [1, 2] | [1, 3] | [1, 2, 3],
   "flaws": ["string", ...],
-  "simulation_results": null | { ... },
+  "analysis_results": null | { ... },
   "formal_verification_results": null | { ... },
   "model_used": "claude-sonnet-4-20250514",
   "provider": "openrouter",
@@ -752,12 +757,13 @@ The prompts are the most critical engineering artifact in deep-gvr. Each prompt 
 ```
 [The Orchestrator inserts a brief domain context here, e.g.:]
 
-Domain: Fault-tolerant quantum computing, specifically photonic
-fusion-based quantum computing (FBQC) and quantum error correction (QEC).
+Domain: OSS scientific analysis, with strong support for quantum error correction,
+MBQC/graph-state reasoning, photonic linear optics, neutral-atom control,
+symbolic math, optimization, and dynamics.
 
-Key concepts: surface codes, color codes, Floquet codes, fusion networks,
-photon loss, detector efficiency, MWPM/Union-Find decoding, resource states,
-GHZ states, linear optical Bell measurements, threshold theorems.
+Key concepts: surface codes, graph states, linear optical modes, pulse schedules,
+symbolic identities, optimization objectives, ODE observables, MWPM/Union-Find decoding,
+ZX rewrites, threshold theorems.
 
 Current research frontier: [Orchestrator fills from literature search]
 ```
@@ -854,7 +860,12 @@ deep-gvr/
 │
 ├── domain/
 │   ├── qec_context.md          # QEC domain context for prompt injection
-│   ├── fbqc_context.md         # FBQC domain context for prompt injection
+│   ├── mbqc_context.md         # MBQC / graph-state context
+│   ├── photonic_context.md     # photonic linear-optics context
+│   ├── neutral_atom_context.md # neutral-atom control context
+│   ├── math_context.md         # symbolic-math context
+│   ├── optimization_context.md # optimization context
+│   ├── dynamics_context.md     # dynamics context
 │   └── known_results.md        # Reference: known thresholds, bounds, results
 │
 ├── eval/
@@ -924,10 +935,10 @@ verification:
   tier1:
     enabled: true              # Always true (analytical verification)
   tier2:
-    enabled: true              # Empirical verification via simulation
-    default_simulator: stim
+    enabled: true              # Computational/empirical verification via analysis adapters
+    default_adapter_family: qec_decoder_benchmark
     default_backend: local     # local | modal | ssh
-    timeout_seconds: 3600      # Per-simulation timeout
+    timeout_seconds: 3600      # Per-analysis timeout
     modal:
       cli_bin: modal
       stub_path: adapters/modal_stubs/stim_modal.py
@@ -964,7 +975,7 @@ evidence:
 
 # Domain context
 domain:
-  default: qec                 # qec | fbqc | custom
+  default: qec                 # qec | mbqc | photonic | neutral_atom | math | optimization | dynamics | custom
   context_file: ""             # Path to custom domain context (overrides default)
 ```
 
@@ -1070,7 +1081,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 - [ ] README.md with installation, quickstart, examples
 - [ ] ARCHITECTURE.md (this document, finalized)
 - [ ] eval/ benchmark suite and results
-- [ ] QEC and FBQC domain context files
+- [ ] broader OSS domain context files and adapter families
 - [ ] install.sh, release_preflight.py, and setup_mcp.sh scripts
 - [ ] checked-in publication bundle for agentskills.io-ready release packaging
 - [ ] Publish to agentskills.io
@@ -1084,7 +1095,7 @@ Before using deep-gvr on open research questions, we need confidence that the GV
 
 | # | Question | Decision | Rationale |
 |---|----------|----------|-----------|
-| 1 | Simulator target | Stim first, custom FBQC later | Widely used, well-documented, handles primary use case |
+| 1 | Tier 2 target | Start with Stim/QEC, then expand to a broader OSS analysis portfolio | Keeps the initial path strong while avoiding proprietary or vague domain adapters |
 | 2 | Model providers | OpenRouter + Nous Portal + OpenAI | All available, enables cross-model verification |
 | 3 | Compute backends | Local + Modal + SSH | Covers dev, bursty, and large-scale workloads |
 | 4 | Formalization requirement | Tiered, not mandatory | Most early use cases are analytical/empirical |

@@ -41,10 +41,18 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 ### Backend dispatch
 
 - Question: how should `local`, `modal`, and `ssh` be selected and validated?
-- Implemented baseline: the Stim adapter now executes real simulations through local, Modal, and SSH backends while preserving the same normalized result contract.
+- Implemented baseline: the `qec_decoder_benchmark` analysis family now executes real Stim/PyMatching runs through local, Modal, and SSH backends while preserving the same normalized result contract.
 - Current probe behavior: `scripts/run_capability_probes.py` reports per-environment readiness for all three backends, including local dependency checks, Modal CLI plus stub availability, and SSH/`scp` plus runtime-config readiness.
 - Operator path: use `scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml` after configuring any remote backend so the probe details reflect the actual Modal and SSH settings you intend to use.
 - Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH readiness details.
+
+### Analysis adapter families
+
+- Question: are the OSS analysis families installed locally and ready for operator use?
+- Implemented baseline: `scripts/run_capability_probes.py` now reports `analysis_adapter_families` across symbolic math, optimization, dynamics, QEC benchmarking, MBQC/Graphix, Perceval photonic, Pulser neutral-atom, tqec, and PyZX families.
+- Current probe behavior: the probe reports `ready` only when every supported family has its expected local Python dependency set. Missing packages produce a structured family-by-family readiness map instead of silent non-support.
+- Operator path: `scripts/release_preflight.py --operator` now surfaces the same readiness as an `analysis_adapter_families` check, blocking only when the configured default adapter family itself is unavailable and otherwise returning attention-level guidance for the missing optional families.
+- Preferred outcome: operators can see exactly which OSS analysis families are usable before requesting those analyses live.
 
 ## Repository Support
 
@@ -53,6 +61,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - `src/deep_gvr/formal.py` contains the Hermes-MCP Tier 3 transport boundary and config preflight helpers.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
 - `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
+- `src/deep_gvr/release_surface.py` lifts analysis-adapter readiness into the release preflight report so missing dependencies are visible at install/operator time.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.
 - `src/deep_gvr/evidence.py` derives Hermes memory summaries and Parallax-compatible manifests from the file-backed session artifacts.
 - `plans/01-capability-probes.md` is the execution plan for deepening these probes during implementation.

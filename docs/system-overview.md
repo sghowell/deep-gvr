@@ -34,12 +34,13 @@
 ## Verification Model
 
 - Tier 1 analytical verification always runs
-- Tier 2 empirical verification is triggered by quantitative claims
+- Tier 2 computational analysis is triggered by claims that require symbolic, optimization, dynamics, simulation, or other executable checks
 - Tier 3 formal verification is triggered by formalizable claims
 - Repeated verification failure can now escalate into bounded alternative-approach or decomposition branches when enabled by config
 - Any failed applicable tier is a failed candidate
 - Unavailable optional tiers must produce explicit caveats or `CANNOT_VERIFY`
-- The Tier 2 backend surface uses the Stim adapter with PyMatching decoding across local, Modal, and SSH execution
+- The Tier 2 adapter surface is registry-driven and currently includes symbolic math, optimization, dynamics, QEC benchmarking, MBQC graph-state, photonic linear-optics, neutral-atom control, topological-QEC design, and ZX rewrite families
+- The `qec_decoder_benchmark` family uses the Stim adapter with PyMatching decoding across local, Modal, and SSH execution
 - The Tier 3 baseline persists proof submission, polling, and resume state through the orchestrator, using Aristotle proof handles plus recorded transport artifacts when the environment is configured
 
 ## Early Defaults
@@ -53,6 +54,7 @@
 - Effective routing is derived deterministically from config plus probe state and recorded in evidence artifacts
 - Release readiness is tracked with a deterministic benchmark suite and a committed baseline report
 - Prompt quality and mediation behavior can be exercised with a separate live benchmark mode that records timestamped run artifacts
+- The deterministic benchmark suite now includes `core-science`, `photonic-mbqc`, `quantum-oss`, and `analysis-full` subsets in addition to the existing live subsets
 - The shipped CLI/skill path now uses Hermes delegated orchestration, while the benchmark runner keeps the explicit prompt-role harness for isolated evaluation
 - The shipped release surface also includes a structural/operator preflight split, so CI can validate packaging without pretending to have a live Hermes environment
 - The live benchmark runner supports named subsets such as `live-expansion` for representative multi-case sweeps plus `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` for broader coverage
@@ -69,7 +71,7 @@
 - The live role timeout is role-aware: verifier gets a higher floor, evidence-bearing verifier rechecks get a larger follow-up floor, and Tier 3 transport keeps its own proof timeout
 - Live Tier 2 mediation normalizes common verifier aliases to the canonical Stim `depolarizing` noise-model string and clamps live requests to a safe execution budget
 - Live benchmark case reports now separate `direct_match`, `accepted_refutation`, `tier_mismatch`, `verdict_mismatch`, and `execution_error` outcomes instead of burying those distinctions in notes
-- For simulation-testable quantitative claims that name concrete distances, error rates, decoders, or threshold behavior without `simulation_results`, the live verifier guidance now defaults to Tier 2 rather than letting Tier 1 plausibility settle the case
+- For analysis-testable claims without `analysis_results`, the live verifier guidance now defaults to Tier 2 rather than letting Tier 1 plausibility settle the case
 - Live benchmark scoring accepts a verified direct refutation as success for known-incorrect cases
 - Live benchmark scoring now also accepts simulation-backed direct refutations when they clearly reject the benchmark claim with the expected tiers
 - Known-incorrect accepted-refutation scoring now recognizes conservative explicit 5% threshold refutations framed in sub-1% or `~0.6-0.8%` literature terms

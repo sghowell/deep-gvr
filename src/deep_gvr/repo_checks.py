@@ -64,13 +64,12 @@ REQUIRED_PROMPT_MARKERS = {
     "verifier.md": ["## Verification Report", "### Verdict:", "### Tier 1: Analytical Verification"],
     "reviser.md": ["### Revision Notes", "candidate solution", "specific flaws"],
     "formalizer.md": ["## Formal Verification Results", "Aristotle MCP", "Do not fabricate proof success"],
-    "simulator.md": ["python adapters/<simulator>_adapter.py", "confidence assessment", "If the simulation fails"],
+    "simulator.md": ["analysis adapter", "confidence assessment", "If the analysis fails"],
 }
 
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
-    "domain-adapter-expansion": "33-domain-adapter-expansion.md",
 }
 
 ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_external"}
@@ -170,6 +169,8 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "verification_report.template.json": "verification_report.schema.json",
         "release_preflight.template.json": "release_preflight.schema.json",
         "release_publication.template.json": "release_publication.schema.json",
+        "analysis_spec.template.json": "analysis_spec.schema.json",
+        "analysis_results.template.json": "analysis_results.schema.json",
         "sim_spec.template.json": "sim_spec.schema.json",
         "sim_results.template.json": "sim_results.schema.json",
         "evidence_record.template.json": "evidence.schema.json",

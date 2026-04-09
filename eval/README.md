@@ -11,7 +11,7 @@ The evaluation directory contains both the deterministic readiness benchmark and
 
 ## Files
 
-- `known_problems.json`: benchmark corpus with expected verdicts, expected tiers, and one orchestration-required fan-out case
+- `known_problems.json`: benchmark corpus with expected verdicts, expected tiers, core-science analysis cases, OSS quantum analysis cases, and one orchestration-required fan-out case
 - `run_eval.py`: deterministic and live benchmark runner
 - `results/baseline_results.json`: committed release baseline generated from the runner
 - `results/live/<run_id>/report.json`: live benchmark report for one prompt-driven run
@@ -31,6 +31,8 @@ For live prompt execution, use:
 
 ```bash
 uv run python eval/run_eval.py --list-subsets
+uv run python eval/run_eval.py --routing-probe fallback --subset core-science --output eval/results/core-science.json
+uv run python eval/run_eval.py --routing-probe fallback --subset quantum-oss --output eval/results/quantum-oss.json
 uv run python eval/run_eval.py --mode live --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --case-id known-correct-surface-threshold
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --routing-probe fallback --subset live-expansion --prompt-profile compact
@@ -41,7 +43,7 @@ uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.ya
 
 When `--output` is omitted in live mode, the runner writes `report.json` into the timestamped live output directory automatically. Live runs never overwrite `results/baseline_results.json` unless `--allow-baseline-overwrite` is passed explicitly.
 When `--repeat` is greater than `1`, the runner writes `consistency_report.json` at the chosen output root and stores each individual run under `runs/run-###/report.json`.
-The current representative gate is the repeated `live-expansion` sweep above; plan 21 recorded a stable `2/2` result at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`. The broader `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` subsets are coverage sweeps, not the fast repeated gate.
+The current representative gate is the repeated `live-expansion` sweep above; plan 21 recorded a stable `2/2` result at `/tmp/deep-gvr-live-suite-hardening-final/consistency_report.json`. The broader `core-science`, `photonic-mbqc`, `quantum-oss`, `analysis-full`, `live-analytical-breadth`, `live-escalation-breadth`, and `live-full` subsets are coverage sweeps rather than the fast repeated gate.
 
 ## Live Mode Notes
 
@@ -56,7 +58,7 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 - When `--toolsets` is omitted, live generator/verifier/reviser calls use a constrained default Hermes tool surface so they do not inherit the full interactive CLI tool policy by default.
 - Live Tier 2 mediation normalizes common verifier aliases such as `uniform_depolarizing` and `iid_depolarizing` to the canonical Stim noise-model string `depolarizing`.
 - Live Tier 2 requests are clamped to the repo-local safe budget of `shots_per_point <= 100000` and `max_parallel <= 4`.
-- For simulation-testable claims that name concrete distances, error rates, decoders, or threshold behavior and do not already include `simulation_results`, the live verifier guidance now defaults to requesting Tier 2 instead of treating Tier 1 plausibility as enough.
+- For analysis-testable claims that do not already include `analysis_results`, the live verifier guidance now defaults to requesting Tier 2 instead of treating Tier 1 plausibility as enough.
 - Before expecting live Tier 3 cases to run through Aristotle, use `bash scripts/setup_mcp.sh --install --check` to activate and verify the local Hermes MCP config.
 - When `~/.hermes/config.yaml` defines `mcp_servers.aristotle`, live Tier 3 requests are also dispatched through `hermes chat` plus the configured Aristotle MCP tools.
 - `--command-timeout-seconds` sets the base live role timeout. The verifier gets a higher repo-local floor, while Tier 3 formal transport keeps using the configured proof timeout instead of inheriting the shorter live role bound.
@@ -75,8 +77,8 @@ The current representative gate is the repeated `live-expansion` sweep above; pl
 
 ## Initial Categories
 
-- known-correct claims that should verify
-- known-incorrect claims that should fail verification
-- simulation-triggering claims that should request Tier 2
+- known-correct claims that should verify at Tier 1
+- known-incorrect claims that should fail verification at Tier 1
+- analysis-required claims that should request Tier 2
 - formalizable claims that should request Tier 3 when enabled
 - orchestration-required claims that should force bounded alternative-approach fan-out after repeated failure

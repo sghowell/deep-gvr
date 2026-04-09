@@ -10,8 +10,10 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
 - `CandidateSolution`: generator or reviser output
 - `VerificationReport`: verifier output with tiered results
-- `SimSpec`: normalized simulation request
-- `SimResults`: normalized simulation output
+- `AnalysisSpec`: normalized Tier 2 analysis request
+- `AnalysisResults`: normalized Tier 2 analysis output
+- `SimSpec`: internal Stim/PyMatching request used inside the `qec_decoder_benchmark` family
+- `SimResults`: internal Stim/PyMatching output used inside the `qec_decoder_benchmark` family
 - `FormalVerificationRequest`: orchestrator-mediated Tier 3 request to the formal backend
 - `FormalProofLifecycle`: persisted Tier 3 proof-handle state for submission, polling, and resume
 - `EvidenceRecord`: append-only record for one GVR phase transition, including branch identity, explicit escalation actions, the effective provider/model path, routing mode, and any fallback temperature
@@ -33,7 +35,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `domain/*.md`: concise domain context cards
 - `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
 - `scripts/release_preflight.py`: operator-facing release preflight helper for install, config, provider, backend, and Tier 3 readiness
-- `eval/known_problems.json`: deterministic release benchmark corpus, including the orchestration-required fan-out case
+- `eval/known_problems.json`: deterministic release benchmark corpus, including core-science, OSS quantum analysis, and orchestration-required cases
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report
 - `eval/results/live/<run_id>/cases/<case_id>/candidate_solution.json`: live generator or reviser output for one benchmark case
@@ -46,7 +48,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/session_memory_summary.json`: derived structured summary used for Hermes memory persistence
 - `sessions/<session_id>/artifacts/parallax_manifest.json`: Parallax-compatible manifest for the session evidence set
-- `sessions/<session_id>/artifacts/iteration_<n>_simulation_*.json`: persisted Tier 2 specs and normalized results
+- `sessions/<session_id>/artifacts/iteration_<n>_analysis_*.json`: persisted Tier 2 specs and normalized results
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_request.json`: persisted Tier 3 request routed to the formal backend
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_lifecycle.json`: persisted Tier 3 proof-handle state for pending or completed proof work
 - `sessions/<session_id>/artifacts/iteration_<n>_formal_transport.json`: persisted Tier 3 transport transcript and Hermes MCP preflight details
@@ -60,3 +62,4 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - Sample artifacts should be realistic enough to support smoke tests and contract review.
 - Prompt changes that affect artifacts must update schemas and fixtures in the same branch.
 - New public artifacts, including resume state, must have schema, template, and tests in the same branch.
+- Tier 2 public contracts must use the generalized analysis vocabulary even when a specific adapter family internally wraps a narrower simulator contract.
