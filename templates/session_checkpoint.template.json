@@ -8,6 +8,20 @@
   "current_iteration": 1,
   "max_iterations": 3,
   "next_phase": "revise",
+  "active_branch_id": "branch_1",
+  "branches": [
+    {
+      "branch_id": "branch_1",
+      "strategy": "primary",
+      "status": "active",
+      "rationale": "Primary research path derived directly from the original problem.",
+      "parent_branch_id": null,
+      "created_iteration": 0,
+      "activated_iteration": 0,
+      "closed_iteration": null,
+      "failure_count": 1
+    }
+  ],
   "literature_context": [
     "Fowler et al. 2012 establishes a sub-1% threshold regime for surface-code style settings.",
     "Dennis et al. 2002 provides the threshold-theorem context for topological codes."

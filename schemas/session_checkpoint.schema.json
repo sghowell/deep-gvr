@@ -10,6 +10,8 @@
     "current_iteration",
     "max_iterations",
     "next_phase",
+    "active_branch_id",
+    "branches",
     "literature_context",
     "candidate",
     "verification_report",
@@ -34,6 +36,43 @@
     "current_iteration": { "type": "integer" },
     "max_iterations": { "type": "integer" },
     "next_phase": { "type": "string", "minLength": 1 },
+    "active_branch_id": { "type": "string", "minLength": 1 },
+    "branches": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "branch_id",
+          "strategy",
+          "status",
+          "rationale",
+          "parent_branch_id",
+          "created_iteration",
+          "activated_iteration",
+          "closed_iteration",
+          "failure_count"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "branch_id": { "type": "string", "minLength": 1 },
+          "strategy": {
+            "type": "string",
+            "enum": ["primary", "alternative_approach", "decomposition"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "queued", "completed", "failed", "abandoned"]
+          },
+          "rationale": { "type": "string", "minLength": 1 },
+          "parent_branch_id": { "type": ["string", "null"] },
+          "created_iteration": { "type": "integer" },
+          "activated_iteration": { "type": ["integer", "null"] },
+          "closed_iteration": { "type": ["integer", "null"] },
+          "failure_count": { "type": "integer" }
+        }
+      }
+    },
     "literature_context": { "type": "array", "items": { "type": "string" } },
     "candidate": { "type": ["object", "null"] },
     "verification_report": { "type": ["object", "null"] },

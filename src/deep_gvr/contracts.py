@@ -52,6 +52,26 @@ class RoutingMode(StrEnum):
     TEMPERATURE_DECORRELATION = "temperature_decorrelation"
 
 
+class BranchStrategy(StrEnum):
+    PRIMARY = "primary"
+    ALTERNATIVE_APPROACH = "alternative_approach"
+    DECOMPOSITION = "decomposition"
+
+
+class BranchStatus(StrEnum):
+    ACTIVE = "active"
+    QUEUED = "queued"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    ABANDONED = "abandoned"
+
+
+class EscalationAction(StrEnum):
+    FANOUT = "fanout"
+    SWITCH_BRANCH = "switch_branch"
+    HALT = "halt"
+
+
 class ProofStatus(StrEnum):
     REQUESTED = "requested"
     PENDING = "pending"
@@ -554,10 +574,46 @@ class SimResults:
 
 
 @dataclass(slots=True)
+class HypothesisBranch:
+    branch_id: str
+    strategy: BranchStrategy
+    status: BranchStatus
+    rationale: str
+    parent_branch_id: str | None = None
+    created_iteration: int = 0
+    activated_iteration: int | None = None
+    closed_iteration: int | None = None
+    failure_count: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "HypothesisBranch":
+        return cls(
+            branch_id=data["branch_id"],
+            strategy=BranchStrategy(data.get("strategy", BranchStrategy.PRIMARY.value)),
+            status=BranchStatus(data.get("status", BranchStatus.ACTIVE.value)),
+            rationale=data.get("rationale", "Primary research path derived directly from the original problem."),
+            parent_branch_id=data.get("parent_branch_id"),
+            created_iteration=int(data.get("created_iteration", 0)),
+            activated_iteration=(
+                int(data["activated_iteration"]) if data.get("activated_iteration") is not None else None
+            ),
+            closed_iteration=int(data["closed_iteration"]) if data.get("closed_iteration") is not None else None,
+            failure_count=int(data.get("failure_count", 0)),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class EvidenceRecord:
     iteration: int
     timestamp: str
     phase: str
+    branch_id: str
+    branch_strategy: BranchStrategy
+    branch_parent_id: str | None
+    branch_rationale: str
     input_summary: str
     output_summary: str
     verdict: VerificationVerdict | None
@@ -573,6 +629,8 @@ class EvidenceRecord:
     tokens_in: int
     tokens_out: int
     duration_seconds: float
+    escalation_action: EscalationAction | None
+    queued_branch_ids: list[str]
     artifacts: list[str]
 
     @classmethod
@@ -582,6 +640,13 @@ class EvidenceRecord:
             iteration=int(data["iteration"]),
             timestamp=data["timestamp"],
             phase=data["phase"],
+            branch_id=data.get("branch_id", "branch_1"),
+            branch_strategy=BranchStrategy(data.get("branch_strategy", BranchStrategy.PRIMARY.value)),
+            branch_parent_id=data.get("branch_parent_id"),
+            branch_rationale=data.get(
+                "branch_rationale",
+                "Primary research path derived directly from the original problem.",
+            ),
             input_summary=data["input_summary"],
             output_summary=data["output_summary"],
             verdict=VerificationVerdict(verdict) if verdict else None,
@@ -599,6 +664,10 @@ class EvidenceRecord:
             tokens_in=int(data.get("tokens_in", 0)),
             tokens_out=int(data.get("tokens_out", 0)),
             duration_seconds=float(data.get("duration_seconds", 0.0)),
+            escalation_action=(
+                EscalationAction(data["escalation_action"]) if data.get("escalation_action") is not None else None
+            ),
+            queued_branch_ids=list(data.get("queued_branch_ids", [])),
             artifacts=list(data.get("artifacts", [])),
         )
 
@@ -635,6 +704,8 @@ class SessionCheckpoint:
     current_iteration: int
     max_iterations: int
     next_phase: str
+    active_branch_id: str
+    branches: list[HypothesisBranch]
     literature_context: list[str]
     candidate: CandidateSolution | None
     verification_report: VerificationReport | None
@@ -652,6 +723,35 @@ class SessionCheckpoint:
     def from_dict(cls, data: dict[str, Any]) -> "SessionCheckpoint":
         candidate = data.get("candidate")
         verification_report = data.get("verification_report")
+        verdict_history = [VerificationHistoryEntry.from_dict(item) for item in data.get("verdict_history", [])]
+        active_branch_id = data.get("active_branch_id", "branch_1")
+        branches_payload = data.get("branches")
+        if branches_payload:
+            branches = [HypothesisBranch.from_dict(item) for item in branches_payload]
+        else:
+            synthesized_status = BranchStatus.ACTIVE
+            if data.get("status") == "completed":
+                synthesized_status = BranchStatus.COMPLETED
+            elif data.get("status") in {"failed", "cannot_verify"}:
+                synthesized_status = BranchStatus.FAILED
+            branches = [
+                HypothesisBranch(
+                    branch_id=active_branch_id,
+                    strategy=BranchStrategy.PRIMARY,
+                    status=synthesized_status,
+                    rationale="Primary research path derived directly from the original problem.",
+                    created_iteration=0,
+                    activated_iteration=0,
+                    closed_iteration=(
+                        int(data["current_iteration"])
+                        if synthesized_status in {BranchStatus.COMPLETED, BranchStatus.FAILED}
+                        else None
+                    ),
+                    failure_count=sum(
+                        1 for item in verdict_history if item.verdict is VerificationVerdict.FLAWS_FOUND
+                    ),
+                )
+            ]
         return cls(
             session_id=data["session_id"],
             problem=data["problem"],
@@ -662,10 +762,12 @@ class SessionCheckpoint:
             current_iteration=int(data["current_iteration"]),
             max_iterations=int(data["max_iterations"]),
             next_phase=data["next_phase"],
+            active_branch_id=active_branch_id,
+            branches=branches,
             literature_context=list(data.get("literature_context", [])),
             candidate=CandidateSolution.from_dict(candidate) if candidate else None,
             verification_report=VerificationReport.from_dict(verification_report) if verification_report else None,
-            verdict_history=[VerificationHistoryEntry.from_dict(item) for item in data.get("verdict_history", [])],
+            verdict_history=verdict_history,
             result_summary=data["result_summary"],
             final_verdict=data["final_verdict"],
             evidence_file=data["evidence_file"],

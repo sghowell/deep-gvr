@@ -10,12 +10,16 @@ from typing import Callable, Protocol
 from uuid import uuid4
 
 from .contracts import (
-    CandidateSolution,
     Backend,
+    BranchStatus,
+    BranchStrategy,
     CapabilityProbeResult,
+    CandidateSolution,
     DeepGvrConfig,
     EvidenceRecord,
+    EscalationAction,
     FormalProofLifecycle,
+    HypothesisBranch,
     ProofStatus,
     RoutingMode,
     SessionCheckpoint,
@@ -77,6 +81,11 @@ class GenerationRequest:
     literature_context: list[str]
     prior_verdicts: list[VerificationHistoryEntry]
     route: EffectiveModelRoute
+    branch_id: str = "branch_1"
+    branch_strategy: BranchStrategy = BranchStrategy.PRIMARY
+    branch_parent_id: str | None = None
+    branch_rationale: str = "Primary research path derived directly from the original problem."
+    trigger_flaws: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -96,6 +105,10 @@ class RevisionRequest:
     candidate: CandidateSolution
     verification_report: VerificationReport
     route: EffectiveModelRoute
+    branch_id: str = "branch_1"
+    branch_strategy: BranchStrategy = BranchStrategy.PRIMARY
+    branch_parent_id: str | None = None
+    branch_rationale: str = "Primary research path derived directly from the original problem."
 
 
 class Generator(Protocol):
@@ -202,6 +215,17 @@ class SessionStore:
             current_iteration=0,
             max_iterations=max_iterations,
             next_phase="generate",
+            active_branch_id="branch_1",
+            branches=[
+                HypothesisBranch(
+                    branch_id="branch_1",
+                    strategy=BranchStrategy.PRIMARY,
+                    status=BranchStatus.ACTIVE,
+                    rationale="Primary research path derived directly from the original problem.",
+                    created_iteration=0,
+                    activated_iteration=0,
+                )
+            ],
             literature_context=list(literature_context),
             candidate=None,
             verification_report=None,
@@ -423,7 +447,121 @@ class Tier1LoopRunner:
             final_report=checkpoint.verification_report,
         )
 
+    def _active_branch(self, checkpoint: SessionCheckpoint) -> HypothesisBranch:
+        for branch in checkpoint.branches:
+            if branch.branch_id == checkpoint.active_branch_id:
+                return branch
+        raise ValueError(f"Session {checkpoint.session_id!r} references unknown branch {checkpoint.active_branch_id!r}.")
+
+    def _queued_branches(self, checkpoint: SessionCheckpoint) -> list[HypothesisBranch]:
+        return [branch for branch in checkpoint.branches if branch.status is BranchStatus.QUEUED]
+
+    def _available_fanout_slots(self, checkpoint: SessionCheckpoint) -> int:
+        created_alternatives = sum(1 for branch in checkpoint.branches if branch.strategy is not BranchStrategy.PRIMARY)
+        remaining_alternative_slots = max(0, self.config.loop.max_alternatives - created_alternatives)
+        remaining_iteration_slots = max(0, checkpoint.max_iterations - checkpoint.current_iteration)
+        return min(remaining_alternative_slots, remaining_iteration_slots)
+
+    def _spawn_fanout_branches(
+        self,
+        checkpoint: SessionCheckpoint,
+        *,
+        parent_branch: HypothesisBranch,
+        report: VerificationReport,
+    ) -> list[HypothesisBranch]:
+        if not self.config.loop.alternative_approach:
+            return []
+
+        slots = self._available_fanout_slots(checkpoint)
+        if slots <= 0:
+            return []
+
+        strategy_specs: list[tuple[BranchStrategy, str]] = []
+        flaw_summary = self._flaw_summary(report.flaws)
+        strategy_specs.append(
+            (
+                BranchStrategy.ALTERNATIVE_APPROACH,
+                f"Try a materially different approach that addresses: {flaw_summary}",
+            )
+        )
+        while len(strategy_specs) < slots:
+            strategy_specs.append(
+                (
+                    BranchStrategy.DECOMPOSITION,
+                    "Decompose the problem into smaller claims, keep only defensible subclaims, "
+                    f"and rebuild the answer around: {flaw_summary}",
+                )
+            )
+
+        next_branch_number = len(checkpoint.branches) + 1
+        spawned: list[HypothesisBranch] = []
+        for offset, (strategy, rationale) in enumerate(strategy_specs):
+            branch = HypothesisBranch(
+                branch_id=f"branch_{next_branch_number + offset}",
+                strategy=strategy,
+                status=BranchStatus.QUEUED,
+                rationale=rationale,
+                parent_branch_id=parent_branch.branch_id,
+                created_iteration=checkpoint.current_iteration,
+            )
+            checkpoint.branches.append(branch)
+            spawned.append(branch)
+        return spawned
+
+    def _activate_next_branch(self, checkpoint: SessionCheckpoint) -> HypothesisBranch | None:
+        queued = self._queued_branches(checkpoint)
+        if not queued:
+            return None
+        next_branch = queued[0]
+        next_branch.status = BranchStatus.ACTIVE
+        if next_branch.activated_iteration is None:
+            next_branch.activated_iteration = checkpoint.current_iteration
+        checkpoint.active_branch_id = next_branch.branch_id
+        checkpoint.candidate = None
+        checkpoint.verification_report = None
+        checkpoint.formal_lifecycle = None
+        return next_branch
+
+    def _abandon_inactive_branches(self, checkpoint: SessionCheckpoint, *, keep_branch_id: str) -> None:
+        for branch in checkpoint.branches:
+            if branch.branch_id == keep_branch_id:
+                continue
+            if branch.status in {BranchStatus.QUEUED, BranchStatus.ACTIVE}:
+                branch.status = BranchStatus.ABANDONED
+                branch.closed_iteration = checkpoint.current_iteration
+
+    def _record_escalation(
+        self,
+        checkpoint: SessionCheckpoint,
+        *,
+        branch: HypothesisBranch,
+        action: EscalationAction,
+        flaws: list[str],
+        output_summary: str,
+        queued_branch_ids: list[str],
+    ) -> None:
+        self.session_store.append_evidence(
+            checkpoint.session_id,
+            self._evidence_record(
+                checkpoint=checkpoint,
+                phase="escalate",
+                verdict=None,
+                tiers_applied=[],
+                flaws=list(flaws),
+                input_summary=(
+                    f"Escalation triggered after verifier feedback on {branch.branch_id}: "
+                    f"{self._flaw_summary(flaws)}"
+                ),
+                output_summary=output_summary,
+                route=self.routing_plan.orchestrator,
+                branch=branch,
+                escalation_action=action,
+                queued_branch_ids=queued_branch_ids,
+            ),
+        )
+
     def _generate(self, checkpoint: SessionCheckpoint, generator: Generator) -> SessionCheckpoint:
+        branch = self._active_branch(checkpoint)
         request = GenerationRequest(
             session_id=checkpoint.session_id,
             problem=checkpoint.problem,
@@ -431,13 +569,21 @@ class Tier1LoopRunner:
             literature_context=list(checkpoint.literature_context),
             prior_verdicts=list(checkpoint.verdict_history),
             route=self.routing_plan.generator,
+            branch_id=branch.branch_id,
+            branch_strategy=branch.strategy,
+            branch_parent_id=branch.parent_branch_id,
+            branch_rationale=branch.rationale,
+            trigger_flaws=tuple(checkpoint.verification_report.flaws) if checkpoint.verification_report is not None else (),
         )
         candidate = generator(request)
         checkpoint.current_iteration += 1
         checkpoint.candidate = candidate
         checkpoint.verification_report = None
         checkpoint.last_updated = self._timestamp()
-        checkpoint.result_summary = f"Generated candidate {checkpoint.current_iteration} for Tier 1 verification."
+        checkpoint.result_summary = (
+            f"Generated candidate {checkpoint.current_iteration} on {branch.branch_id} "
+            f"({branch.strategy.value}) for Tier 1 verification."
+        )
         checkpoint.next_phase = "verify"
         self.session_store.append_evidence(
             checkpoint.session_id,
@@ -447,9 +593,13 @@ class Tier1LoopRunner:
                 verdict=None,
                 tiers_applied=[],
                 flaws=[],
-                input_summary=f"Research problem: {checkpoint.problem}",
+                input_summary=(
+                    f"Research problem: {checkpoint.problem} "
+                    f"[branch={branch.branch_id} strategy={branch.strategy.value}]"
+                ),
                 output_summary=f"Hypothesis: {candidate.hypothesis}",
                 route=request.route,
+                branch=branch,
             ),
         )
         self.session_store.save_checkpoint(checkpoint)
@@ -573,6 +723,7 @@ class Tier1LoopRunner:
             if formal_results is not None:
                 self._attach_formal_results(report, formal_results)
 
+        active_branch = self._active_branch(checkpoint)
         checkpoint.verification_report = report
         checkpoint.formal_lifecycle = None
         checkpoint.verdict_history.append(
@@ -597,32 +748,105 @@ class Tier1LoopRunner:
                 simulation_results=simulation_results,
                 formal_results=formal_results,
                 route=request.route,
+                branch=active_branch,
             ),
         )
 
         if report.verdict is VerificationVerdict.VERIFIED:
+            active_branch.status = BranchStatus.COMPLETED
+            active_branch.closed_iteration = checkpoint.current_iteration
+            self._abandon_inactive_branches(checkpoint, keep_branch_id=active_branch.branch_id)
             checkpoint.status = "completed"
             checkpoint.result_summary = (
-                f"Verification passed on candidate {checkpoint.current_iteration}."
+                f"Verification passed on candidate {checkpoint.current_iteration} "
+                f"from {active_branch.branch_id}."
             )
             checkpoint.next_phase = "complete"
         elif report.verdict is VerificationVerdict.CANNOT_VERIFY:
+            active_branch.status = BranchStatus.FAILED
+            active_branch.closed_iteration = checkpoint.current_iteration
             checkpoint.status = "cannot_verify"
             checkpoint.result_summary = (
                 "Verification could not complete: "
                 f"{report.cannot_verify_reason or 'no blocker summary was provided.'}"
             )
             checkpoint.next_phase = "complete"
-        elif checkpoint.current_iteration >= checkpoint.max_iterations:
-            checkpoint.status = "failed"
-            checkpoint.result_summary = (
-                f"Iteration budget exhausted after {len(checkpoint.verdict_history)} verification attempt(s)."
-            )
-            checkpoint.next_phase = "complete"
         else:
-            checkpoint.status = "in_progress"
-            checkpoint.result_summary = f"Verifier found flaws in candidate {checkpoint.current_iteration}; revision required."
-            checkpoint.next_phase = "revise"
+            active_branch.failure_count += 1
+            if checkpoint.current_iteration >= checkpoint.max_iterations:
+                active_branch.status = BranchStatus.FAILED
+                active_branch.closed_iteration = checkpoint.current_iteration
+                checkpoint.status = "failed"
+                checkpoint.result_summary = (
+                    f"Iteration budget exhausted after {len(checkpoint.verdict_history)} verification attempt(s)."
+                )
+                checkpoint.next_phase = "complete"
+                self._record_escalation(
+                    checkpoint,
+                    branch=active_branch,
+                    action=EscalationAction.HALT,
+                    flaws=report.flaws,
+                    output_summary="Halting after iteration budget exhaustion.",
+                    queued_branch_ids=[branch.branch_id for branch in self._queued_branches(checkpoint)],
+                )
+            elif active_branch.failure_count == 1:
+                checkpoint.status = "in_progress"
+                checkpoint.result_summary = (
+                    f"Verifier found flaws in candidate {checkpoint.current_iteration} on "
+                    f"{active_branch.branch_id}; revision required."
+                )
+                checkpoint.next_phase = "revise"
+            else:
+                queued_before = self._queued_branches(checkpoint)
+                active_branch.status = BranchStatus.FAILED
+                active_branch.closed_iteration = checkpoint.current_iteration
+                next_branch = None
+                escalation_action = EscalationAction.SWITCH_BRANCH
+                output_summary = ""
+                if queued_before:
+                    next_branch = self._activate_next_branch(checkpoint)
+                    output_summary = (
+                        f"Switched from exhausted {active_branch.branch_id} to queued "
+                        f"{next_branch.branch_id} ({next_branch.strategy.value})."
+                    )
+                else:
+                    spawned = self._spawn_fanout_branches(checkpoint, parent_branch=active_branch, report=report)
+                    if spawned:
+                        next_branch = self._activate_next_branch(checkpoint)
+                        escalation_action = EscalationAction.FANOUT
+                        spawned_ids = ", ".join(branch.branch_id for branch in spawned)
+                        output_summary = (
+                            f"Spawned fan-out branches [{spawned_ids}] after repeated failure on "
+                            f"{active_branch.branch_id}; continuing with {next_branch.branch_id} "
+                            f"({next_branch.strategy.value})."
+                        )
+                    else:
+                        escalation_action = EscalationAction.HALT
+                        checkpoint.status = "failed"
+                        checkpoint.result_summary = (
+                            "Repeated verification failure exhausted the configured alternative-approach budget."
+                        )
+                        checkpoint.next_phase = "complete"
+                        output_summary = (
+                            f"Halting after repeated failure on {active_branch.branch_id}; no alternative "
+                            "or decomposition branches remain within budget."
+                        )
+
+                self._record_escalation(
+                    checkpoint,
+                    branch=active_branch,
+                    action=escalation_action,
+                    flaws=report.flaws,
+                    output_summary=output_summary,
+                    queued_branch_ids=[branch.branch_id for branch in self._queued_branches(checkpoint)],
+                )
+                if next_branch is not None:
+                    checkpoint.status = "in_progress"
+                    checkpoint.result_summary = (
+                        f"Escalated from {active_branch.branch_id} to {next_branch.branch_id} "
+                        f"({next_branch.strategy.value})."
+                    )
+                    checkpoint.next_phase = "generate"
 
         self.session_store.save_checkpoint(checkpoint)
         return checkpoint
@@ -630,6 +854,7 @@ class Tier1LoopRunner:
     def _revise(self, checkpoint: SessionCheckpoint, reviser: Reviser) -> SessionCheckpoint:
         candidate = self._require_candidate(checkpoint)
         report = self._require_report(checkpoint)
+        branch = self._active_branch(checkpoint)
         next_iteration = checkpoint.current_iteration + 1
         request = RevisionRequest(
             session_id=checkpoint.session_id,
@@ -637,6 +862,10 @@ class Tier1LoopRunner:
             candidate=candidate,
             verification_report=report,
             route=self.routing_plan.reviser,
+            branch_id=branch.branch_id,
+            branch_strategy=branch.strategy,
+            branch_parent_id=branch.parent_branch_id,
+            branch_rationale=branch.rationale,
         )
         revised_candidate = reviser(request)
         checkpoint.current_iteration = next_iteration
@@ -644,7 +873,9 @@ class Tier1LoopRunner:
         checkpoint.verification_report = None
         checkpoint.formal_lifecycle = None
         checkpoint.last_updated = self._timestamp()
-        checkpoint.result_summary = f"Revised candidate {checkpoint.current_iteration} from verifier feedback."
+        checkpoint.result_summary = (
+            f"Revised candidate {checkpoint.current_iteration} on {branch.branch_id} from verifier feedback."
+        )
         checkpoint.next_phase = "verify"
         self.session_store.append_evidence(
             checkpoint.session_id,
@@ -657,6 +888,7 @@ class Tier1LoopRunner:
                 input_summary=f"Applying verifier flaws: {self._flaw_summary(report.flaws)}",
                 output_summary=f"Revised hypothesis: {revised_candidate.hypothesis}",
                 route=request.route,
+                branch=branch,
             ),
         )
         self.session_store.save_checkpoint(checkpoint)
@@ -675,12 +907,20 @@ class Tier1LoopRunner:
         simulation_results: SimResults | None = None,
         formal_results: list[Tier3ClaimResult] | None = None,
         route: EffectiveModelRoute | None = None,
+        branch: HypothesisBranch | None = None,
+        escalation_action: EscalationAction | None = None,
+        queued_branch_ids: list[str] | None = None,
     ) -> EvidenceRecord:
         resolved_route = route or self._route_for_phase(phase)
+        resolved_branch = branch or self._active_branch(checkpoint)
         return EvidenceRecord(
             iteration=checkpoint.current_iteration,
             timestamp=checkpoint.last_updated,
             phase=phase,
+            branch_id=resolved_branch.branch_id,
+            branch_strategy=resolved_branch.strategy,
+            branch_parent_id=resolved_branch.parent_branch_id,
+            branch_rationale=resolved_branch.rationale,
             input_summary=input_summary,
             output_summary=output_summary,
             verdict=verdict,
@@ -696,6 +936,8 @@ class Tier1LoopRunner:
             tokens_in=0,
             tokens_out=0,
             duration_seconds=0.0,
+            escalation_action=escalation_action,
+            queued_branch_ids=list(queued_branch_ids or []),
             artifacts=list(checkpoint.artifacts),
         )
 
@@ -704,6 +946,8 @@ class Tier1LoopRunner:
             return self.routing_plan.generator
         if phase == "verify":
             return self.routing_plan.verifier
+        if phase == "escalate":
+            return self.routing_plan.orchestrator
         if phase == "simulate":
             return EffectiveModelRoute(
                 provider="adapter",

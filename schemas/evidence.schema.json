@@ -4,6 +4,10 @@
     "iteration",
     "timestamp",
     "phase",
+    "branch_id",
+    "branch_strategy",
+    "branch_parent_id",
+    "branch_rationale",
     "input_summary",
     "output_summary",
     "verdict",
@@ -19,6 +23,8 @@
     "tokens_in",
     "tokens_out",
     "duration_seconds",
+    "escalation_action",
+    "queued_branch_ids",
     "artifacts"
   ],
   "additionalProperties": false,
@@ -26,6 +32,13 @@
     "iteration": { "type": "integer" },
     "timestamp": { "type": "string" },
     "phase": { "type": "string" },
+    "branch_id": { "type": "string", "minLength": 1 },
+    "branch_strategy": {
+      "type": "string",
+      "enum": ["primary", "alternative_approach", "decomposition"]
+    },
+    "branch_parent_id": { "type": ["string", "null"] },
+    "branch_rationale": { "type": "string" },
     "input_summary": { "type": "string" },
     "output_summary": { "type": "string" },
     "verdict": { "type": ["string", "null"], "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY", null] },
@@ -41,6 +54,11 @@
     "tokens_in": { "type": "integer" },
     "tokens_out": { "type": "integer" },
     "duration_seconds": { "type": "number" },
+    "escalation_action": {
+      "type": ["string", "null"],
+      "enum": ["fanout", "switch_branch", "halt", null]
+    },
+    "queued_branch_ids": { "type": "array", "items": { "type": "string" } },
     "artifacts": { "type": "array", "items": { "type": "string" } }
   }
 }

@@ -2,6 +2,10 @@
   "iteration": 1,
   "timestamp": "2026-03-26T10:30:00Z",
   "phase": "verify",
+  "branch_id": "branch_1",
+  "branch_strategy": "primary",
+  "branch_parent_id": null,
+  "branch_rationale": "Primary research path derived directly from the original problem.",
   "input_summary": "Candidate solution grounded in surface-code threshold literature.",
   "output_summary": "Verifier requested simulation before accepting the quantitative claim.",
   "verdict": "FLAWS_FOUND",
@@ -21,6 +25,8 @@
   "tokens_in": 4500,
   "tokens_out": 3200,
   "duration_seconds": 42.5,
+  "escalation_action": null,
+  "queued_branch_ids": [],
   "artifacts": [
     "sessions/session_abc123/artifacts/spec.json"
   ]

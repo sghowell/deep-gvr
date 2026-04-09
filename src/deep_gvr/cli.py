@@ -8,7 +8,15 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus, SessionCheckpoint
+from .contracts import (
+    BranchStatus,
+    BranchStrategy,
+    CapabilityProbeResult,
+    DeepGvrConfig,
+    HypothesisBranch,
+    ProbeStatus,
+    SessionCheckpoint,
+)
 from .domain_context import load_domain_context
 from .orchestrator import CommandExecutor, DelegatedOrchestratorConfig, HermesDelegatedOrchestratorRunner
 from .probes import probe_model_routing
@@ -380,6 +388,18 @@ def _record_session_artifacts(
             current_iteration=0,
             max_iterations=0,
             next_phase="generate",
+            active_branch_id="branch_1",
+            branches=[
+                HypothesisBranch(
+                    branch_id="branch_1",
+                    strategy=BranchStrategy.PRIMARY,
+                    status=BranchStatus.FAILED if error is not None else BranchStatus.ACTIVE,
+                    rationale="Primary research path derived directly from the original problem.",
+                    created_iteration=0,
+                    activated_iteration=0,
+                    closed_iteration=0 if error is not None else None,
+                )
+            ],
             literature_context=[],
             candidate=None,
             verification_report=None,

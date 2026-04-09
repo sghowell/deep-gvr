@@ -14,8 +14,11 @@ from deep_gvr.contracts import (
     AnalyticalCheck,
     AnalyticalStatus,
     Backend,
+    BranchStatus,
+    BranchStrategy,
     CapabilityProbeResult,
     DeepGvrConfig,
+    EscalationAction,
     FormalProofHandle,
     FormalProofLifecycle,
     ProbeStatus,
@@ -393,7 +396,123 @@ class Tier1LoopTests(unittest.TestCase):
             self.assertEqual(result.checkpoint.final_verdict, "FLAWS_FOUND")
             self.assertEqual(len(result.checkpoint.verdict_history), 2)
             evidence = runner.session_store.read_evidence("session_budget_exhausted")
-            self.assertEqual([record.phase for record in evidence], ["generate", "verify", "revise", "verify"])
+            self.assertEqual([record.phase for record in evidence], ["generate", "verify", "revise", "verify", "escalate"])
+            self.assertEqual(evidence[-1].escalation_action, EscalationAction.HALT)
+
+    def test_repeated_failure_spawns_fanout_branch_and_completes_on_alternative(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = self._config(tmpdir, max_iterations=4)
+            config.loop.alternative_approach = True
+            config.loop.max_alternatives = 2
+            runner = Tier1LoopRunner(config, routing_probe=self._routing_probe(ProbeStatus.READY))
+            generation_strategies: list[tuple[str, BranchStrategy]] = []
+
+            def generator(request: GenerationRequest):
+                generation_strategies.append((request.branch_id, request.branch_strategy))
+                if request.branch_strategy is BranchStrategy.PRIMARY:
+                    return _candidate("Primary hypothesis")
+                self.assertEqual(request.branch_parent_id, "branch_1")
+                self.assertIn("Unsupported core inference.", request.branch_rationale)
+                return _candidate(
+                    "Alternative hypothesis",
+                    revision_notes=["Switched to a materially different literature-backed approach."],
+                )
+
+            def verifier(request: VerificationRequest):
+                if request.candidate.hypothesis in {"Primary hypothesis", "Primary revision"}:
+                    return _report(VerificationVerdict.FLAWS_FOUND, flaws=["Unsupported core inference."])
+                return _report(VerificationVerdict.VERIFIED)
+
+            def reviser(request: RevisionRequest):
+                self.assertEqual(request.branch_id, "branch_1")
+                self.assertEqual(request.branch_strategy, BranchStrategy.PRIMARY)
+                return _candidate(
+                    "Primary revision",
+                    revision_notes=["Tried to patch the original inference without changing the approach."],
+                )
+
+            result = runner.run(
+                problem="Exercise fanout recovery",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                session_id="session_fanout_recovery",
+            )
+
+            self.assertEqual(result.final_report.verdict, VerificationVerdict.VERIFIED)
+            self.assertEqual(
+                generation_strategies,
+                [
+                    ("branch_1", BranchStrategy.PRIMARY),
+                    ("branch_2", BranchStrategy.ALTERNATIVE_APPROACH),
+                ],
+            )
+            branch_statuses = {branch.branch_id: branch.status for branch in result.checkpoint.branches}
+            self.assertEqual(branch_statuses["branch_1"], BranchStatus.FAILED)
+            self.assertEqual(branch_statuses["branch_2"], BranchStatus.COMPLETED)
+            self.assertEqual(branch_statuses["branch_3"], BranchStatus.ABANDONED)
+
+            evidence = runner.session_store.read_evidence("session_fanout_recovery")
+            self.assertEqual(
+                [record.phase for record in evidence],
+                ["generate", "verify", "revise", "verify", "escalate", "generate", "verify"],
+            )
+            escalation = evidence[4]
+            self.assertEqual(escalation.branch_id, "branch_1")
+            self.assertEqual(escalation.branch_strategy, BranchStrategy.PRIMARY)
+            self.assertEqual(escalation.escalation_action, EscalationAction.FANOUT)
+            self.assertEqual(escalation.queued_branch_ids, ["branch_3"])
+
+            checkpoint = runner.session_store.load_checkpoint("session_fanout_recovery")
+            self.assertEqual(checkpoint.active_branch_id, "branch_2")
+
+    def test_repeated_failure_switches_to_queued_decomposition_branch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = self._config(tmpdir, max_iterations=5)
+            config.loop.alternative_approach = True
+            config.loop.max_alternatives = 2
+            runner = Tier1LoopRunner(config, routing_probe=self._routing_probe(ProbeStatus.READY))
+
+            def generator(request: GenerationRequest):
+                if request.branch_strategy is BranchStrategy.PRIMARY:
+                    return _candidate("Primary hypothesis")
+                if request.branch_strategy is BranchStrategy.ALTERNATIVE_APPROACH:
+                    return _candidate("Alternative hypothesis")
+                self.assertEqual(request.branch_parent_id, "branch_1")
+                return _candidate("Decomposition hypothesis")
+
+            def verifier(request: VerificationRequest):
+                if request.candidate.hypothesis == "Decomposition hypothesis":
+                    return _report(VerificationVerdict.VERIFIED)
+                return _report(VerificationVerdict.FLAWS_FOUND, flaws=["Claim still lacks a defensible decomposition."])
+
+            def reviser(request: RevisionRequest):
+                if request.branch_strategy is BranchStrategy.PRIMARY:
+                    return _candidate("Primary revision")
+                self.assertEqual(request.branch_strategy, BranchStrategy.ALTERNATIVE_APPROACH)
+                return _candidate("Alternative revision")
+
+            result = runner.run(
+                problem="Exercise decomposition fallback",
+                generator=generator,
+                verifier=verifier,
+                reviser=reviser,
+                session_id="session_decomposition_switch",
+            )
+
+            self.assertEqual(result.final_candidate.hypothesis, "Decomposition hypothesis")
+            branch_statuses = {branch.branch_id: branch.status for branch in result.checkpoint.branches}
+            self.assertEqual(branch_statuses["branch_1"], BranchStatus.FAILED)
+            self.assertEqual(branch_statuses["branch_2"], BranchStatus.FAILED)
+            self.assertEqual(branch_statuses["branch_3"], BranchStatus.COMPLETED)
+
+            evidence = runner.session_store.read_evidence("session_decomposition_switch")
+            self.assertEqual([record.phase for record in evidence].count("escalate"), 2)
+            self.assertEqual(evidence[4].escalation_action, EscalationAction.FANOUT)
+            self.assertEqual(evidence[9].escalation_action, EscalationAction.SWITCH_BRANCH)
+            self.assertEqual(evidence[9].queued_branch_ids, [])
+            self.assertEqual(evidence[10].branch_id, "branch_3")
+            self.assertEqual(evidence[10].branch_strategy, BranchStrategy.DECOMPOSITION)
 
     def test_simulation_request_runs_mediator_and_reverifies(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
