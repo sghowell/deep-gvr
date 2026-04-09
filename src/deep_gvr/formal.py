@@ -66,6 +66,26 @@ class MathCodeTransportStatus:
 
 
 @dataclass(slots=True)
+class OpenGaussTransportStatus:
+    opengauss_root: str
+    opengauss_root_exists: bool
+    install_script: str
+    install_script_exists: bool
+    local_launcher: str
+    local_launcher_exists: bool
+    runner_venv: str
+    runner_venv_exists: bool
+    gauss_binary: str
+    gauss_available: bool
+    gauss_config_path: str
+    gauss_config_exists: bool
+
+    @property
+    def ready(self) -> bool:
+        return self.gauss_available and self.gauss_config_exists
+
+
+@dataclass(slots=True)
 class CommandExecutionResult:
     returncode: int
     stdout: str
@@ -112,6 +132,18 @@ def default_mathcode_root() -> Path:
 
 def default_mathcode_run_script() -> Path:
     return default_mathcode_root() / "run"
+
+
+def default_opengauss_root() -> Path:
+    return Path("~/dev/OpenGauss").expanduser()
+
+
+def default_gauss_home() -> Path:
+    return Path(os.getenv("GAUSS_HOME", "~/.gauss")).expanduser()
+
+
+def default_gauss_config_path() -> Path:
+    return default_gauss_home() / "config.yaml"
 
 
 def load_hermes_config(path: str | Path | None = None) -> dict[str, Any]:
@@ -182,6 +214,42 @@ def inspect_mathcode_transport(
         run_script_executable=run_path.exists() and os.access(run_path, os.X_OK),
         autolean_exists=(root_path / "AUTOLEAN").exists(),
         lean_workspace_exists=(root_path / "lean-workspace").exists(),
+    )
+
+
+def _resolve_binary(binary: str | Path) -> tuple[str, bool]:
+    candidate = Path(binary).expanduser()
+    if candidate.is_absolute() or "/" in str(binary):
+        return str(candidate), candidate.exists() and os.access(candidate, os.X_OK)
+    located = shutil.which(str(binary))
+    return located or str(binary), located is not None
+
+
+def inspect_opengauss_transport(
+    *,
+    opengauss_root: str | Path | None = None,
+    gauss_binary: str | Path = "gauss",
+    gauss_config_path: str | Path | None = None,
+) -> OpenGaussTransportStatus:
+    root_path = default_opengauss_root() if opengauss_root is None else Path(opengauss_root).expanduser()
+    install_script = root_path / "scripts" / "install.sh"
+    local_launcher = root_path / "gauss"
+    runner_venv = root_path / ".opengauss-installer-venv"
+    resolved_binary, gauss_available = _resolve_binary(gauss_binary)
+    config_path = default_gauss_config_path() if gauss_config_path is None else Path(gauss_config_path).expanduser()
+    return OpenGaussTransportStatus(
+        opengauss_root=str(root_path),
+        opengauss_root_exists=root_path.exists(),
+        install_script=str(install_script),
+        install_script_exists=install_script.exists(),
+        local_launcher=str(local_launcher),
+        local_launcher_exists=local_launcher.exists(),
+        runner_venv=str(runner_venv),
+        runner_venv_exists=runner_venv.exists(),
+        gauss_binary=resolved_binary,
+        gauss_available=gauss_available,
+        gauss_config_path=str(config_path),
+        gauss_config_exists=config_path.exists(),
     )
 
 

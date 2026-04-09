@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
-from .formal import inspect_aristotle_transport, inspect_mathcode_transport
+from .formal import inspect_aristotle_transport, inspect_mathcode_transport, inspect_opengauss_transport
 
 
 def probe_model_routing(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
@@ -138,6 +138,50 @@ def probe_mathcode_transport(runtime_config: DeepGvrConfig | None = None) -> Cap
             "run_script_executable": transport.run_script_executable,
             "autolean_exists": transport.autolean_exists,
             "lean_workspace_exists": transport.lean_workspace_exists,
+        },
+    )
+
+
+def probe_opengauss_transport(
+    *,
+    opengauss_root: str | Path | None = None,
+    gauss_binary: str | Path = "gauss",
+    gauss_config_path: str | Path | None = None,
+) -> CapabilityProbeResult:
+    transport = inspect_opengauss_transport(
+        opengauss_root=opengauss_root,
+        gauss_binary=gauss_binary,
+        gauss_config_path=gauss_config_path,
+    )
+    if transport.ready:
+        status = ProbeStatus.READY
+        summary = "Installed OpenGauss runtime and config are present for local interactive-proof diagnostics."
+    else:
+        status = ProbeStatus.BLOCKED
+        summary = (
+            "OpenGauss local runtime is not ready; use the dedicated diagnostics script to separate raw-checkout, "
+            "installed-runtime, and upstream installer failures."
+        )
+
+    return CapabilityProbeResult(
+        name="opengauss_transport",
+        status=status,
+        summary=summary,
+        preferred_outcome="Have a working local gauss runtime and config available before enabling OpenGauss-backed Tier 3 work.",
+        fallback="Use scripts/diagnose_opengauss.py and another supported Tier 3 backend until OpenGauss installability is restored.",
+        details={
+            "opengauss_root": transport.opengauss_root,
+            "opengauss_root_exists": transport.opengauss_root_exists,
+            "install_script": transport.install_script,
+            "install_script_exists": transport.install_script_exists,
+            "local_launcher": transport.local_launcher,
+            "local_launcher_exists": transport.local_launcher_exists,
+            "runner_venv": transport.runner_venv,
+            "runner_venv_exists": transport.runner_venv_exists,
+            "gauss_binary": transport.gauss_binary,
+            "gauss_available": transport.gauss_available,
+            "gauss_config_path": transport.gauss_config_path,
+            "gauss_config_exists": transport.gauss_config_exists,
         },
     )
 
@@ -275,6 +319,7 @@ def run_capability_probes(
         probe_mcp_inheritance(evidence.get("subagent_mcp_inheritance")),
         probe_aristotle_transport(),
         probe_mathcode_transport(runtime_config),
+        probe_opengauss_transport(),
         probe_checkpoint_resume(),
         probe_analysis_adapter_families(),
         probe_backend_dispatch(runtime_config),

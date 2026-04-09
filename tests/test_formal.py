@@ -17,11 +17,13 @@ from deep_gvr.formal import (
     AristotleTransportStatus,
     MathCodeFormalVerifier,
     MathCodeTransportStatus,
+    OpenGaussTransportStatus,
     CommandExecutionResult,
     FormalVerificationRequest,
     build_formal_verifier,
     inspect_aristotle_transport,
     inspect_mathcode_transport,
+    inspect_opengauss_transport,
 )
 
 
@@ -74,6 +76,16 @@ def _write_mathcode_root(tmpdir: str) -> Path:
     run_script = root / "run"
     run_script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
     run_script.chmod(0o755)
+    return root
+
+
+def _write_opengauss_root(tmpdir: str) -> Path:
+    root = Path(tmpdir) / "OpenGauss"
+    (root / "scripts").mkdir(parents=True, exist_ok=True)
+    (root / "scripts" / "install.sh").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    launcher = root / "gauss"
+    launcher.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    launcher.chmod(0o755)
     return root
 
 
@@ -502,6 +514,33 @@ class MathCodeTransportInspectionTests(unittest.TestCase):
 
         self.assertTrue(status.ready)
         self.assertTrue(status.run_script_executable)
+
+
+class OpenGaussTransportInspectionTests(unittest.TestCase):
+    def test_inspect_transport_reports_ready_when_binary_and_config_exist(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            opengauss_root = _write_opengauss_root(tmpdir)
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            gauss_binary = bin_dir / "gauss"
+            gauss_binary.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            gauss_binary.chmod(0o755)
+            config_path = Path(tmpdir) / ".gauss" / "config.yaml"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text("model:\n  default: test\n", encoding="utf-8")
+
+            status = inspect_opengauss_transport(
+                opengauss_root=opengauss_root,
+                gauss_binary=gauss_binary,
+                gauss_config_path=config_path,
+            )
+
+        self.assertIsInstance(status, OpenGaussTransportStatus)
+        self.assertTrue(status.ready)
+        self.assertTrue(status.install_script_exists)
+        self.assertTrue(status.local_launcher_exists)
+        self.assertTrue(status.gauss_available)
+        self.assertTrue(status.gauss_config_exists)
 
 
 if __name__ == "__main__":

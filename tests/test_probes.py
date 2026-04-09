@@ -15,6 +15,7 @@ from deep_gvr.probes import (
     probe_mathcode_transport,
     probe_mcp_inheritance,
     probe_model_routing,
+    probe_opengauss_transport,
     run_capability_probes,
 )
 from scripts.run_capability_probes import _load_capability_evidence
@@ -30,6 +31,7 @@ class ProbeTests(unittest.TestCase):
                 "subagent_mcp_inheritance",
                 "aristotle_transport",
                 "mathcode_transport",
+                "opengauss_transport",
                 "session_checkpoint_resume",
                 "analysis_adapter_families",
                 "backend_dispatch",
@@ -123,6 +125,35 @@ class ProbeTests(unittest.TestCase):
 
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertTrue(probe.details["run_script_executable"])
+
+    def test_opengauss_transport_probe_reports_ready_for_installed_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            opengauss_root = Path(tmpdir) / "OpenGauss"
+            (opengauss_root / "scripts").mkdir(parents=True, exist_ok=True)
+            (opengauss_root / "scripts" / "install.sh").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            launcher = opengauss_root / "gauss"
+            launcher.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            launcher.chmod(0o755)
+
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            gauss_binary = bin_dir / "gauss"
+            gauss_binary.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            gauss_binary.chmod(0o755)
+
+            config_path = Path(tmpdir) / ".gauss" / "config.yaml"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text("model:\n  default: test\n", encoding="utf-8")
+
+            probe = probe_opengauss_transport(
+                opengauss_root=opengauss_root,
+                gauss_binary=gauss_binary,
+                gauss_config_path=config_path,
+            )
+
+        self.assertEqual(probe.status, ProbeStatus.READY)
+        self.assertTrue(probe.details["gauss_available"])
+        self.assertTrue(probe.details["gauss_config_exists"])
 
     def test_load_capability_evidence_reads_top_level_json_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

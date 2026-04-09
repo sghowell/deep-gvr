@@ -39,3 +39,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [34-aristotle-cli-fallback.md](34-aristotle-cli-fallback.md)
 - [35-mathcode-formal-backend.md](35-mathcode-formal-backend.md)
 - [36-node24-actions.md](36-node24-actions.md)
+- [37-opengauss-unblock-diagnostics.md](37-opengauss-unblock-diagnostics.md)

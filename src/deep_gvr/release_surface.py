@@ -19,7 +19,13 @@ from .contracts import (
     ReleasePublicationManifest,
 )
 from .json_schema import SchemaValidationError, validate
-from .probes import probe_analysis_adapter_families, probe_aristotle_transport, probe_backend_dispatch, probe_mathcode_transport
+from .probes import (
+    probe_analysis_adapter_families,
+    probe_aristotle_transport,
+    probe_backend_dispatch,
+    probe_mathcode_transport,
+    probe_opengauss_transport,
+)
 from .runtime_config import default_config_path, load_runtime_config
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
@@ -474,6 +480,15 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
             summary="Tier 3 is enabled, but the configured MathCode transport is not ready in this environment.",
             details=probe.details,
             guidance="Install or fix the local MathCode checkout and verify AUTOLEAN, lean-workspace, and the run script path before enabling Tier 3 live use.",
+        )
+    if tier3.backend == "opengauss":
+        probe = probe_opengauss_transport()
+        return ReleaseCheck(
+            name="tier3_transport",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The configured Tier 3 backend (opengauss) is still blocked on upstream installability and is not implemented on the shipped harness path.",
+            details=probe.details,
+            guidance="Run uv run python scripts/diagnose_opengauss.py --json to separate local checkout issues from upstream installer failures, then keep Tier 3 on Aristotle or MathCode until plan 31 resumes.",
         )
     if tier3.backend != "aristotle":
         return ReleaseCheck(
