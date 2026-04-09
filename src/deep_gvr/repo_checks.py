@@ -75,9 +75,6 @@ OPEN_ARCHITECTURE_ITEMS = {
 ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_external"}
 
 REQUIRED_RETIREMENT_REFERENCES = {
-    "README.md": [
-        "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
-    ],
     "SKILL.md": [
         "Retirement slice: [plans/26-subagent-capability-closure.md](plans/26-subagent-capability-closure.md)",
     ],
@@ -85,6 +82,62 @@ REQUIRED_RETIREMENT_REFERENCES = {
         "Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)",
     ],
 }
+
+PUBLIC_DOCS = [
+    "README.md",
+    "docs/start-here.md",
+    "docs/quickstart.md",
+    "docs/concepts.md",
+    "docs/domain-portfolio.md",
+    "docs/examples.md",
+    "docs/faq.md",
+    "docs/system-overview.md",
+    "docs/release-workflow.md",
+    "docs/deep-gvr-architecture.md",
+]
+
+PUBLIC_DOC_LINK_REQUIREMENTS = {
+    "README.md": [
+        "docs/start-here.md",
+        "docs/quickstart.md",
+        "docs/concepts.md",
+        "docs/domain-portfolio.md",
+        "docs/examples.md",
+        "docs/faq.md",
+        "docs/system-overview.md",
+        "docs/release-workflow.md",
+        "docs/deep-gvr-architecture.md",
+    ],
+    "docs/start-here.md": [
+        "../README.md",
+        "quickstart.md",
+        "concepts.md",
+        "domain-portfolio.md",
+        "examples.md",
+        "faq.md",
+        "system-overview.md",
+        "release-workflow.md",
+        "deep-gvr-architecture.md",
+    ],
+}
+
+PUBLIC_DOC_INTERNAL_LINK_TARGETS = {
+    "AGENTS.md",
+    "PLANS.md",
+    "CONTRIBUTING.md",
+    "SKILL.md",
+    "docs/README.md",
+    "docs/capability-probes.md",
+    "docs/contracts-and-artifacts.md",
+    "eval/README.md",
+}
+
+PUBLIC_DOC_DISALLOWED_PATTERNS = [
+    re.compile(r"retirement slice", flags=re.IGNORECASE),
+    re.compile(r"temporary gap", flags=re.IGNORECASE),
+    re.compile(r"plans/\d{2}-", flags=re.IGNORECASE),
+    re.compile(r"\bplan\s+\d+\b", flags=re.IGNORECASE),
+]
 
 
 def repo_root() -> Path:
@@ -95,6 +148,7 @@ def run_all_checks() -> list[str]:
     root = repo_root()
     messages: list[str] = []
     messages.extend(check_markdown_links(root))
+    messages.extend(check_public_docs_surface(root))
     messages.extend(check_plan_files(root))
     messages.extend(check_workflow_docs(root))
     messages.extend(check_prompt_files(root))
@@ -103,6 +157,49 @@ def run_all_checks() -> list[str]:
     messages.extend(check_architecture_completion_tracking(root))
     messages.extend(check_architecture_boundaries(root))
     return messages
+
+
+def check_public_docs_surface(root: Path) -> list[str]:
+    errors: list[str] = []
+    for relative in PUBLIC_DOCS:
+        path = root / relative
+        if not path.exists():
+            errors.append(f"{relative}: required public doc is missing")
+            continue
+
+    for relative, required_targets in PUBLIC_DOC_LINK_REQUIREMENTS.items():
+        path = root / relative
+        if not path.exists():
+            continue
+        targets = set(_markdown_link_targets(path))
+        for required_target in required_targets:
+            if required_target not in targets:
+                errors.append(f"{relative}: missing required public-doc link {required_target!r}")
+
+    for relative in PUBLIC_DOCS:
+        path = root / relative
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        targets = set(_markdown_link_targets(path))
+        for internal_target in PUBLIC_DOC_INTERNAL_LINK_TARGETS:
+            if internal_target in targets:
+                errors.append(
+                    f"{relative}: should not link public readers to internal doc {internal_target!r}"
+                )
+        for pattern in PUBLIC_DOC_DISALLOWED_PATTERNS:
+            if pattern.search(text):
+                errors.append(
+                    f"{relative}: public docs should not contain backlog/internal phrase matching "
+                    f"{pattern.pattern!r}"
+                )
+    return errors
+
+
+def _markdown_link_targets(path: Path) -> list[str]:
+    link_pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    text = path.read_text(encoding="utf-8")
+    return [match.group(1) for match in link_pattern.finditer(text)]
 
 
 def check_markdown_links(root: Path) -> list[str]:
