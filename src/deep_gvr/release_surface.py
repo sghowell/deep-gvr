@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tomllib
 from datetime import UTC, datetime
@@ -29,6 +30,7 @@ from .probes import (
 from .runtime_config import default_config_path, load_runtime_config
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
+_CHANGELOG_PATH = Path("CHANGELOG.md")
 _PROVIDER_ENV_MAP = {
     "anthropic": ["ANTHROPIC_API_KEY"],
     "google": ["GOOGLE_API_KEY"],
@@ -56,6 +58,10 @@ def publication_manifest_path(root: Path | None = None) -> Path:
     return (root or repo_root()) / _PUBLICATION_MANIFEST_PATH
 
 
+def changelog_path(root: Path | None = None) -> Path:
+    return (root or repo_root()) / _CHANGELOG_PATH
+
+
 def _schema_path(name: str, root: Path | None = None) -> Path:
     return (root or repo_root()) / "schemas" / name
 
@@ -74,13 +80,20 @@ def _pyproject_metadata(root: Path | None = None) -> dict[str, Any]:
     return tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 
 
+def project_version(root: Path | None = None) -> str:
+    return str(_pyproject_metadata(root)["project"]["version"])
+
+
+def expected_release_tag(root: Path | None = None) -> str:
+    return f"v{project_version(root)}"
+
+
 def expected_publication_manifest(root: Path | None = None) -> ReleasePublicationManifest:
     effective_root = root or repo_root()
     skill_manifest = _skill_frontmatter(effective_root)
-    project = _pyproject_metadata(effective_root)["project"]
     return ReleasePublicationManifest(
         name=skill_manifest["name"],
-        version=project["version"],
+        version=project_version(effective_root),
         description=skill_manifest["description"],
         package_layout="hermes_skill_bundle",
         distribution_targets=["github", "agentskills.io"],
@@ -138,6 +151,56 @@ def publication_manifest_errors(root: Path | None = None) -> list[str]:
     return errors
 
 
+def _changelog_sections(text: str) -> dict[str, str]:
+    heading_pattern = re.compile(r"^## \[(?P<label>[^\]]+)\](?: - \d{4}-\d{2}-\d{2})?\s*$", flags=re.MULTILINE)
+    matches = list(heading_pattern.finditer(text))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        label = match.group("label")
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections[label] = text[start:end].strip()
+    return sections
+
+
+def release_notes_for_version(version: str, root: Path | None = None) -> str:
+    payload = changelog_path(root).read_text(encoding="utf-8")
+    sections = _changelog_sections(payload)
+    notes = sections.get(version, "").strip()
+    if not notes:
+        raise ValueError(f"CHANGELOG.md is missing a non-empty section for version {version}.")
+    return notes
+
+
+def release_metadata_errors(root: Path | None = None, *, tag: str | None = None) -> list[str]:
+    effective_root = root or repo_root()
+    errors: list[str] = []
+    changelog = changelog_path(effective_root)
+    version = project_version(effective_root)
+    expected_tag = expected_release_tag(effective_root)
+
+    if not changelog.exists():
+        return [f"{changelog.relative_to(effective_root)}: required changelog is missing"]
+
+    payload = changelog.read_text(encoding="utf-8")
+    if "# Changelog" not in payload:
+        errors.append("CHANGELOG.md: missing top-level changelog heading")
+    if "## [Unreleased]" not in payload:
+        errors.append("CHANGELOG.md: missing required [Unreleased] section")
+
+    try:
+        release_notes_for_version(version, effective_root)
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    if tag is not None and tag != expected_tag:
+        errors.append(
+            f"tag mismatch: repo version {version} expects {expected_tag}, got {tag}"
+        )
+
+    return errors
+
+
 def collect_release_preflight(
     *,
     config_path: Path | None = None,
@@ -159,9 +222,16 @@ def collect_release_preflight(
     checks.append(_check_tier2_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
     checks.append(_check_publication_manifest(effective_root))
+    checks.append(_check_release_metadata(effective_root))
     checks.append(_check_auto_improve_policy(effective_root))
 
-    structural_names = {"skill_install", "runtime_config", "publication_manifest", "auto_improve_policy"}
+    structural_names = {
+        "skill_install",
+        "runtime_config",
+        "publication_manifest",
+        "release_metadata",
+        "auto_improve_policy",
+    }
     release_surface_ready = all(
         check.status == ReleaseCheckStatus.READY for check in checks if check.name in structural_names
     )
@@ -534,6 +604,36 @@ def _check_publication_manifest(root: Path) -> ReleaseCheck:
         summary="The checked-in publication manifest matches the current repo metadata and release surface.",
         details={"manifest_path": str(manifest_path)},
         guidance="Use the manifest as the publication bundle source for GitHub and agentskills.io release work.",
+    )
+
+
+def _check_release_metadata(root: Path) -> ReleaseCheck:
+    errors = release_metadata_errors(root)
+    changelog = changelog_path(root)
+    version = project_version(root)
+    if errors:
+        return ReleaseCheck(
+            name="release_metadata",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in release metadata is missing or out of sync with the current project version.",
+            details={
+                "version": version,
+                "expected_tag": expected_release_tag(root),
+                "changelog_path": str(changelog),
+                "errors": errors,
+            },
+            guidance="Add or update CHANGELOG.md so the current project version has release notes before cutting a public release.",
+        )
+    return ReleaseCheck(
+        name="release_metadata",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in changelog and release tag policy match the current project version.",
+        details={
+            "version": version,
+            "expected_tag": expected_release_tag(root),
+            "changelog_path": str(changelog),
+        },
+        guidance="Render release notes directly from CHANGELOG.md when cutting a tagged release.",
     )
 
 

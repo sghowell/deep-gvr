@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -9,7 +10,14 @@ from pathlib import Path
 import yaml
 
 from tests import _path_setup  # noqa: F401
-from deep_gvr.release_surface import collect_release_preflight, publication_manifest_errors
+from deep_gvr.release_surface import (
+    collect_release_preflight,
+    expected_release_tag,
+    project_version,
+    publication_manifest_errors,
+    release_metadata_errors,
+    release_notes_for_version,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -225,6 +233,54 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn('"release_surface_ready": true', completed.stdout)
             self.assertIn('"operator_ready": false', completed.stdout)
+
+    def test_release_metadata_errors_are_empty_for_repo(self) -> None:
+        self.assertEqual(release_metadata_errors(ROOT), [])
+
+    def test_release_notes_for_current_version_are_non_empty(self) -> None:
+        notes = release_notes_for_version(project_version(ROOT), ROOT)
+        self.assertIn("GitHub Releases", notes)
+
+    def test_check_release_version_script_accepts_current_tag(self) -> None:
+        completed = subprocess.run(
+            [
+                "python3",
+                str(ROOT / "scripts" / "check_release_version.py"),
+                "--tag",
+                expected_release_tag(ROOT),
+                "--json",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["tag"], expected_release_tag(ROOT))
+
+    def test_render_release_notes_script_writes_requested_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "release-notes.md"
+            version = project_version(ROOT)
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "render_release_notes.py"),
+                    "--version",
+                    version,
+                    "--output",
+                    str(output_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue(output_path.exists())
+            self.assertIn("GitHub Releases", output_path.read_text(encoding="utf-8"))
 
     def test_release_preflight_operator_mode_requires_configured_provider_credentials(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
