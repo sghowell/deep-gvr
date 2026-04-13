@@ -7,7 +7,7 @@
 The system runs a generator-verifier-reviser loop:
 
 <figure class="doc-figure">
-  <img src="assets/gvr-loop.svg" alt="Generator verifier reviser loop" />
+  <img src="../assets/gvr-loop.svg" alt="Generator verifier reviser loop" />
   <figcaption>The verifier is the control point: it can accept, reject, revise, or escalate for deeper evidence.</figcaption>
 </figure>
 

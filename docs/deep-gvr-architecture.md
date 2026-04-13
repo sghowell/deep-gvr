@@ -31,7 +31,7 @@ The design is organized around a few non-negotiable ideas:
 At a high level, `deep-gvr` is a Hermes skill plus a typed Python runtime:
 
 <figure class="doc-figure">
-  <img src="assets/system-model.svg" alt="deep-gvr system model diagram" />
+  <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
   <figcaption>The public command surface is Hermes-native, but the typed runtime owns evidence, adapters, formal transport, and resume semantics.</figcaption>
 </figure>
 

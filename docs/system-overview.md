@@ -37,7 +37,7 @@ Core runtime locations:
 - evidence and checkpoints are persisted throughout the run
 
 <figure class="doc-figure">
-  <img src="assets/verification-tiers.svg" alt="Verification tiers diagram" />
+  <img src="../assets/verification-tiers.svg" alt="Verification tiers diagram" />
   <figcaption>The stack is intentionally selective: every run gets Tier 1, while Tier 2 and Tier 3 are claim-driven escalations.</figcaption>
 </figure>
 
