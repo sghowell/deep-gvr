@@ -360,6 +360,17 @@ def check_release_surfaces(root: Path) -> list[str]:
             errors.append(f"{path.relative_to(root)}: required release-surface asset is missing")
     errors.extend(publication_manifest_errors(root))
     errors.extend(release_metadata_errors(root))
+    docs_workflow_path = root / ".github" / "workflows" / "docs.yml"
+    if docs_workflow_path.exists():
+        docs_workflow = docs_workflow_path.read_text(encoding="utf-8")
+        if "actions/upload-pages-artifact@v4" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing Pages artifact upload step")
+        if "actions/deploy-pages@v4" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing Pages deploy step")
+        if "github.event_name == 'workflow_dispatch'" in docs_workflow:
+            errors.append(
+                ".github/workflows/docs.yml: docs deployment should not be gated to workflow_dispatch now that Pages is enabled"
+            )
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     dev_dependencies = ((pyproject.get("project") or {}).get("optional-dependencies") or {}).get("dev", [])
     if "mkdocs>=1.6.0" not in dev_dependencies:

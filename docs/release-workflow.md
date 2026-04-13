@@ -74,7 +74,7 @@ uv run mkdocs build --strict
 
 The hosted docs are built directly from the human-facing repo docs. There is no separate public docs tree.
 
-The repo includes a `Docs` workflow that always builds on `main` and can deploy manually to GitHub Pages. If Pages is not yet enabled for the repository, enable GitHub Pages with GitHub Actions in the repository settings before expecting deployment to succeed.
+The repo includes a `Docs` workflow that builds and deploys automatically on every push to `main`. `workflow_dispatch` remains available for manual reruns when needed.
 
 ## 7. Publish the Release
 
