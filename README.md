@@ -80,6 +80,7 @@ For the full operator path, see [Quickstart](docs/quickstart.md) and [Release Wo
 
 Start here:
 
+- [Docs Home](docs/index.md)
 - [Start Here](docs/start-here.md)
 - [Quickstart](docs/quickstart.md)
 - [Concepts](docs/concepts.md)
@@ -92,6 +93,11 @@ Technical reference:
 - [System Overview](docs/system-overview.md)
 - [Architecture and Design](docs/deep-gvr-architecture.md)
 - [Release Workflow](docs/release-workflow.md)
+
+Release history:
+
+- [Changelog](CHANGELOG.md)
+- [GitHub Releases](https://github.com/sghowell/deep-gvr/releases)
 
 ## Current Scope and Limits
 

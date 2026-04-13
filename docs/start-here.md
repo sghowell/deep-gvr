@@ -8,7 +8,7 @@ Choose the path that matches what you need.
 
 Read these first:
 
-- [README](../README.md)
+- [Docs Home](index.md)
 - [Concepts](concepts.md)
 - [Domain Portfolio](domain-portfolio.md)
 - [Examples](examples.md)

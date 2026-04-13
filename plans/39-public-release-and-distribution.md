@@ -27,11 +27,11 @@ Start from `main` and implement this slice on `codex/public-release-and-distribu
 - [x] Review the current release/publication surface and public docs set.
 - [x] Confirm the repo currently has no git tags, no changelog, no dedicated release workflow, and no hosted docs configuration.
 - [x] Add this plan and index it from `plans/README.md`.
-- [ ] Add versioned release metadata and changelog policy.
-- [ ] Add hosted public docs configuration and deployment.
-- [ ] Add GitHub release automation and release checklist artifacts.
-- [ ] Align docs and validation with the new public release process.
-- [ ] Run full validation.
+- [x] Add versioned release metadata and changelog policy.
+- [x] Add hosted public docs configuration and deployment.
+- [x] Add GitHub release automation and release checklist artifacts.
+- [x] Align docs and validation with the new public release process.
+- [x] Run full validation.
 - [ ] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
 
 ## Surprises & Discoveries
@@ -40,6 +40,7 @@ Start from `main` and implement this slice on `codex/public-release-and-distribu
 - The missing work is not “can it be installed?” but “can it be released and consumed like a real public product?”
 - There is currently no tag history, no `CHANGELOG.md`, no GitHub release workflow, and no hosted docs configuration. Those are now the highest-leverage productization gaps.
 - Because the public docs sweep already separated human-facing docs from agent/harness docs, a hosted docs site can now publish the public set cleanly without dragging internal docs into the nav.
+- GitHub Pages is not currently enabled for the repository, so the docs workflow needs to build on every push but keep actual deployment on an explicit manual path until the repo setting is enabled.
 
 ## Decision Log
 
@@ -50,11 +51,14 @@ Start from `main` and implement this slice on `codex/public-release-and-distribu
 - Versioning source of truth should be explicit and unified across `pyproject.toml`, `release/agentskills.publication.json`, release notes, and the Git tag.
 - **PyPI publication is explicitly deferred** in this slice. The project is a Hermes skill bundle plus Python runtime, and the primary supported install surface remains repo/GitHub plus agentskills publication rather than `pip install deep-gvr`.
 - Public release automation should validate and publish the existing checked-in release bundle, not invent a second parallel packaging surface.
+- The docs workflow should always build on `main`, but actual GitHub Pages deployment should remain a manual workflow path until repository Pages settings are enabled, to avoid a permanently red workflow.
 
 ## Outcomes & Retrospective
 
-- Intended outcome: a new user can discover `deep-gvr`, browse hosted docs, inspect a real release history, and install the supported public release without reading the repo like a development workspace.
-- Intended outcome: maintainers can cut a release through a documented and validated process instead of ad hoc manual steps.
+- Added a real release-history surface with `CHANGELOG.md`, a release checklist, and checked scripts that validate tag/version alignment and render release notes from the changelog.
+- Added a hosted docs surface with MkDocs Material and a docs workflow that builds from the public docs set without pulling internal repo docs into the hosted site.
+- Added a tagged GitHub release workflow that validates the repo, checks release metadata, renders release notes, and attaches the checked-in agentskills publication manifest.
+- Updated the human-facing release docs and landing pages so the public release channels, changelog, and docs site are part of the normal public story instead of operator-only knowledge.
 
 ## Context and Orientation
 
