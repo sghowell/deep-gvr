@@ -14,26 +14,31 @@
   <text x="86" y="156" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Every run gets analytical review. Deeper tiers are selective, evidence-driven escalations.</text>
 
   <g filter="url(#shadow)">
-    <rect x="104" y="222" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
-    <circle cx="178" cy="288" r="36" fill="#0F172A"/>
-    <text x="164" y="300" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">1</text>
-    <text x="242" y="274" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 1 · Analytical verification</text>
-    <text x="242" y="316" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">coherence, scope, citations, plausibility, and overclaiming</text>
+    <rect x="104" y="222" width="1192" height="144" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="294" r="36" fill="#0F172A"/>
+    <text x="164" y="306" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">1</text>
+    <text x="242" y="276" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800">Tier 1 · Analytical verification</text>
+    <text x="242" y="314" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">coherence, scope, citations, plausibility,</text>
+    <text x="242" y="340" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">and overclaiming</text>
 
-    <rect x="104" y="394" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
-    <circle cx="178" cy="460" r="36" fill="#0F766E"/>
-    <text x="164" y="472" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">2</text>
-    <text x="242" y="446" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 2 · OSS-backed analysis</text>
-    <text x="242" y="488" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">symbolic math, optimization, dynamics, QEC benchmarking, graph-state, photonic, neutral-atom, topological, ZX</text>
+    <rect x="104" y="390" width="1192" height="150" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="465" r="36" fill="#0F766E"/>
+    <text x="164" y="477" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">2</text>
+    <text x="242" y="444" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800">Tier 2 · OSS-backed analysis</text>
+    <text x="242" y="480" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500">symbolic math, optimization, dynamics, QEC,</text>
+    <text x="242" y="506" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500">MBQC, photonic, neutral-atom, topological,</text>
+    <text x="242" y="532" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500">and ZX analysis families</text>
 
-    <rect x="104" y="566" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
-    <circle cx="178" cy="632" r="36" fill="#1D4ED8"/>
-    <text x="164" y="644" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">3</text>
-    <text x="242" y="618" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 3 · Formal verification</text>
-    <text x="242" y="660" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">proof-oriented transport through Aristotle or MathCode, with explicit timeout and failure recording</text>
+    <rect x="104" y="560" width="1192" height="148" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="634" r="36" fill="#1D4ED8"/>
+    <text x="164" y="646" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">3</text>
+    <text x="242" y="614" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800">Tier 3 · Formal verification</text>
+    <text x="242" y="650" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">proof-oriented transport through Aristotle or MathCode,</text>
+    <text x="242" y="676" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">with explicit timeout and failure recording</text>
   </g>
 
-  <rect x="1108" y="90" width="184" height="74" rx="22" fill="#FFF7ED" stroke="#FDBA74" stroke-width="2"/>
-  <text x="1140" y="121" fill="#9A3412" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Design rule</text>
-  <text x="1140" y="148" fill="#C2410C" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">escalate only when warranted</text>
+  <rect x="1088" y="84" width="212" height="90" rx="22" fill="#FFF7ED" stroke="#FDBA74" stroke-width="2"/>
+  <text x="1120" y="116" fill="#9A3412" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Design rule</text>
+  <text x="1120" y="142" fill="#C2410C" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="600">escalate only</text>
+  <text x="1120" y="164" fill="#C2410C" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="600">when warranted</text>
 </svg>
