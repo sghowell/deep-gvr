@@ -1,11 +1,6 @@
-```text
-       __
-  ____/ /__  ___  ____        ____ __   _______
- / __  / _ \/ _ \/ __ \______/ __ `/ | / / ___/
-/ /_/ /  __/  __/ /_/ /_____/ /_/ /| |/ / /
-\__,_/\___/\___/ .___/      \__, / |___/_/
-              /_/          /____/
-```
+<p align="center">
+  <img src="docs/assets/deep-gvr-hero.svg" alt="deep-gvr hero banner" width="100%" />
+</p>
 
 # deep-gvr
 
@@ -29,6 +24,10 @@ Its core idea is simple:
 - revise, branch, or stop with an explicit failure mode
 
 That makes it useful for research-style questions where correctness matters more than style.
+
+<p align="center">
+  <img src="docs/assets/gvr-loop.svg" alt="Generator verifier reviser loop diagram" width="100%" />
+</p>
 
 ## What You Get
 

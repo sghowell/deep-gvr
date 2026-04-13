@@ -30,21 +30,10 @@ The design is organized around a few non-negotiable ideas:
 
 At a high level, `deep-gvr` is a Hermes skill plus a typed Python runtime:
 
-```mermaid
-flowchart TD
-    U["User"] --> O["Hermes + deep-gvr Orchestrator"]
-    O --> G["Generator"]
-    O --> V["Verifier"]
-    O --> R["Reviser"]
-    V --> A["Tier 2 Analysis Layer"]
-    V --> F["Tier 3 Formal Layer"]
-    A --> E["Evidence and Session Artifacts"]
-    F --> E
-    G --> E
-    V --> E
-    R --> E
-    O --> E
-```
+<figure class="doc-figure">
+  <img src="assets/system-model.svg" alt="deep-gvr system model diagram" />
+  <figcaption>The public command surface is Hermes-native, but the typed runtime owns evidence, adapters, formal transport, and resume semantics.</figcaption>
+</figure>
 
 ### Main Components
 

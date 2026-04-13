@@ -1,0 +1,79 @@
+<svg width="1600" height="960" viewBox="0 0 1600 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="60" y1="40" x2="1540" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EEF7F5"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1600" height="960" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M1 1L11 7L1 13" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="960" rx="36" fill="url(#bg)"/>
+  <rect x="44" y="44" width="1512" height="872" rx="30" stroke="#D7E2E8" stroke-width="2"/>
+  <text x="88" y="116" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800">System model</text>
+  <text x="88" y="156" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Hermes hosts the command surface; the typed runtime owns state, evidence, adapters, and formal transport.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="108" y="222" width="254" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="142" y="272" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700">User</text>
+    <text x="142" y="312" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="500">question, resume,</text>
+    <text x="142" y="340" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="500">intent and acceptance</text>
+
+    <rect x="450" y="160" width="444" height="196" rx="34" fill="#0F172A"/>
+    <text x="486" y="212" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="0.14em">PUBLIC ENTRYPOINT</text>
+    <text x="486" y="258" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">Hermes + deep-gvr orchestrator</text>
+    <text x="486" y="304" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="500">delegated execution, session control, resume, evidence, branch policy</text>
+    <rect x="486" y="326" width="148" height="46" rx="23" fill="#1D4ED8"/>
+    <text x="520" y="356" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">/deep-gvr</text>
+    <rect x="652" y="326" width="214" height="46" rx="23" fill="#0F766E"/>
+    <text x="686" y="356" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">uv run deep-gvr</text>
+
+    <rect x="420" y="458" width="220" height="130" rx="28" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="452" y="506" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="700">Generator</text>
+    <text x="452" y="544" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">candidate answers</text>
+    <text x="452" y="570" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">and proof sketches</text>
+
+    <rect x="692" y="432" width="252" height="182" rx="30" fill="#ECFDF5" stroke="#7DD3C7" stroke-width="2"/>
+    <text x="726" y="482" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800">Verifier</text>
+    <text x="726" y="520" fill="#0F766E" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">Tier 1 always runs</text>
+    <text x="726" y="556" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">requests deeper checks</text>
+    <text x="726" y="582" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">only when the claim needs them</text>
+
+    <rect x="998" y="458" width="216" height="130" rx="28" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2"/>
+    <text x="1032" y="506" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="700">Reviser</text>
+    <text x="1032" y="544" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">specific repairs,</text>
+    <text x="1032" y="570" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">bounded branching</text>
+
+    <rect x="618" y="690" width="174" height="108" rx="26" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="650" y="734" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="700">Tier 2</text>
+    <text x="650" y="768" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500">analysis adapters</text>
+
+    <rect x="842" y="690" width="174" height="108" rx="26" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="874" y="734" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="700">Tier 3</text>
+    <text x="874" y="768" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500">formal backends</text>
+
+    <rect x="1226" y="214" width="264" height="584" rx="34" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="1260" y="266" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Evidence ledger</text>
+    <text x="1260" y="304" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">artifacts, checkpoints, exports</text>
+    <rect x="1260" y="340" width="196" height="72" rx="22" fill="#F8FAFC" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="1288" y="384" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">checkpoint.json</text>
+    <rect x="1260" y="434" width="196" height="72" rx="22" fill="#F8FAFC" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="1288" y="478" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">evidence log</text>
+    <rect x="1260" y="528" width="196" height="72" rx="22" fill="#F8FAFC" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="1288" y="572" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">analysis results</text>
+    <rect x="1260" y="622" width="196" height="72" rx="22" fill="#F8FAFC" stroke="#D7E2E8" stroke-width="2"/>
+    <text x="1288" y="666" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">formal transport</text>
+  </g>
+
+  <path d="M362 288H450" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M672 356V432" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M818 356V432" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M944 523H998" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M818 614V690" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M930 614V690" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M1214 523H1226" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <path d="M792 744H842" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+</svg>

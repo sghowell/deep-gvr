@@ -4,6 +4,10 @@
 
 This documentation set is the public entrypoint for the project. It is designed for technically strong readers who want to evaluate the system, run it themselves, or understand its architecture without reading internal harness material.
 
+<figure class="hero-figure">
+  <img src="assets/deep-gvr-hero.svg" alt="deep-gvr public documentation hero" />
+</figure>
+
 ## Start with the Right Path
 
 - [Start Here](start-here.md)

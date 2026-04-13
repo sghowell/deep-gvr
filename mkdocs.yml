@@ -12,11 +12,22 @@ exclude_docs: |
   golden-principles.md
 theme:
   name: material
+  logo: assets/deep-gvr-mark.svg
+  favicon: assets/deep-gvr-mark.svg
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
   features:
     - navigation.tabs
     - navigation.sections
     - content.code.copy
     - search.suggest
+extra_css:
+  - stylesheets/extra.css
 markdown_extensions:
   - admonition
   - attr_list

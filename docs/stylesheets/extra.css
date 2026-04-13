@@ -1,0 +1,40 @@
+:root {
+  --deep-gvr-ink: #0f172a;
+  --deep-gvr-slate: #475569;
+  --deep-gvr-line: #d7e2e8;
+  --deep-gvr-mint: #d9f3f0;
+  --deep-gvr-teal: #0f766e;
+  --deep-gvr-blue: #1d4ed8;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #10253a;
+  --md-primary-fg-color--light: #173553;
+  --md-primary-fg-color--dark: #08121e;
+  --md-accent-fg-color: #0f766e;
+}
+
+.md-header {
+  background: linear-gradient(90deg, #10253a 0%, #164e63 100%);
+}
+
+.md-typeset .hero-figure,
+.md-typeset .doc-figure {
+  margin: 2rem 0 2.25rem;
+}
+
+.md-typeset .hero-figure img,
+.md-typeset .doc-figure img {
+  width: 100%;
+  border-radius: 24px;
+  border: 1px solid var(--deep-gvr-line);
+  box-shadow: 0 28px 52px -36px rgba(15, 23, 42, 0.28);
+  background: #ffffff;
+}
+
+.md-typeset .doc-figure figcaption {
+  margin-top: 0.85rem;
+  color: var(--deep-gvr-slate);
+  font-size: 0.82rem;
+  text-align: center;
+}

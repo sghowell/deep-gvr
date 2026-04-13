@@ -1,0 +1,39 @@
+<svg width="1400" height="760" viewBox="0 0 1400 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="54" y1="40" x2="1346" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#F2F8F7"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1400" height="760" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+  <rect width="1400" height="760" rx="32" fill="url(#bg)"/>
+  <rect x="44" y="44" width="1312" height="672" rx="28" stroke="#D7E2E8" stroke-width="2"/>
+  <text x="86" y="116" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800">Verification tiers</text>
+  <text x="86" y="156" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Every run gets analytical review. Deeper tiers are selective, evidence-driven escalations.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="104" y="222" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="288" r="36" fill="#0F172A"/>
+    <text x="164" y="300" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">1</text>
+    <text x="242" y="274" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 1 · Analytical verification</text>
+    <text x="242" y="316" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">coherence, scope, citations, plausibility, and overclaiming</text>
+
+    <rect x="104" y="394" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="460" r="36" fill="#0F766E"/>
+    <text x="164" y="472" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">2</text>
+    <text x="242" y="446" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 2 · OSS-backed analysis</text>
+    <text x="242" y="488" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">symbolic math, optimization, dynamics, QEC benchmarking, graph-state, photonic, neutral-atom, topological, ZX</text>
+
+    <rect x="104" y="566" width="1192" height="132" rx="30" fill="#FFFFFF" stroke="#D7E2E8" stroke-width="2"/>
+    <circle cx="178" cy="632" r="36" fill="#1D4ED8"/>
+    <text x="164" y="644" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">3</text>
+    <text x="242" y="618" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Tier 3 · Formal verification</text>
+    <text x="242" y="660" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">proof-oriented transport through Aristotle or MathCode, with explicit timeout and failure recording</text>
+  </g>
+
+  <rect x="1108" y="90" width="184" height="74" rx="22" fill="#FFF7ED" stroke="#FDBA74" stroke-width="2"/>
+  <text x="1140" y="121" fill="#9A3412" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Design rule</text>
+  <text x="1140" y="148" fill="#C2410C" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">escalate only when warranted</text>
+</svg>

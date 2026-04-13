@@ -6,17 +6,10 @@
 
 The system runs a generator-verifier-reviser loop:
 
-```mermaid
-flowchart LR
-    A["Question"] --> B["Generator"]
-    B --> C["Verifier"]
-    C -->|Verified| D["Result"]
-    C -->|Flaws found| E["Reviser"]
-    E --> C
-    C -->|Needs deeper evidence| F["Tier 2 or Tier 3"]
-    F --> C
-    C -->|Repeated failure| G["Escalate or halt"]
-```
+<figure class="doc-figure">
+  <img src="assets/gvr-loop.svg" alt="Generator verifier reviser loop" />
+  <figcaption>The verifier is the control point: it can accept, reject, revise, or escalate for deeper evidence.</figcaption>
+</figure>
 
 Each role has a different job:
 
