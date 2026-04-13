@@ -42,3 +42,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [37-opengauss-unblock-diagnostics.md](37-opengauss-unblock-diagnostics.md)
 - [38-human-docs-excellence.md](38-human-docs-excellence.md)
 - [39-public-release-and-distribution.md](39-public-release-and-distribution.md)
+- [40-docs-deploy-and-visuals.md](40-docs-deploy-and-visuals.md)
