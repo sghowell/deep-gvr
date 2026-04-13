@@ -46,3 +46,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [41-docs-render-fixes.md](41-docs-render-fixes.md)
 - [42-figure-typography-containment.md](42-figure-typography-containment.md)
 - [43-diagram-heading-containment.md](43-diagram-heading-containment.md)
+- [44-diagram-body-clearance.md](44-diagram-body-clearance.md)
