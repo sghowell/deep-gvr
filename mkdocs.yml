@@ -1,0 +1,40 @@
+site_name: deep-gvr
+site_description: Verification-oriented research system for Hermes Agent with tiered analysis and formal verification.
+site_url: https://sghowell.github.io/deep-gvr/
+repo_url: https://github.com/sghowell/deep-gvr
+repo_name: sghowell/deep-gvr
+docs_dir: docs
+exclude_docs: |
+  README.md
+  architecture-status.md
+  capability-probes.md
+  contracts-and-artifacts.md
+  golden-principles.md
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - Start Here: start-here.md
+  - Quickstart: quickstart.md
+  - Concepts: concepts.md
+  - Domain Portfolio: domain-portfolio.md
+  - Examples: examples.md
+  - FAQ: faq.md
+  - Technical Reference:
+      - System Overview: system-overview.md
+      - Architecture and Design: deep-gvr-architecture.md
+      - Release Workflow: release-workflow.md

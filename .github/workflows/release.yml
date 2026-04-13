@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Sync environment
+        run: uv sync --extra dev
+
+      - name: Repository checks
+        run: uv run python scripts/check_repo.py
+
+      - name: Capability probes
+        run: uv run python scripts/run_capability_probes.py
+
+      - name: Release surface preflight
+        run: |
+          export HERMES_HOME=/tmp/deep-gvr-release-home/.hermes
+          bash scripts/install.sh --target "$HERMES_HOME/skills"
+          uv run python scripts/release_preflight.py \
+            --json \
+            --skills-dir "$HERMES_HOME/skills" \
+            --config "$HERMES_HOME/deep-gvr/config.yaml" \
+            --hermes-config "$HERMES_HOME/config.yaml" \
+            > /tmp/deep-gvr-release-preflight.json
+
+      - name: Validate release version
+        run: uv run python scripts/check_release_version.py --tag "$GITHUB_REF_NAME"
+
+      - name: Render release notes
+        run: uv run python scripts/render_release_notes.py --version "${GITHUB_REF_NAME#v}" --output /tmp/deep-gvr-release-notes.md
+
+      - name: Build hosted docs
+        run: uv run mkdocs build --strict
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release/agentskills.publication.json --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file /tmp/deep-gvr-release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              release/agentskills.publication.json \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file /tmp/deep-gvr-release-notes.md \
+              --verify-tag
+          fi

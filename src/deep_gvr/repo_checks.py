@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
 from pathlib import Path
 
 import yaml
 
 from .json_schema import SchemaValidationError, validate
-from .release_surface import publication_manifest_errors
+from .release_surface import publication_manifest_errors, release_metadata_errors
 
 REQUIRED_PLAN_HEADINGS = [
     "# ",
@@ -85,6 +86,7 @@ REQUIRED_RETIREMENT_REFERENCES = {
 
 PUBLIC_DOCS = [
     "README.md",
+    "docs/index.md",
     "docs/start-here.md",
     "docs/quickstart.md",
     "docs/concepts.md",
@@ -98,6 +100,7 @@ PUBLIC_DOCS = [
 
 PUBLIC_DOC_LINK_REQUIREMENTS = {
     "README.md": [
+        "docs/index.md",
         "docs/start-here.md",
         "docs/quickstart.md",
         "docs/concepts.md",
@@ -109,7 +112,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "docs/deep-gvr-architecture.md",
     ],
     "docs/start-here.md": [
-        "../README.md",
+        "index.md",
         "quickstart.md",
         "concepts.md",
         "domain-portfolio.md",
@@ -332,6 +335,8 @@ def check_release_surfaces(root: Path) -> list[str]:
         root / "scripts" / "install.sh",
         root / "scripts" / "setup_mcp.sh",
         root / "scripts" / "release_preflight.py",
+        root / "scripts" / "check_release_version.py",
+        root / "scripts" / "render_release_notes.py",
         root / "eval" / "run_eval.py",
     ]
     for path in executable_files:
@@ -341,13 +346,26 @@ def check_release_surfaces(root: Path) -> list[str]:
         if path.stat().st_mode & 0o111 == 0:
             errors.append(f"{path.relative_to(root)}: expected executable bit to be set")
     required_docs = [
+        root / "CHANGELOG.md",
+        root / "mkdocs.yml",
+        root / "docs" / "index.md",
         root / "docs" / "release-workflow.md",
         root / "release" / "agentskills.publication.json",
+        root / "release" / "release-checklist.md",
+        root / ".github" / "workflows" / "docs.yml",
+        root / ".github" / "workflows" / "release.yml",
     ]
     for path in required_docs:
         if not path.exists():
             errors.append(f"{path.relative_to(root)}: required release-surface asset is missing")
     errors.extend(publication_manifest_errors(root))
+    errors.extend(release_metadata_errors(root))
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    dev_dependencies = ((pyproject.get("project") or {}).get("optional-dependencies") or {}).get("dev", [])
+    if "mkdocs>=1.6.0" not in dev_dependencies:
+        errors.append("pyproject.toml: dev dependencies must include mkdocs>=1.6.0")
+    if "mkdocs-material>=9.6.0" not in dev_dependencies:
+        errors.append("pyproject.toml: dev dependencies must include mkdocs-material>=9.6.0")
     return errors
 
 
