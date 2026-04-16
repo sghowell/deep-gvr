@@ -32,6 +32,7 @@ Start from `main` and implement this slice on `codex/subagent-capability-closure
 - The next useful increment is to require delegated runs to return `capability_evidence` in their structured JSON when they can observe actual role-level routing or delegated MCP behavior, so probe readiness can eventually be driven from recorded runtime artifacts instead of side-channel assumptions.
 - The delegated orchestrator wrapper now threads that `capability_evidence` field through the response contract, transcript artifacts, a dedicated capability-evidence artifact file, the returned `SkillSessionSummary`, and the contracts-and-artifacts docs; the delegated skill/runtime contract now also explicitly distinguishes requested `role_routes` from observed capability closure. The remaining step is to make the delegated skill/runtime populate `capability_evidence` from real observed behavior.
 - A real delegated CLI run with `--routing-probe ready` still timed out before the skill returned a structured summary, so we do not yet have proof that the delegated runtime is emitting observed `capability_evidence` in practice.
+- The dedicated Hermes v0.9 reassessment harness at `scripts/reassess_plan26.py` now makes that failure mode repeatable instead of anecdotal: the first local v0.9 run timed out after 180 seconds on both the route-focused and verifier-MCP-focused checks and returned no observed `capability_evidence`.
 - This slice is explicitly dependent on Hermes platform behavior and may require upstream coordination.
 
 ## Decision Log
@@ -45,6 +46,7 @@ Start from `main` and implement this slice on `codex/subagent-capability-closure
 - Partial progress only; this slice remains blocked externally.
 - The repo now has honest runtime-evidence probes, delegated `role_routes` payload plumbing, `capability_evidence` response/transcript/artifact plumbing, and stronger delegated-skill instructions about observed-versus-requested behavior.
 - A real delegated CLI run with the updated installed skill still timed out after 300 seconds and returned no observed `capability_evidence`, so the repo cannot honestly claim per-subagent route closure or verifier-direct MCP closure yet.
+- The first dedicated Hermes v0.9 reassessment run reached the same conclusion with a cleaner harness: both delegated checks timed out after 180 seconds and still produced no observed `capability_evidence`.
 
 ## Context and Orientation
 
@@ -82,6 +84,7 @@ Targeted validation:
 
 ```bash
 uv run python scripts/run_capability_probes.py
+uv run python scripts/reassess_plan26.py --json
 uv run python eval/run_eval.py --mode live --config ~/.hermes/deep-gvr/config.yaml --subset live-expansion --prompt-profile compact
 ```
 

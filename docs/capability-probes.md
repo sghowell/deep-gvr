@@ -10,6 +10,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Question: can Hermes route different models to delegated subagents?
 - Default until proven otherwise: assume no per-subagent override support.
 - Current baseline: the shipped command surface now runs through the delegated Hermes skill runtime, while the explicit live benchmark harness keeps the separate prompt-role calls for isolated testing. Probe `ready` status must now come from observed runtime evidence rather than environment hints; until that evidence exists, the generic routing helper records the shared orchestrator route plus role-specific temperature decorrelation in evidence, and the live benchmark harness can still attempt concrete top-level role pins with shared-route fallback when Hermes rejects the explicit provider/model path. The delegated runtime contract now requires `capability_evidence` to distinguish requested `role_routes` from actually observed route behavior.
+- Reassessment path: run `uv run python scripts/reassess_plan26.py --json` after Hermes upgrades to capture a fresh delegated route-closure attempt with structured output. The first local Hermes v0.9 reassessment still timed out after 180 seconds on the route-focused check and returned no observed `capability_evidence`.
 - Preferred outcome: explicit generator and verifier model overrides.
 - Temporary gap: the shared-route path remains in place only until the runtime can close this capability. Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)
 
@@ -18,6 +19,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Question: do delegated subagents inherit MCP tool access?
 - Default until proven otherwise: assume verifier-side MCP access is not guaranteed.
 - Current baseline: Tier 3 is mediated through the orchestrator, which persists formal request/results artifacts and passes returned results back into verification. Probe `ready` status for delegated MCP inheritance must come from observed verifier-side runtime evidence rather than configuration hints alone, and the delegated runtime contract now requires `capability_evidence` to report verifier-direct MCP usage only when it was actually observed.
+- Reassessment path: run `uv run python scripts/reassess_plan26.py --json` after Hermes upgrades to capture a fresh verifier-MCP closure attempt with structured output. The first local Hermes v0.9 reassessment still timed out after 180 seconds on the verifier-MCP-focused check and returned no observed `capability_evidence`.
 - Preferred outcome: verifier can call Aristotle directly.
 - Temporary gap: orchestrator-mediated Tier 3 remains only until verifier-side MCP access is real. Retirement slice: [26-subagent-capability-closure.md](../plans/26-subagent-capability-closure.md)
 
