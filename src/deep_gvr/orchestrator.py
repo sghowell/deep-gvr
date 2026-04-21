@@ -35,6 +35,20 @@ class OrchestratorBackendUnavailableError(RuntimeError):
         self.final_verdict = final_verdict
 
 
+class CodexRoleExecutionError(OrchestratorBackendUnavailableError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        backend_command: list[str],
+        response_text: str,
+        final_verdict: str = "CANNOT_VERIFY",
+    ) -> None:
+        super().__init__(message, final_verdict=final_verdict)
+        self.backend_command = list(backend_command)
+        self.response_text = response_text
+
+
 @dataclass(slots=True)
 class OrchestratorBackendConfig:
     backend: OrchestratorBackend = OrchestratorBackend.HERMES
@@ -69,6 +83,8 @@ class OrchestratorTranscript:
     domain_override: str | None = None
     role: str | None = None
     selected_route: dict[str, Any] | None = None
+    response_object: dict[str, Any] | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -92,6 +108,10 @@ class OrchestratorTranscript:
             payload["role"] = self.role
         if self.selected_route is not None:
             payload["selected_route"] = dict(self.selected_route)
+        if self.response_object is not None:
+            payload["response_object"] = dict(self.response_object)
+        if self.error is not None:
+            payload["error"] = self.error
         if self.backend == OrchestratorBackend.HERMES.value:
             payload["hermes_command"] = list(self.backend_command)
         return payload
@@ -531,11 +551,34 @@ class CodexLocalOrchestratorRunner:
             route_temperature=effective_route.temperature,
             prompt_profile=self.config.prompt_profile,
         )
-        codex_command, response_text = self._run_codex_command(
-            query=query,
-            response_schema=response_schema,
-            route=effective_route,
-        )
+        try:
+            codex_command, response_text = self._run_codex_command(
+                query=query,
+                response_schema=response_schema,
+                route=effective_route,
+            )
+        except CodexRoleExecutionError as exc:
+            self.transcripts.append(
+                OrchestratorTranscript(
+                    backend=OrchestratorBackend.CODEX_LOCAL.value,
+                    command=command,
+                    session_id=session_id,
+                    config_path=str(config_path),
+                    prompt_root=str(prompt_root),
+                    prompt_profile=self.config.prompt_profile,
+                    routing_probe=routing_probe_mode,
+                    role_routes=dict(role_routes or self.config.role_routes),
+                    skills=[],
+                    backend_command=list(exc.backend_command),
+                    query=query,
+                    response=exc.response_text,
+                    question=question,
+                    role=role,
+                    selected_route=_effective_route_payload(effective_route),
+                    error=str(exc),
+                )
+            )
+            raise
         transcript = OrchestratorTranscript(
             backend=OrchestratorBackend.CODEX_LOCAL.value,
             command=command,
@@ -555,11 +598,14 @@ class CodexLocalOrchestratorRunner:
         )
         self.transcripts.append(transcript)
         try:
-            return _extract_json_object(response_text)
+            response_object = _extract_json_object(response_text)
         except ValueError as exc:
+            transcript.error = f"Codex-local {role} role did not return a valid JSON payload: {exc}"
             raise OrchestratorBackendUnavailableError(
                 f"Codex-local {role} role did not return a valid JSON payload: {exc}"
             ) from exc
+        transcript.response_object = dict(response_object)
+        return response_object
 
     def _run_codex_command(
         self,
@@ -609,9 +655,11 @@ class CodexLocalOrchestratorRunner:
             if not response_text:
                 response_text = result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip()
             if result.returncode != 0:
-                raise OrchestratorBackendUnavailableError(
+                raise CodexRoleExecutionError(
                     "Codex-local orchestrator failed "
-                    f"with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
+                    f"with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}",
+                    backend_command=codex_command,
+                    response_text=response_text,
                 )
             return codex_command, response_text
 

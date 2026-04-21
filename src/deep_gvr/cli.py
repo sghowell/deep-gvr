@@ -247,6 +247,10 @@ def _execute_command(
         command=command,
         transcripts=orchestrator.transcripts,
     )
+    merged_capability_evidence = _merge_capability_evidence(orchestrator.transcripts)
+    if merged_capability_evidence and not summary_payload.get("capability_evidence"):
+        summary_payload = dict(summary_payload)
+        summary_payload["capability_evidence"] = merged_capability_evidence
     return _summary_from_payload(
         payload=summary_payload,
         command=command,
@@ -334,7 +338,56 @@ def _merge_capability_evidence(transcripts: list[Any]) -> dict[str, Any]:
         capability_evidence = getattr(item, "capability_evidence", None)
         if isinstance(capability_evidence, dict):
             merged.update(capability_evidence)
+    codex_native_evidence = _codex_native_role_execution_evidence(transcripts)
+    if codex_native_evidence:
+        merged["codex_native_role_execution"] = codex_native_evidence
     return merged
+
+
+def _codex_native_role_execution_evidence(transcripts: list[Any]) -> dict[str, Any] | None:
+    codex_calls = [item for item in transcripts if getattr(item, "backend", None) == OrchestratorBackend.CODEX_LOCAL.value]
+    if not codex_calls:
+        return None
+
+    observed_roles: list[str] = []
+    parsed_roles: list[str] = []
+    failed_roles: list[str] = []
+    route_pairs: dict[str, Any] = {}
+    for item in codex_calls:
+        role = getattr(item, "role", None)
+        if not isinstance(role, str) or not role:
+            continue
+        if role not in observed_roles:
+            observed_roles.append(role)
+        selected_route = getattr(item, "selected_route", None)
+        if isinstance(selected_route, dict):
+            route_pairs[role] = dict(selected_route)
+        response_object = getattr(item, "response_object", None)
+        if isinstance(response_object, dict) and role not in parsed_roles:
+            parsed_roles.append(role)
+        error = getattr(item, "error", None)
+        if isinstance(error, str) and error and role not in failed_roles:
+            failed_roles.append(role)
+
+    generator_route = route_pairs.get("generator")
+    verifier_route = route_pairs.get("verifier")
+    distinct_generator_verifier_routes = (
+        isinstance(generator_route, dict)
+        and isinstance(verifier_route, dict)
+        and (
+            generator_route.get("provider") != verifier_route.get("provider")
+            or generator_route.get("model") != verifier_route.get("model")
+        )
+    )
+    return {
+        "roles_observed": observed_roles,
+        "parsed_roles": parsed_roles,
+        "failed_roles": failed_roles,
+        "route_pairs": route_pairs,
+        "distinct_generator_verifier_routes": distinct_generator_verifier_routes,
+        "transcript_call_count": len(codex_calls),
+        "evidence_source": "codex_native_backend",
+    }
 
 
 def _record_session_artifacts(
