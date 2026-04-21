@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -33,6 +35,7 @@ class OrchestratorBackendUnavailableError(RuntimeError):
 class OrchestratorBackendConfig:
     backend: OrchestratorBackend = OrchestratorBackend.HERMES
     hermes_binary: str = "hermes"
+    codex_binary: str = "codex"
     prompt_profile: str = DEFAULT_PROMPT_PROFILE
     command_timeout_seconds: int = 120
     toolsets: list[str] = field(default_factory=list)
@@ -40,6 +43,7 @@ class OrchestratorBackendConfig:
     provider: str = "default"
     model: str = ""
     role_routes: dict[str, Any] = field(default_factory=dict)
+    writable_roots: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -186,6 +190,7 @@ class HermesDelegatedOrchestratorRunner:
             question=question,
             domain_override=domain_override,
             role_routes=role_routes or self.config.role_routes,
+            workspace_root=self.cwd,
         )
         hermes_command = [self.config.hermes_binary, "chat", "-Q", "-q", query]
         if self.config.provider not in {"", "default", "auto"}:
@@ -243,9 +248,9 @@ class CodexLocalOrchestratorRunner:
         cwd: Path | None = None,
         executor: CommandExecutor | None = None,
     ) -> None:
-        del executor
         self.config = config
         self.cwd = cwd or Path.cwd()
+        self.executor = executor
         self.transcripts: list[OrchestratorTranscript] = []
 
     def run(
@@ -259,7 +264,7 @@ class CodexLocalOrchestratorRunner:
         domain_override: str | None = None,
         role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return self._blocked(
+        return self._invoke(
             command="run",
             session_id=session_id,
             config_path=config_path,
@@ -279,7 +284,7 @@ class CodexLocalOrchestratorRunner:
         routing_probe_mode: str,
         role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return self._blocked(
+        return self._invoke(
             command="resume",
             session_id=session_id,
             config_path=config_path,
@@ -288,7 +293,7 @@ class CodexLocalOrchestratorRunner:
             role_routes=role_routes,
         )
 
-    def _blocked(
+    def _invoke(
         self,
         *,
         command: str,
@@ -310,15 +315,61 @@ class CodexLocalOrchestratorRunner:
             question=question,
             domain_override=domain_override,
             role_routes=role_routes or self.config.role_routes,
+            workspace_root=self.cwd,
         )
-        query = json.dumps(request_payload, indent=2)
-        message = (
-            "Codex-local orchestrator backend selection is now recognized by the runtime, "
-            "but the actual Codex-native backend transport is not implemented yet. "
-            "Complete plans/56-codex-local-backend.md before setting runtime.orchestrator_backend=codex_local."
+        query = _build_codex_orchestrator_query(
+            request_payload=request_payload,
+            response_contract=_orchestrator_response_contract(),
         )
-        self.transcripts.append(
-            OrchestratorTranscript(
+        if self.executor is None:
+            _ensure_binary_available(self.config.codex_binary, backend_name="Codex-local orchestrator")
+
+        with tempfile.TemporaryDirectory(prefix="deep-gvr-codex-backend-") as tmpdir:
+            temp_root = Path(tmpdir)
+            response_schema_path = temp_root / "orchestrator_response.schema.json"
+            output_path = temp_root / "orchestrator_response.json"
+            response_schema_path.write_text(
+                json.dumps(_orchestrator_response_schema(), indent=2),
+                encoding="utf-8",
+            )
+            codex_command = [
+                self.config.codex_binary,
+                "exec",
+                "--cd",
+                str(temp_root),
+                "--sandbox",
+                "workspace-write",
+                "--color",
+                "never",
+                "--skip-git-repo-check",
+                "--json",
+                "--output-schema",
+                str(response_schema_path),
+                "--output-last-message",
+                str(output_path),
+            ]
+            for writable_root in _normalized_writable_roots(self.config.writable_roots, self.cwd):
+                codex_command.extend(["--add-dir", writable_root])
+            if self.config.provider not in {"", "default", "auto"}:
+                codex_command.extend(["-c", f'model_provider="{self.config.provider}"'])
+            if self.config.model not in {"", "configured-by-codex", "provider-default"}:
+                codex_command.extend(["--model", self.config.model])
+            codex_command.append(query)
+
+            if self.executor is not None:
+                result = self.executor(codex_command, temp_root)
+            else:
+                result = _default_executor(
+                    codex_command,
+                    temp_root,
+                    self.config.command_timeout_seconds,
+                    backend_name="Codex-local orchestrator",
+                )
+
+            response_text = output_path.read_text(encoding="utf-8").strip() if output_path.exists() else ""
+            if not response_text:
+                response_text = result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip()
+            transcript = OrchestratorTranscript(
                 backend=OrchestratorBackend.CODEX_LOCAL.value,
                 command=command,
                 session_id=session_id,
@@ -327,15 +378,32 @@ class CodexLocalOrchestratorRunner:
                 prompt_profile=self.config.prompt_profile,
                 routing_probe=routing_probe_mode,
                 role_routes=dict(role_routes or self.config.role_routes),
-                skills=_merge_skills(self.config.skills),
-                backend_command=[],
+                skills=[],
+                backend_command=list(codex_command),
                 query=query,
-                response=message,
+                response=response_text,
                 question=question,
                 domain_override=domain_override,
             )
-        )
-        raise OrchestratorBackendUnavailableError(message)
+            self.transcripts.append(transcript)
+
+            if result.returncode != 0:
+                raise OrchestratorBackendUnavailableError(
+                    "Codex-local orchestrator failed "
+                    f"with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
+                )
+
+            try:
+                payload = _extract_json_object(response_text)
+            except ValueError as exc:
+                raise OrchestratorBackendUnavailableError(
+                    f"Codex-local orchestrator did not return a valid JSON summary: {exc}"
+                ) from exc
+
+            capability_evidence = payload.get("capability_evidence")
+            if isinstance(capability_evidence, dict):
+                transcript.capability_evidence = dict(capability_evidence)
+            return payload
 
 
 def build_orchestrator_runner(
@@ -371,6 +439,14 @@ def _ensure_skill_installed(skill_name: str) -> None:
     )
 
 
+def _ensure_binary_available(binary: str, *, backend_name: str) -> None:
+    if shutil.which(binary) is not None:
+        return
+    raise OrchestratorBackendUnavailableError(
+        f"{backend_name} requires {binary!r} to be available on PATH."
+    )
+
+
 def _build_orchestrator_query(
     *,
     command: str,
@@ -382,6 +458,7 @@ def _build_orchestrator_query(
     question: str | None = None,
     domain_override: str | None = None,
     role_routes: dict[str, Any] | None = None,
+    workspace_root: Path | None = None,
 ) -> str:
     request_payload = _orchestrator_request_payload(
         command=command,
@@ -393,6 +470,7 @@ def _build_orchestrator_query(
         question=question,
         domain_override=domain_override,
         role_routes=role_routes,
+        workspace_root=workspace_root,
     )
     response_contract = _orchestrator_response_contract()
     return (
@@ -415,6 +493,31 @@ def _build_orchestrator_query(
     )
 
 
+def _build_codex_orchestrator_query(
+    *,
+    request_payload: dict[str, Any],
+    response_contract: dict[str, Any],
+) -> str:
+    return (
+        "You are the deep-gvr Codex-local orchestrator backend.\n"
+        "This is a runtime execution request, not a repo-development task.\n\n"
+        f"Runtime request:\n{json.dumps(request_payload, indent=2)}\n\n"
+        "Requirements:\n"
+        "- Execute the generator, verifier, reviser, and any analysis or formal work directly through Codex-local execution.\n"
+        "- Do not call `uv run deep-gvr run` or `uv run deep-gvr resume` because those wrapper commands would recurse back into this backend.\n"
+        "- Do not rely on the Hermes skill, the Codex deep-gvr skill, or the plugin wrapper as the runtime implementation.\n"
+        "- Treat the repository code, prompts, contracts, and docs under `workspace_root` as the implementation authority.\n"
+        "- Do not edit repository source files, tests, docs, or release assets. Only write session evidence, checkpoints, and artifacts under the configured evidence directory plus temporary files needed to complete the run.\n"
+        "- Keep the verifier isolated from the original problem framing as described by the runtime contracts and architecture docs.\n"
+        "- Treat `role_routes` as requested routing intent, not proof of capability closure.\n"
+        "- Only mark `per_subagent_model_routing.distinct_routes_verified=true` when the run can confirm distinct routes were actually exercised.\n"
+        "- Only mark `subagent_mcp_inheritance.delegated_mcp_verified=true` when delegated Aristotle MCP access was actually exercised by the verifier rather than inferred from config.\n"
+        "- If a capability is not actually observed, omit it or return the verified flag as false instead of inferring success.\n"
+        "- Return only one JSON object matching the response contract below, with no markdown fences or prose outside the JSON object.\n\n"
+        f"Response contract:\n{json.dumps(response_contract, indent=2)}"
+    )
+
+
 def _orchestrator_request_payload(
     *,
     command: str,
@@ -426,6 +529,7 @@ def _orchestrator_request_payload(
     question: str | None = None,
     domain_override: str | None = None,
     role_routes: dict[str, Any] | None = None,
+    workspace_root: Path | None = None,
 ) -> dict[str, Any]:
     return {
         "command": command,
@@ -437,7 +541,7 @@ def _orchestrator_request_payload(
         "prompt_profile": prompt_profile,
         "routing_probe": routing_probe_mode,
         "role_routes": role_routes or {},
-        "workspace_root": str(Path.cwd()),
+        "workspace_root": str((workspace_root or Path.cwd()).resolve()),
     }
 
 
@@ -473,10 +577,112 @@ def _orchestrator_response_contract() -> dict[str, Any]:
     }
 
 
+def _orchestrator_response_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "command": {"type": "string", "enum": ["run", "resume"]},
+            "session_id": {"type": "string"},
+            "status": {"type": "string"},
+            "final_verdict": {
+                "type": "string",
+                "enum": ["PENDING", "VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"],
+            },
+            "result_summary": {"type": "string"},
+            "problem": {"type": "string"},
+            "domain": {"type": "string"},
+            "iterations": {"type": "number"},
+            "config_path": {"type": "string"},
+            "config_created": {"type": "boolean"},
+            "evidence_log": {"type": "string"},
+            "checkpoint_file": {"type": "string"},
+            "artifacts_dir": {"type": "string"},
+            "artifacts": {"type": "array", "items": {"type": "string"}},
+            "capability_evidence": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "per_subagent_model_routing": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "distinct_routes_verified": {"type": "boolean"},
+                            "route_pairs": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "generator": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "properties": {
+                                            "provider": {"type": "string"},
+                                            "model": {"type": "string"},
+                                        },
+                                        "required": ["provider", "model"],
+                                    },
+                                    "verifier": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "properties": {
+                                            "provider": {"type": "string"},
+                                            "model": {"type": "string"},
+                                        },
+                                        "required": ["provider", "model"],
+                                    },
+                                },
+                                "required": ["generator", "verifier"],
+                            },
+                            "evidence_source": {"type": "string"},
+                        },
+                        "required": ["distinct_routes_verified", "route_pairs", "evidence_source"],
+                    },
+                    "subagent_mcp_inheritance": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "delegated_mcp_verified": {"type": "boolean"},
+                            "mcp_details": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {"tool": {"type": "string"}},
+                                "required": ["tool"],
+                            },
+                            "evidence_source": {"type": "string"},
+                        },
+                        "required": ["delegated_mcp_verified", "mcp_details", "evidence_source"],
+                    },
+                },
+            },
+            "error": {"type": ["string", "null"]},
+        },
+        "required": [
+            "command",
+            "session_id",
+            "status",
+            "final_verdict",
+            "result_summary",
+            "problem",
+            "domain",
+            "iterations",
+            "config_path",
+            "config_created",
+            "evidence_log",
+            "checkpoint_file",
+            "artifacts_dir",
+            "artifacts",
+            "capability_evidence",
+            "error",
+        ],
+    }
+
+
 def _default_executor(
     command: list[str],
     cwd: Path,
     timeout_seconds: int | None,
+    *,
+    backend_name: str = "Hermes delegated orchestrator",
 ) -> CommandExecutionResult:
     try:
         completed = subprocess.run(
@@ -497,8 +703,17 @@ def _default_executor(
         return CommandExecutionResult(
             returncode=124,
             stdout="",
-            stderr=f"Hermes delegated orchestrator timed out after {timeout_text} seconds.",
+            stderr=f"{backend_name} timed out after {timeout_text} seconds.",
         )
+
+
+def _normalized_writable_roots(configured_roots: list[str], cwd: Path) -> list[str]:
+    roots: list[str] = []
+    for candidate in [str(cwd), *configured_roots]:
+        normalized = str(Path(candidate).expanduser().resolve())
+        if normalized not in roots:
+            roots.append(normalized)
+    return roots
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:

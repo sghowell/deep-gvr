@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -179,6 +180,11 @@ def _execute_command(
             provider=config.models.orchestrator.provider,
             model=config.models.orchestrator.model,
             role_routes=role_routes,
+            writable_roots=_backend_writable_roots(
+                config=config,
+                config_path=config_path,
+                prompt_root=prompt_root_path,
+            ),
         ),
         cwd=_repo_root(),
         executor=executor,
@@ -256,6 +262,36 @@ def _resolve_prompt_root(path: str | Path) -> Path:
     if prompt_root.is_absolute():
         return prompt_root
     return _repo_root() / prompt_root
+
+
+def _backend_writable_roots(
+    *,
+    config: DeepGvrConfig,
+    config_path: Path,
+    prompt_root: Path,
+) -> list[str]:
+    roots: list[Path] = [
+        _repo_root(),
+        config_path.parent,
+        Path(config.evidence.directory).expanduser(),
+    ]
+    if prompt_root.is_absolute():
+        roots.append(prompt_root)
+    if config.domain.context_file:
+        roots.append(Path(config.domain.context_file).expanduser().parent)
+    if config.verification.tier3.enabled:
+        if config.verification.tier3.backend == "mathcode":
+            roots.append(Path(config.verification.tier3.mathcode.root).expanduser())
+            roots.append(Path(config.verification.tier3.mathcode.run_script).expanduser().parent)
+        if config.verification.tier3.backend == "opengauss":
+            roots.append(Path(os.getenv("GAUSS_HOME", "~/.gauss")).expanduser())
+            roots.append(Path("~/dev/OpenGauss").expanduser())
+    unique_roots: list[str] = []
+    for root in roots:
+        normalized = str(root.resolve())
+        if normalized not in unique_roots:
+            unique_roots.append(normalized)
+    return unique_roots
 
 
 def _resolve_routing_probe(config: DeepGvrConfig, mode: str) -> CapabilityProbeResult:

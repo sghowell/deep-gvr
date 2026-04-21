@@ -66,6 +66,55 @@ class SkillCliTests(unittest.TestCase):
         del command, cwd
         return CommandExecutionResult(returncode=124, stdout="", stderr="Hermes command timed out after 5 seconds.")
 
+    def _successful_codex_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        self.assertEqual(command[:2], ["codex", "exec"])
+        self.assertIn("--output-schema", command)
+        self.assertIn("--output-last-message", command)
+        self.assertIn("--json", command)
+        self.assertIn("--sandbox", command)
+        self.assertIn("workspace-write", command)
+        schema_path = Path(command[command.index("--output-schema") + 1])
+        output_path = Path(command[command.index("--output-last-message") + 1])
+        query = command[-1]
+        self.assertEqual(cwd, output_path.parent)
+        self.assertTrue(schema_path.exists())
+        self.assertIn("Codex-local orchestrator backend", query)
+        self.assertIn("Do not call `uv run deep-gvr run` or `uv run deep-gvr resume`", query)
+        self.assertIn("Do not rely on the Hermes skill", query)
+        payload = {
+            "command": "run" if '"command": "run"' in query else "resume",
+            "session_id": "session_cli_run_codex" if '"command": "run"' in query else "session_cli_resume_codex",
+            "status": "completed",
+            "final_verdict": "VERIFIED",
+            "result_summary": "Codex-local orchestration completed.",
+            "problem": "Explain why the surface code has a threshold.",
+            "domain": "qec",
+            "iterations": 1,
+            "config_path": "/tmp/config.yaml",
+            "config_created": False,
+            "evidence_log": "/tmp/evidence.jsonl",
+            "checkpoint_file": "/tmp/checkpoint.json",
+            "artifacts_dir": "/tmp/artifacts",
+            "artifacts": ["/tmp/artifacts/session_summary.json"],
+            "capability_evidence": {
+                "per_subagent_model_routing": {
+                    "distinct_routes_verified": False,
+                    "route_pairs": {
+                        "generator": {"provider": "openai", "model": "gpt-5.3-codex"},
+                        "verifier": {"provider": "openai", "model": "gpt-5.3-codex"},
+                    },
+                    "evidence_source": "codex_backend_single_route",
+                }
+            },
+            "error": None,
+        }
+        output_path.write_text(json.dumps(payload), encoding="utf-8")
+        return CommandExecutionResult(
+            returncode=0,
+            stdout='{"event":"completed"}\n',
+            stderr="",
+        )
+
     def test_load_runtime_config_creates_default_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "deep-gvr" / "config.yaml"
@@ -218,7 +267,7 @@ class SkillCliTests(unittest.TestCase):
             self.assertEqual(summary.final_verdict, "VERIFIED")
             self.assertTrue(any(path.endswith("_resume_orchestrator_transcript.json") for path in summary.artifacts))
 
-    def test_run_session_command_codex_backend_fails_explicitly(self) -> None:
+    def test_run_session_command_codex_backend_uses_codex_transport(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
             evidence_dir = Path(tmpdir) / "sessions"
@@ -232,20 +281,23 @@ class SkillCliTests(unittest.TestCase):
                 "Explain why the surface code has a threshold.",
                 config_path=config_path,
                 session_id="session_cli_codex_backend",
+                executor=self._successful_codex_executor,
                 command_timeout_seconds=5,
             )
 
             self.assertEqual(summary.command, "run")
-            self.assertEqual(summary.final_verdict, "CANNOT_VERIFY")
-            self.assertIsNotNone(summary.error)
-            self.assertIn("Codex-local orchestrator backend selection is now recognized", summary.error)
+            self.assertEqual(summary.final_verdict, "VERIFIED")
+            self.assertIsNone(summary.error)
             transcript_path = next(
                 Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
             )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
             self.assertEqual(transcripts["calls"][0]["backend"], "codex_local")
-            self.assertEqual(transcripts["calls"][0]["backend_command"], [])
+            self.assertEqual(transcripts["calls"][0]["skills"], [])
+            self.assertIn("codex", transcripts["calls"][0]["backend_command"][0])
+            self.assertIn("--output-last-message", transcripts["calls"][0]["backend_command"])
             self.assertNotIn("hermes_command", transcripts["calls"][0])
+            self.assertIn("Codex-local orchestrator backend", transcripts["calls"][0]["query"])
 
     def test_run_session_command_returns_structured_error_on_role_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
