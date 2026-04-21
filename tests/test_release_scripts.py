@@ -12,6 +12,7 @@ import yaml
 from tests import _path_setup  # noqa: F401
 from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
+from deep_gvr.codex_ssh_devbox import codex_ssh_devbox_surface_errors
 from deep_gvr.release_surface import (
     codex_plugin_surface_errors,
     collect_codex_preflight,
@@ -161,6 +162,31 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((review_root / "catalog.json").exists())
             self.assertTrue((review_root / "prompts" / "pull_request_review.md").exists())
             rendered = (review_root / "prompts" / "pull_request_review.md").read_text(encoding="utf-8")
+            self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
+            self.assertIn(str(ROOT), rendered)
+
+    def test_install_codex_script_exports_ssh_devbox_bundle_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ssh_devbox_root = Path(tmpdir) / "codex-ssh-devbox-root"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "install_codex.sh"),
+                    "--ssh-devbox-root",
+                    str(ssh_devbox_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((ssh_devbox_root / "catalog.json").exists())
+            self.assertTrue((ssh_devbox_root / "prompts" / "remote_validator_run.md").exists())
+            rendered = (ssh_devbox_root / "prompts" / "remote_validator_run.md").read_text(encoding="utf-8")
             self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
             self.assertIn(str(ROOT), rendered)
 
@@ -434,8 +460,56 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertEqual(tier3_check.status.value, "ready")
         self.assertIn("MathCode", tier3_check.summary)
 
+    def test_collect_codex_preflight_reports_ready_ssh_devbox_backend_when_configured(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            for binary_name in ("codex", "hermes", "ssh", "scp"):
+                binary_path = bin_dir / binary_name
+                binary_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                binary_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            payload["verification"]["tier2"]["ssh"]["host"] = "validator-node"
+            payload["verification"]["tier2"]["ssh"]["remote_workspace"] = "/srv/deep-gvr"
+            payload["verification"]["tier2"]["ssh"]["python_bin"] = "python3"
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            report = collect_codex_preflight(
+                config_path=config_path,
+                codex_skills_dir=codex_target_dir,
+                hermes_skills_dir=hermes_target_dir,
+                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                ssh_devbox=True,
+            )
+
+        remote_check = next(check for check in report.checks if check.name == "ssh_devbox_backend")
+        self.assertEqual(remote_check.status.value, "ready")
+        self.assertTrue(remote_check.details["ssh_ready"])
+
     def test_release_metadata_errors_are_empty_for_repo(self) -> None:
         self.assertEqual(release_metadata_errors(ROOT), [])
+
+    def test_codex_ssh_devbox_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_ssh_devbox_surface_errors(ROOT), [])
 
     def test_release_notes_for_current_version_are_non_empty(self) -> None:
         notes = release_notes_for_version(project_version(ROOT), ROOT)

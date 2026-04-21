@@ -13,6 +13,7 @@ import yaml
 
 from .codex_automations import automation_catalog_path, codex_automation_surface_errors
 from .codex_review_qa import codex_review_qa_surface_errors, review_qa_catalog_path
+from .codex_ssh_devbox import codex_ssh_devbox_surface_errors, ssh_devbox_catalog_path
 from .contracts import (
     DeepGvrConfig,
     ProbeStatus,
@@ -130,6 +131,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         codex_plugin_marketplace_path=".agents/plugins/marketplace.json",
         codex_automation_catalog_path="codex_automations/catalog.json",
         codex_review_qa_catalog_path="codex_review_qa/catalog.json",
+        codex_ssh_devbox_catalog_path="codex_ssh_devbox/catalog.json",
         readme_path="README.md",
         install_script="scripts/install.sh",
         preflight_script="scripts/release_preflight.py",
@@ -146,10 +148,12 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         operator_validation_commands=[
             "bash scripts/install.sh",
             "bash scripts/install_codex.sh",
-            "python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
-            "python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+            "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
+            "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+            "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
             "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
             "uv run python scripts/codex_preflight.py --operator",
+            "uv run python scripts/codex_preflight.py --ssh-devbox --json",
             "bash scripts/setup_mcp.sh --install --check",
         ],
         auto_improve=False,
@@ -389,6 +393,7 @@ def collect_release_preflight(
     checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_codex_review_qa_surface(effective_root))
+    checks.append(_check_codex_ssh_devbox_surface(effective_root))
     checks.append(_check_release_metadata(effective_root))
     checks.append(_check_auto_improve_policy(effective_root))
 
@@ -399,6 +404,7 @@ def collect_release_preflight(
         "codex_plugin_surface",
         "codex_automation_surface",
         "codex_review_qa_surface",
+        "codex_ssh_devbox_surface",
         "release_metadata",
         "auto_improve_policy",
     }
@@ -435,6 +441,7 @@ def collect_codex_preflight(
     codex_skills_dir: Path | None = None,
     hermes_skills_dir: Path | None = None,
     hermes_config_path: Path | None = None,
+    ssh_devbox: bool = False,
 ) -> ReleasePreflightReport:
     effective_root = repo_root()
     effective_config_path = (config_path or default_config_path()).expanduser()
@@ -448,6 +455,7 @@ def collect_codex_preflight(
     checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_codex_review_qa_surface(effective_root))
+    checks.append(_check_codex_ssh_devbox_surface(effective_root))
     checks.append(_check_skill_install(effective_hermes_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
@@ -455,6 +463,8 @@ def collect_codex_preflight(
     checks.append(_check_provider_credentials(runtime_config))
     checks.append(_check_analysis_adapter_families(runtime_config))
     checks.append(_check_tier2_backend(runtime_config))
+    if ssh_devbox:
+        checks.append(_check_ssh_devbox_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
 
     structural_names = {
@@ -463,6 +473,7 @@ def collect_codex_preflight(
         "codex_plugin_surface",
         "codex_automation_surface",
         "codex_review_qa_surface",
+        "codex_ssh_devbox_surface",
         "skill_install",
         "runtime_config",
     }
@@ -964,7 +975,7 @@ def _check_codex_automation_surface(root: Path) -> ReleaseCheck:
         summary="The checked-in Codex automation catalog and templates match the repo surface.",
         details={"catalog_path": str(catalog_path)},
         guidance=(
-            "Use python scripts/export_codex_automations.py --output-root <dir> or bash scripts/install_codex.sh "
+            "Use uv run python scripts/export_codex_automations.py --output-root <dir> or bash scripts/install_codex.sh "
             "--automation-root <dir> to export a reviewable automation bundle for Codex."
         ),
     )
@@ -990,8 +1001,68 @@ def _check_codex_review_qa_surface(root: Path) -> ReleaseCheck:
         summary="The checked-in Codex review/QA catalog and prompt templates match the repo surface.",
         details={"catalog_path": str(catalog_path)},
         guidance=(
-            "Use python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh "
+            "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh "
             "--review-qa-root <dir> to export a reviewable Codex review/QA bundle."
+        ),
+    )
+
+
+def _check_codex_ssh_devbox_surface(root: Path) -> ReleaseCheck:
+    errors = codex_ssh_devbox_surface_errors(root)
+    catalog_path = ssh_devbox_catalog_path(root)
+    if errors:
+        return ReleaseCheck(
+            name="codex_ssh_devbox_surface",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in Codex SSH/devbox prompt pack is missing or out of sync with the repo surface.",
+            details={"catalog_path": str(catalog_path), "errors": errors},
+            guidance=(
+                "Restore or update the checked-in Codex SSH/devbox catalog and prompt templates so the remote-operator "
+                "surface stays reviewable and exportable from the repo."
+            ),
+        )
+    return ReleaseCheck(
+        name="codex_ssh_devbox_surface",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in Codex SSH/devbox catalog and prompt templates match the repo surface.",
+        details={"catalog_path": str(catalog_path)},
+        guidance=(
+            "Use uv run python scripts/export_codex_ssh_devbox.py --output-root <dir> or bash scripts/install_codex.sh "
+            "--ssh-devbox-root <dir> to export a reviewable remote-operator bundle for Codex."
+        ),
+    )
+
+
+def _check_ssh_devbox_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="ssh_devbox_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="SSH/devbox remote-validator readiness cannot be evaluated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun Codex preflight with --ssh-devbox.",
+        )
+
+    probe = probe_backend_dispatch(runtime_config)
+    ssh_ready = bool(probe.details.get("ssh_ready"))
+    if ssh_ready:
+        return ReleaseCheck(
+            name="ssh_devbox_backend",
+            status=ReleaseCheckStatus.READY,
+            summary="The SSH Tier 2 backend is ready for Codex SSH/devbox operator use.",
+            details=probe.details,
+            guidance=(
+                "Use scripts/run_capability_probes.py or codex_preflight.py --ssh-devbox whenever the remote host, "
+                "key, or workspace settings change."
+            ),
+        )
+    return ReleaseCheck(
+        name="ssh_devbox_backend",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="The SSH Tier 2 backend is not ready for Codex SSH/devbox operator use.",
+        details=probe.details,
+        guidance=(
+            "Configure verification.tier2.ssh.host and verification.tier2.ssh.remote_workspace, confirm ssh/scp "
+            "availability, and rerun Codex preflight with --ssh-devbox."
         ),
     )
 

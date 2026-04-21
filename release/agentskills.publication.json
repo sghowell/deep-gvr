@@ -11,6 +11,7 @@
   "codex_plugin_marketplace_path": ".agents/plugins/marketplace.json",
   "codex_automation_catalog_path": "codex_automations/catalog.json",
   "codex_review_qa_catalog_path": "codex_review_qa/catalog.json",
+  "codex_ssh_devbox_catalog_path": "codex_ssh_devbox/catalog.json",
   "readme_path": "README.md",
   "install_script": "scripts/install.sh",
   "preflight_script": "scripts/release_preflight.py",
@@ -27,10 +28,12 @@
   "operator_validation_commands": [
     "bash scripts/install.sh",
     "bash scripts/install_codex.sh",
-    "python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
-    "python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+    "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
+    "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+    "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
     "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
     "uv run python scripts/codex_preflight.py --operator",
+    "uv run python scripts/codex_preflight.py --ssh-devbox --json",
     "bash scripts/setup_mcp.sh --install --check"
   ],
   "auto_improve": false,

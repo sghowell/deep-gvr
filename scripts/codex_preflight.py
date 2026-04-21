@@ -44,6 +44,11 @@ def main() -> int:
         help="Exit non-zero unless the configured Codex-local operator runtime is fully ready.",
     )
     parser.add_argument(
+        "--ssh-devbox",
+        action="store_true",
+        help="Include the Codex SSH/devbox remote-validator readiness path in the report.",
+    )
+    parser.add_argument(
         "--config",
         type=Path,
         help="Runtime config path. Default: ~/.hermes/deep-gvr/config.yaml",
@@ -70,6 +75,7 @@ def main() -> int:
         codex_skills_dir=args.codex_skills_dir,
         hermes_skills_dir=args.hermes_skills_dir,
         hermes_config_path=args.hermes_config,
+        ssh_devbox=args.ssh_devbox,
     ).to_dict()
     if args.json:
         print(json.dumps(report, indent=2))
