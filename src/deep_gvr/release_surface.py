@@ -148,6 +148,8 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             'codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: <question>"',
             "uv run deep-gvr run \"<question>\"",
             "uv run deep-gvr resume <session_id>",
+            "uv run python scripts/codex_ssh_devbox_run.py run \"<question>\"",
+            "uv run python scripts/codex_ssh_devbox_run.py resume <session_id>",
         ],
         operator_validation_commands=[
             "bash scripts/install.sh",
@@ -159,6 +161,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             f"uv run python scripts/release_preflight.py --operator --config {runtime_home_description()}/config.yaml",
             "uv run python scripts/codex_preflight.py --operator",
             "uv run python scripts/codex_preflight.py --ssh-devbox --json",
+            "uv run python scripts/codex_ssh_devbox_run.py run --help",
             "bash scripts/setup_mcp.sh --install --check",
         ],
         auto_improve=False,
@@ -1161,27 +1164,73 @@ def _check_ssh_devbox_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCh
             guidance="Fix the runtime config first, then rerun Codex preflight with --ssh-devbox.",
         )
 
-    probe = probe_backend_dispatch(runtime_config)
-    ssh_ready = bool(probe.details.get("ssh_ready"))
-    if ssh_ready:
+    backend = runtime_config.runtime.orchestrator_backend
+    if backend is not OrchestratorBackend.CODEX_LOCAL:
+        return ReleaseCheck(
+            name="ssh_devbox_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="Codex SSH/devbox execution requires runtime.orchestrator_backend=codex_local.",
+            details={"orchestrator_backend": backend.value},
+            guidance=(
+                "Select the native Codex backend in the runtime config before using the SSH/devbox execution path."
+            ),
+        )
+
+    tier2 = runtime_config.verification.tier2
+    if not tier2.enabled:
         return ReleaseCheck(
             name="ssh_devbox_backend",
             status=ReleaseCheckStatus.READY,
-            summary="The SSH Tier 2 backend is ready for Codex SSH/devbox operator use.",
-            details=probe.details,
-            guidance=(
-                "Use scripts/run_capability_probes.py or codex_preflight.py --ssh-devbox whenever the remote host, "
-                "key, or workspace settings change."
-            ),
+            summary="Tier 2 is disabled, so the Codex SSH/devbox path can use the remote machine directly without backend dispatch prerequisites.",
+            details={
+                "orchestrator_backend": backend.value,
+                "selected_backend": tier2.default_backend.value,
+                "tier2_enabled": False,
+            },
+            guidance="Run the native Codex backend from the remote machine and enable Tier 2 later only after the selected backend is ready.",
+        )
+
+    probe = probe_backend_dispatch(runtime_config)
+    selected_backend = tier2.default_backend.value
+    selected_key = f"{selected_backend}_ready"
+    selected_ready = bool(probe.details.get(selected_key))
+    details = {
+        "orchestrator_backend": backend.value,
+        "selected_backend": selected_backend,
+        "selected_backend_ready": selected_ready,
+        **probe.details,
+    }
+
+    if selected_ready:
+        if selected_backend == "local":
+            summary = (
+                "The Codex-local backend can execute directly from this SSH/devbox machine using the selected local Tier 2 backend."
+            )
+            guidance = (
+                "Use the remote machine as the strong execution host and rerun Codex preflight if its local analysis environment changes."
+            )
+        else:
+            summary = (
+                f"The Codex-local backend can execute from this SSH/devbox machine and dispatch Tier 2 through the selected {selected_backend} backend."
+            )
+            guidance = (
+                f"Keep the selected {selected_backend} backend configured and rerun Codex preflight when its settings change."
+            )
+        return ReleaseCheck(
+            name="ssh_devbox_backend",
+            status=ReleaseCheckStatus.READY,
+            summary=summary,
+            details=details,
+            guidance=guidance,
         )
     return ReleaseCheck(
         name="ssh_devbox_backend",
         status=ReleaseCheckStatus.BLOCKED,
-        summary="The SSH Tier 2 backend is not ready for Codex SSH/devbox operator use.",
-        details=probe.details,
+        summary=f"The selected Tier 2 backend ({selected_backend}) is not ready for the Codex SSH/devbox execution path.",
+        details=details,
         guidance=(
-            "Configure verification.tier2.ssh.host and verification.tier2.ssh.remote_workspace, confirm ssh/scp "
-            "availability, and rerun Codex preflight with --ssh-devbox."
+            "Fix the selected Tier 2 backend or change verification.tier2.default_backend to a ready backend before "
+            "using the remote Codex execution path."
         ),
     )
 

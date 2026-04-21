@@ -260,4 +260,5 @@ echo "  5. If you want recurring Codex automation templates as well, review ${re
 echo "  6. If you want the Codex review and visual-QA prompt kit as well, review ${repo_root}/docs/codex-review-qa.md."
 echo "  7. If you want the Codex subagent prompt kit as well, review ${repo_root}/docs/codex-subagents.md."
 echo "  8. If you want the Codex SSH/devbox remote-operator kit as well, review ${repo_root}/docs/codex-ssh-devbox.md."
-echo "  9. If you also use the Hermes /deep-gvr surface or the Hermes backend, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config \${DEEP_GVR_HOME:-\${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml'."
+echo "  9. From a remote Codex SSH/devbox session, gate native remote execution with 'uv run python ${repo_root}/scripts/codex_preflight.py --ssh-devbox --operator' and run 'uv run python ${repo_root}/scripts/codex_ssh_devbox_run.py run \"<question>\"'."
+echo " 10. If you also use the Hermes /deep-gvr surface or the Hermes backend, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config \${DEEP_GVR_HOME:-\${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml'."

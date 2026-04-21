@@ -6,11 +6,12 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
 from tests import _path_setup  # noqa: F401
-from deep_gvr.contracts import DeepGvrConfig
+from deep_gvr.contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
 from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
 from deep_gvr.codex_subagents import codex_subagent_surface_errors
@@ -541,6 +542,8 @@ class ReleaseScriptTests(unittest.TestCase):
 
             config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
             payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["verification"]["tier2"]["default_backend"] = "ssh"
             payload["verification"]["tier2"]["ssh"]["host"] = "validator-node"
             payload["verification"]["tier2"]["ssh"]["remote_workspace"] = "/srv/deep-gvr"
             payload["verification"]["tier2"]["ssh"]["python_bin"] = "python3"
@@ -556,7 +559,137 @@ class ReleaseScriptTests(unittest.TestCase):
 
         remote_check = next(check for check in report.checks if check.name == "ssh_devbox_backend")
         self.assertEqual(remote_check.status.value, "ready")
+        self.assertEqual(remote_check.details["orchestrator_backend"], "codex_local")
+        self.assertEqual(remote_check.details["selected_backend"], "ssh")
         self.assertTrue(remote_check.details["ssh_ready"])
+
+    def test_collect_codex_preflight_reports_ready_ssh_devbox_backend_for_remote_local_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            codex_path = bin_dir / "codex"
+            codex_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            codex_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh"), "--skip-hermes-install"],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            config_path = Path(tmpdir) / "deep-gvr-runtime" / "config.yaml"
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["verification"]["tier2"]["default_backend"] = "local"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            prior_path = os.environ.get("PATH")
+            os.environ["PATH"] = env["PATH"]
+            try:
+                with patch(
+                    "deep_gvr.release_surface.probe_backend_dispatch",
+                    return_value=CapabilityProbeResult(
+                        name="backend_dispatch",
+                        status=ProbeStatus.READY,
+                        summary="patched local backend ready",
+                        preferred_outcome="",
+                        fallback="",
+                        details={
+                            "local_ready": True,
+                            "local_dependencies": {"numpy": True, "stim": True, "pymatching": True},
+                            "modal_ready": False,
+                            "modal_cli": "modal",
+                            "modal_cli_available": False,
+                            "modal_stub_path": str(ROOT / "adapters" / "modal_stubs" / "stim_modal.py"),
+                            "modal_stub_exists": True,
+                            "ssh_ready": False,
+                            "ssh_binary_available": False,
+                            "scp_binary_available": False,
+                            "ssh_host_configured": False,
+                            "ssh_remote_workspace_configured": False,
+                            "ssh_python_bin": "python3",
+                            "ssh_key_path": "",
+                            "ssh_key_exists": True,
+                        },
+                    ),
+                ):
+                    report = collect_codex_preflight(
+                        config_path=config_path,
+                        codex_skills_dir=codex_target_dir,
+                        hermes_skills_dir=hermes_target_dir,
+                        hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                        ssh_devbox=True,
+                    )
+            finally:
+                if prior_path is None:
+                    del os.environ["PATH"]
+                else:
+                    os.environ["PATH"] = prior_path
+
+        remote_check = next(check for check in report.checks if check.name == "ssh_devbox_backend")
+        self.assertEqual(remote_check.status.value, "ready")
+        self.assertEqual(remote_check.details["orchestrator_backend"], "codex_local")
+        self.assertEqual(remote_check.details["selected_backend"], "local")
+        self.assertTrue(remote_check.details["selected_backend_ready"])
+
+    def test_collect_codex_preflight_blocks_ssh_devbox_when_backend_is_not_codex_local(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            for binary_name in ("codex", "hermes", "ssh", "scp"):
+                binary_path = bin_dir / binary_name
+                binary_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                binary_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            payload["runtime"]["orchestrator_backend"] = "hermes"
+            payload["verification"]["tier2"]["default_backend"] = "ssh"
+            payload["verification"]["tier2"]["ssh"]["host"] = "validator-node"
+            payload["verification"]["tier2"]["ssh"]["remote_workspace"] = "/srv/deep-gvr"
+            payload["verification"]["tier2"]["ssh"]["python_bin"] = "python3"
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            report = collect_codex_preflight(
+                config_path=config_path,
+                codex_skills_dir=codex_target_dir,
+                hermes_skills_dir=hermes_target_dir,
+                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                ssh_devbox=True,
+            )
+
+        remote_check = next(check for check in report.checks if check.name == "ssh_devbox_backend")
+        self.assertEqual(remote_check.status.value, "blocked")
+        self.assertEqual(remote_check.details["orchestrator_backend"], "hermes")
 
     def test_collect_codex_preflight_does_not_require_hermes_for_codex_backend(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
