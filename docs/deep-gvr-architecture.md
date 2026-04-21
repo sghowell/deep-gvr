@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-`deep-gvr` is a verification-oriented research system with Hermes, Codex-local, packaged Codex plugin, Codex automation operator surfaces, and a repo-owned Codex review/QA prompt kit.
+`deep-gvr` is a verification-oriented research system with Hermes, Codex-local, a packaged Codex plugin, Codex automation operator surfaces, a repo-owned Codex review/QA prompt kit, and an explicit Codex `ssh/devbox` operator path.
 
 It answers technical questions by running a generator-verifier-reviser loop and escalating into deeper computational or formal checks only when the claim warrants them. The system is designed for readers and operators who care about evidence, traceability, and explicit uncertainty more than raw conversational smoothness.
 
@@ -28,11 +28,11 @@ The design is organized around a few non-negotiable ideas:
 
 ## 3. System Model
 
-At a high level, `deep-gvr` is a typed Python runtime with Hermes, Codex-local, packaged Codex plugin, and Codex automation surfaces:
+At a high level, `deep-gvr` is a typed Python runtime with Hermes, Codex-local, a packaged Codex plugin, Codex automation surfaces, and an explicit Codex `ssh/devbox` surface:
 
 <figure class="doc-figure">
   <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
-<figcaption>Hermes, Codex local, the packaged Codex plugin, and the checked-in Codex automation pack share the same typed runtime. The repo also ships a separate Codex review/QA prompt kit for high-signal review workflows. The runtime owns evidence, adapters, formal transport, and resume semantics, while Hermes remains the delegated execution backend on the shipped path today.</figcaption>
+<figcaption>Hermes, Codex local, the packaged Codex plugin, the checked-in Codex automation pack, and the explicit Codex `ssh/devbox` surface share the same typed runtime. The repo also ships a separate Codex review/QA prompt kit for high-signal review workflows. The runtime owns evidence, adapters, formal transport, and resume semantics, while Hermes remains the delegated execution backend on the shipped path today.</figcaption>
 </figure>
 
 ### Main Components
@@ -146,8 +146,8 @@ The public command surface is:
 - `/deep-gvr <question>`
 - `/deep-gvr resume <session_id>`
 - `codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: <question>"`
-- `python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations`
-- `python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
+- `uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations`
+- `uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
 
@@ -157,9 +157,10 @@ The runtime persists sessions under `~/.hermes/deep-gvr/sessions/<session_id>/`,
 
 The current release surface is strong, but it is not magic.
 
-- Codex local, the packaged Codex plugin, and the checked-in Codex automation pack are supported peer surfaces, but they do not replace the delegated Hermes backend on the shipped path today.
+- Codex local, the packaged Codex plugin, the checked-in Codex automation pack, and the explicit Codex `ssh/devbox` path are supported peer surfaces, but they do not replace the delegated Hermes backend on the shipped path today.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
-- The repo also ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
+- The repo also ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven docs QA.
+- The repo ships an explicit Codex `ssh/devbox` remote-operator bundle and readiness path, but it does not provision Codex remote sessions itself.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.
 - Some optional backends depend on local or remote operator setup.
 - Live behavior depends on real provider routes and external systems.

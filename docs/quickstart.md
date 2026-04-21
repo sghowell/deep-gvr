@@ -45,6 +45,12 @@ Optional plugin export path:
 bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
 ```
 
+Optional `ssh/devbox` remote-operator export path:
+
+```bash
+bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
+```
+
 ## Run Preflight
 
 Hermes and direct CLI path:
@@ -59,6 +65,13 @@ Codex-local path:
 ```bash
 uv run python scripts/codex_preflight.py --json
 uv run python scripts/codex_preflight.py --operator
+```
+
+Codex `ssh/devbox` remote-operator path:
+
+```bash
+uv run python scripts/codex_preflight.py --ssh-devbox --json
+uv run python scripts/codex_preflight.py --ssh-devbox --operator
 ```
 
 If you intend to use Aristotle as a Tier 3 backend:

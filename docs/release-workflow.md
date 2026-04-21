@@ -53,6 +53,12 @@ If you also want the Codex review and visual-QA prompt pack exported for review,
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you also want the Codex `ssh/devbox` remote-operator bundle exported for review, use:
+
+```bash
+bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
+```
+
 ## 3. Run Structural Preflight
 
 ```bash
@@ -67,6 +73,12 @@ This checks the release bundle, config presence, and checked-in publication asse
 ```bash
 uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
 uv run python scripts/codex_preflight.py --operator
+```
+
+If you intend to rely on the Codex remote-validator path as part of the operator story, also run:
+
+```bash
+uv run python scripts/codex_preflight.py --ssh-devbox --operator
 ```
 
 This verifies the installed skill bundle plus the live runtime path:
@@ -122,6 +134,7 @@ The publication bundle that should ship with the release is:
 - `.agents/plugins/marketplace.json`
 - `codex_automations/catalog.json`
 - `codex_review_qa/catalog.json`
+- `codex_ssh_devbox/catalog.json`
 
 That same manifest is the source of truth for `agentskills.io` publication.
 

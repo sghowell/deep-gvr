@@ -14,7 +14,7 @@ The checked-in review/QA pack lives at:
 
 The repo also ships two export paths:
 
-- `python scripts/export_codex_review_qa.py --output-root <dir>`
+- `uv run python scripts/export_codex_review_qa.py --output-root <dir>`
 - `bash scripts/install_codex.sh --review-qa-root <dir>`
 
 Those exports materialize the current checkout path into the shipped prompts so they are ready for review in Codex.
@@ -50,7 +50,7 @@ The shipped prompt is tuned for:
 Minimal export:
 
 ```bash
-python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa
+uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa
 ```
 
 If you are already installing the Codex-local surface, you can export the review/QA pack at the same time:
@@ -95,4 +95,4 @@ It is not:
 - a replacement for Hermes as the shipped delegated execution backend
 - a claim that the repo can directly enable live GitHub auto-review or browser automation inside Codex
 
-If you want the main interactive operator path, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want recurring scheduled work instead, see [Codex Automations](codex-automations.md).
+If you want the main interactive operator path, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want recurring scheduled work instead, see [Codex Automations](codex-automations.md). If you want the explicit remote-validator/operator path, see [Codex SSH Devbox](codex-ssh-devbox.md).

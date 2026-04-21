@@ -15,8 +15,10 @@ Use this checklist when cutting a public `deep-gvr` release.
 - Run `uv run python scripts/run_capability_probes.py`
 - Run `uv run python -m unittest discover -s tests -v`
 - Run `bash scripts/install_codex.sh`
+- If you intend to use the remote validator path, run `uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force`
 - Run `uv run python scripts/codex_preflight.py --json`
 - Run `uv run python scripts/codex_preflight.py --operator`
+- If you intend to use the remote validator path, run `uv run python scripts/codex_preflight.py --ssh-devbox --operator`
 - Run `uv run python scripts/release_preflight.py --json`
 - Run `uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml`
 - Run `uv run python scripts/check_release_version.py --tag v<version>`
@@ -34,7 +36,7 @@ Use this checklist when cutting a public `deep-gvr` release.
 ## Hosted Docs
 
 - Confirm the Docs workflow builds successfully from the same repo state.
-- If GitHub Pages is enabled for the repository, run the manual docs deployment workflow and verify the published site.
+- Confirm the Docs workflow auto-deploys successfully from the pushed `main` state when GitHub Pages is enabled.
 
 ## Post-Release
 

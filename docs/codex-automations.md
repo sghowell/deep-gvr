@@ -23,7 +23,7 @@ These templates cover four recurring workflows:
 
 The repo also ships two export paths:
 
-- `python scripts/export_codex_automations.py --output-root <dir>`
+- `uv run python scripts/export_codex_automations.py --output-root <dir>`
 - `bash scripts/install_codex.sh --automation-root <dir>`
 
 ## Current Boundary
@@ -47,7 +47,7 @@ Codex keeps live automation state inside the product. The repo therefore ships t
 Minimal export:
 
 ```bash
-python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations
+uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations
 ```
 
 If you are already installing the Codex-local surface, you can export the automation pack at the same time:

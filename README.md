@@ -97,6 +97,12 @@ If you want the Codex review and visual-QA prompt pack exported for review as we
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you want the Codex `ssh/devbox` remote-operator prompt pack exported for review as well:
+
+```bash
+bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
+```
+
 Once installed into Hermes, the same system is available as:
 
 ```text
@@ -116,6 +122,7 @@ Start here:
 - [Codex Plugin](docs/codex-plugin.md)
 - [Codex Automations](docs/codex-automations.md)
 - [Codex Review and Visual QA](docs/codex-review-qa.md)
+- [Codex SSH Devbox](docs/codex-ssh-devbox.md)
 - [Quickstart](docs/quickstart.md)
 - [Concepts](docs/concepts.md)
 - [Domain Portfolio](docs/domain-portfolio.md)
@@ -142,6 +149,7 @@ Release history:
 - Codex local, the packaged Codex plugin, and the checked-in Codex automation pack are supported peer surfaces, but the shipped delegated execution backend still routes through Hermes today.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
+- The repo also ships an explicit Codex `ssh/devbox` remote-operator bundle and readiness path for simulation-heavy validator environments.
 - Some advanced Hermes-native capabilities, especially true per-subagent routing and delegated MCP inheritance, still depend on upstream Hermes support.
 
 ## What It Is Not
