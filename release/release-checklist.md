@@ -15,6 +15,7 @@ Use this checklist when cutting a public `deep-gvr` release.
 - Run `uv run python scripts/run_capability_probes.py`
 - Run `uv run python -m unittest discover -s tests -v`
 - Run `bash scripts/install_codex.sh`
+- If you intend to use Codex subagents, run `uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force`
 - If you intend to use the remote validator path, run `uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force`
 - Run `uv run python scripts/codex_preflight.py --json`
 - Run `uv run python scripts/codex_preflight.py --operator`

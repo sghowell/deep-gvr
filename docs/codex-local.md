@@ -4,7 +4,7 @@ This guide covers the supported Codex-local surface for `deep-gvr`.
 
 Codex local is a first-class operator surface for the project, but it is not a separate runtime backend. It operates the same typed `deep-gvr` runtime and writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths.
 
-If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want a Codex-native review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
+If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want a Codex-native review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
 
 ## What Codex Local Means Here
 
@@ -59,6 +59,12 @@ If you also want the Codex review and visual-QA prompt pack exported for review:
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you also want the Codex subagent prompt pack exported for review:
+
+```bash
+bash scripts/install_codex.sh --subagents-root /tmp/deep-gvr-codex-subagents
+```
+
 If you also want the Codex `ssh/devbox` remote-operator bundle exported for review:
 
 ```bash
@@ -109,7 +115,7 @@ The Codex-local surface uses the same underlying runtime state as the Hermes and
 - Checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
 - Artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
 
-Codex-local review and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. That does not change the runtime boundary; it only changes where Codex is operating from. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
+Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. That does not change the runtime boundary; it only changes where Codex is operating from. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
 
 ## Current Boundary
 

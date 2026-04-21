@@ -95,4 +95,4 @@ Those exported TOML files have the current checkout path materialized into their
 - Review the exported prompts, schedules, and working directories before activating anything in Codex.
 - Treat the templates as a starting point for your workspace, not as immutable universal schedules.
 
-If you only want the interactive Codex surface, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want a non-scheduled Codex review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md).
+If you only want the interactive Codex surface, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want a non-scheduled Codex review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md).

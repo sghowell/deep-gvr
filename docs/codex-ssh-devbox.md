@@ -103,4 +103,4 @@ It is not:
 - a replacement for Hermes as the shipped delegated execution backend
 - a claim that the repo can provision Codex SSH/devbox sessions directly
 
-If you want the main interactive local operator path, see [Codex Local](codex-local.md). If you want a browser-driven review workflow, see [Codex Review and Visual QA](codex-review-qa.md).
+If you want the main interactive local operator path, see [Codex Local](codex-local.md). If you want a browser-driven review workflow, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md).

@@ -95,4 +95,4 @@ It is not:
 - a replacement for Hermes as the shipped delegated execution backend
 - a claim that the repo can directly enable live GitHub auto-review or browser automation inside Codex
 
-If you want the main interactive operator path, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want recurring scheduled work instead, see [Codex Automations](codex-automations.md). If you want the explicit remote-validator/operator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
+If you want the main interactive operator path, see [Codex Local](codex-local.md) and [Codex Plugin](codex-plugin.md). If you want recurring scheduled work instead, see [Codex Automations](codex-automations.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote-validator/operator path, see [Codex SSH Devbox](codex-ssh-devbox.md).

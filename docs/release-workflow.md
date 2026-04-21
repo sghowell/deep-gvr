@@ -53,6 +53,12 @@ If you also want the Codex review and visual-QA prompt pack exported for review,
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you also want the Codex subagent prompt pack exported for review, use:
+
+```bash
+bash scripts/install_codex.sh --subagents-root /tmp/deep-gvr-codex-subagents
+```
+
 If you also want the Codex `ssh/devbox` remote-operator bundle exported for review, use:
 
 ```bash
@@ -134,6 +140,7 @@ The publication bundle that should ship with the release is:
 - `.agents/plugins/marketplace.json`
 - `codex_automations/catalog.json`
 - `codex_review_qa/catalog.json`
+- `codex_subagents/catalog.json`
 - `codex_ssh_devbox/catalog.json`
 
 That same manifest is the source of truth for `agentskills.io` publication.
