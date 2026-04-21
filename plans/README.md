@@ -56,3 +56,5 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [52-codex-review-and-visual-qa.md](52-codex-review-and-visual-qa.md)
 - [53-codex-ssh-devbox-surface.md](53-codex-ssh-devbox-surface.md)
 - [54-codex-subagent-integration.md](54-codex-subagent-integration.md)
+- [55-codex-backend-abstraction.md](55-codex-backend-abstraction.md)
+- [56-codex-local-backend.md](56-codex-local-backend.md)
