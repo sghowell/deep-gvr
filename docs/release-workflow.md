@@ -108,3 +108,11 @@ That same manifest is the source of truth for `agentskills.io` publication.
 The release bundle ships with `auto_improve: false`.
 
 That is intentional. Enabling automatic self-modification is an explicit operator choice, not the default behavior of the public release surface.
+
+Before enabling it, run:
+
+```bash
+uv run python scripts/evaluate_auto_improve.py --output /tmp/deep-gvr-auto-improve/report.json
+```
+
+Review the generated report and keep the checked-in manifest at `auto_improve: false` unless the evidence justifies changing the public release policy.

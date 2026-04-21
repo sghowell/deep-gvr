@@ -21,6 +21,7 @@ Use this checklist when cutting a public `deep-gvr` release.
 - Run `uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml`
 - Run `uv run python scripts/check_release_version.py --tag v<version>`
 - Run `uv run mkdocs build --strict`
+- If you intend to enable `auto_improve`, run `uv run python scripts/evaluate_auto_improve.py --output /tmp/deep-gvr-auto-improve/report.json` first and review the report before editing `release/agentskills.publication.json`
 
 ## Publication
 

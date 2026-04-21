@@ -4,7 +4,9 @@ This project follows a Keep a Changelog style release history. Public releases a
 
 ## [Unreleased]
 
-- No unreleased changes are recorded yet.
+### Added
+
+- An isolated `auto_improve` evaluation harness and CLI so release-policy changes can be justified with measured benchmark and policy evidence instead of a manual manifest edit.
 
 ## [0.1.0] - 2026-04-13
 

@@ -18,24 +18,31 @@ Start from `main` and implement this slice on `codex/auto-improve-evaluation` wh
 
 ## Progress
 
-- [ ] Design the evaluation protocol.
-- [ ] Add controlled before/after evaluation helpers.
-- [ ] Run repeated benchmark comparisons with and without `auto_improve`.
-- [ ] Update the release policy based on evidence.
-- [ ] Run full validation.
-- [ ] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
+- [x] Design the evaluation protocol.
+- [x] Add controlled before/after evaluation helpers.
+- [x] Run repeated benchmark comparisons with and without `auto_improve`.
+- [x] Update the release policy based on evidence.
+- [x] Run full validation.
+- [x] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
 
 ## Surprises & Discoveries
 
-- Pending implementation.
+- `auto_improve` is currently a release-surface policy field, not a repo-local runtime input. The evaluation harness therefore measures policy toggles against isolated benchmark and release-policy comparisons instead of pretending the typed runtime consumes the flag directly.
+- A deterministic repeated comparison is enough to prove the repo-local point today: toggling the policy variant produced no benchmark drift, but the experimental `auto_improve: true` variant still fails the documented public-release default.
+- Actual evaluation evidence was written to `/tmp/deep-gvr-auto-improve/report.json`: deterministic `analysis-full` repeated 3 times yielded `48/48` passed case-runs with zero differing case outcomes between the baseline and experimental policy variants; live evaluation was intentionally skipped in this slice.
 
 ## Decision Log
 
 - Decision: keep `auto_improve: false` as the shipped default until this slice is complete.
+- Decision: keep `auto_improve: false` as the shipped default after this slice as well; the new evidence does not justify enabling it by default.
+- Decision: require `scripts/evaluate_auto_improve.py` as the explicit opt-in gate before anyone edits `release/agentskills.publication.json`.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Added `src/deep_gvr/auto_improve.py` and `scripts/evaluate_auto_improve.py` as the repeatable evaluation path for the release policy.
+- Added `schemas/auto_improve_evaluation.schema.json` and `templates/auto_improve_evaluation.template.json` so the new artifact is contract-backed.
+- Recorded the current recommendation in the release surface and docs: keep `auto_improve` disabled by default until future evidence shows a real operator benefit without drift.
+- The implemented evaluator now makes the current limitation explicit: the repo can prove policy isolation and benchmark stability, but a future slice would still need real live operator evidence before the public default changes.
 
 ## Context and Orientation
 
@@ -58,6 +65,17 @@ Start from `main` and implement this slice on `codex/auto-improve-evaluation` wh
    - artifact integrity
    - rollback and recovery behavior
 3. Record the findings in repo-local docs and update the release policy accordingly.
+
+Implementation result:
+
+1. Added a dedicated evaluator that:
+   - compares baseline vs experimental `auto_improve` policy variants
+   - writes an `AutoImproveEvaluationReport`
+   - checks manifest/worktree isolation before and after the run
+2. Ran the deterministic comparison path and recorded the result:
+   - no repo-local benchmark drift was observed
+   - the experimental policy variant remains release-blocked by design
+3. Kept the checked-in release policy disabled by default and updated the release docs to require the evaluator before any opt-in edit.
 
 ## Validation and Acceptance
 

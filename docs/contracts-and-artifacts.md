@@ -24,6 +24,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
 - `ReleasePreflightReport`: structural and operator-readiness report for the shipped Hermes release surface
 - `ReleasePublicationManifest`: checked-in publication bundle manifest for GitHub and agentskills.io release work
+- `AutoImproveEvaluationReport`: isolated benchmark-and-policy comparison used to justify whether `auto_improve` should remain disabled by default
 
 ## Artifact Paths
 
@@ -31,6 +32,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `templates/*.json`: sample artifacts used in tests
 - `templates/config.template.yaml`: YAML form of the default runtime config written by install and CLI helpers
 - `release/agentskills.publication.json`: checked-in publication bundle manifest validated against repo metadata
+- `scripts/evaluate_auto_improve.py`: operator-facing evaluator for the `auto_improve` release policy
+- `templates/auto_improve_evaluation.template.json`: canonical sample evaluation report
 - `prompts/*.md`: role prompts aligned to the contract names
 - `domain/*.md`: concise domain context cards
 - `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
@@ -42,6 +45,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `eval/results/live/<run_id>/cases/<case_id>/verification_report.json`: live verifier output for one benchmark case
 - `eval/results/live/<run_id>/cases/<case_id>/role_transcripts.json`: Hermes prompt and response transcripts for one live benchmark case
 - `eval/results/live/<run_id>/cases/<case_id>/case_result.json`: normalized per-case live benchmark summary
+- `/tmp/deep-gvr-auto-improve-<run_id>/report.json`: default auto-improve evaluation report written outside the worktree
 - `eval/results/live/<run_id>/sessions/<session_id>/checkpoint.json`: persisted Tier 1 state for a live benchmark session
 - `sessions/<session_id>/artifacts/<timestamp>_run_orchestrator_transcript.json`: delegated top-level Hermes session transcript for the shipped CLI wrapper
 - `sessions/<session_id>/artifacts/<timestamp>_run_capability_evidence.json`: delegated capability-evidence artifact emitted by the CLI wrapper when the delegated runtime returns observed role-routing or delegated-MCP evidence
