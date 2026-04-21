@@ -11,6 +11,7 @@ import yaml
 
 from tests import _path_setup  # noqa: F401
 from deep_gvr.codex_automations import codex_automation_surface_errors
+from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
 from deep_gvr.release_surface import (
     codex_plugin_surface_errors,
     collect_codex_preflight,
@@ -135,6 +136,31 @@ class ReleaseScriptTests(unittest.TestCase):
             rendered = (automation_root / "automations" / "benchmark_subset_sweep" / "automation.toml").read_text(
                 encoding="utf-8"
             )
+            self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
+            self.assertIn(str(ROOT), rendered)
+
+    def test_install_codex_script_exports_review_qa_bundle_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            review_root = Path(tmpdir) / "codex-review-qa-root"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "install_codex.sh"),
+                    "--review-qa-root",
+                    str(review_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((review_root / "catalog.json").exists())
+            self.assertTrue((review_root / "prompts" / "pull_request_review.md").exists())
+            rendered = (review_root / "prompts" / "pull_request_review.md").read_text(encoding="utf-8")
             self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
             self.assertIn(str(ROOT), rendered)
 
@@ -509,6 +535,9 @@ class ReleaseScriptTests(unittest.TestCase):
 
     def test_codex_automation_surface_matches_repo_metadata(self) -> None:
         self.assertEqual(codex_automation_surface_errors(ROOT), [])
+
+    def test_codex_review_qa_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_review_qa_surface_errors(ROOT), [])
 
     def test_release_preflight_uses_mathcode_transport_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
