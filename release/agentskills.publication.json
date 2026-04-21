@@ -31,6 +31,7 @@
   "operator_validation_commands": [
     "bash scripts/install.sh",
     "bash scripts/install_codex.sh",
+    "uv run python scripts/codex_remote_bootstrap.py --json",
     "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
     "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
     "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",

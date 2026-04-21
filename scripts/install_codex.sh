@@ -258,6 +258,7 @@ echo "  3. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --operator
 echo "  4. If you want the packaged plugin bundle as well, review ${repo_root}/docs/codex-plugin.md."
 echo "  5. If you want recurring Codex automation templates as well, review ${repo_root}/docs/codex-automations.md."
 echo "  6. If you want the Codex review and visual-QA prompt kit as well, review ${repo_root}/docs/codex-review-qa.md."
+echo "  7. If you want the remote Codex SSH/devbox operator path, run 'uv run python ${repo_root}/scripts/codex_remote_bootstrap.py --json' on the remote machine and review ${repo_root}/docs/codex-ssh-devbox.md."
 echo "  7. If you want the Codex subagent prompt kit as well, review ${repo_root}/docs/codex-subagents.md."
 echo "  8. If you want the Codex SSH/devbox remote-operator kit as well, review ${repo_root}/docs/codex-ssh-devbox.md."
 echo "  9. From a remote Codex SSH/devbox session, gate native remote execution with 'uv run python ${repo_root}/scripts/codex_preflight.py --ssh-devbox --operator' and run 'uv run python ${repo_root}/scripts/codex_ssh_devbox_run.py run \"<question>\"'."

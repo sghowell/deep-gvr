@@ -1302,6 +1302,64 @@ class ReleasePreflightReport:
 
 
 @dataclass(slots=True)
+class CodexRemoteBootstrapAction:
+    name: str
+    status: ReleaseCheckStatus
+    changed: bool
+    summary: str
+    details: dict[str, Any] = field(default_factory=dict)
+    guidance: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexRemoteBootstrapAction":
+        return cls(
+            name=data["name"],
+            status=ReleaseCheckStatus(data["status"]),
+            changed=bool(data["changed"]),
+            summary=data["summary"],
+            details=dict(data.get("details", {})),
+            guidance=data.get("guidance", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexRemoteBootstrapReport:
+    skill_name: str
+    version: str
+    generated_at: str
+    overall_status: ReleaseCheckStatus
+    release_surface_ready: bool
+    operator_ready: bool
+    config_path: str
+    hermes_config_path: str
+    publication_manifest_path: str
+    actions: list[CodexRemoteBootstrapAction]
+    preflight: ReleasePreflightReport
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexRemoteBootstrapReport":
+        return cls(
+            skill_name=data["skill_name"],
+            version=data["version"],
+            generated_at=data["generated_at"],
+            overall_status=ReleaseCheckStatus(data["overall_status"]),
+            release_surface_ready=bool(data["release_surface_ready"]),
+            operator_ready=bool(data["operator_ready"]),
+            config_path=data["config_path"],
+            hermes_config_path=data["hermes_config_path"],
+            publication_manifest_path=data["publication_manifest_path"],
+            actions=[CodexRemoteBootstrapAction.from_dict(item) for item in data.get("actions", [])],
+            preflight=ReleasePreflightReport.from_dict(data["preflight"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class ReleasePublicationManifest:
     name: str
     version: str

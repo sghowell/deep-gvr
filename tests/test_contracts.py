@@ -14,6 +14,7 @@ from deep_gvr.contracts import (
     CandidateSolution,
     CapabilityProbeResult,
     CodexAutomationCatalog,
+    CodexRemoteBootstrapReport,
     CodexReviewQaCatalog,
     DeepGvrConfig,
     EvidenceRecord,
@@ -172,6 +173,11 @@ class ContractRoundTripTests(unittest.TestCase):
         model = CodexAutomationCatalog.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_codex_remote_bootstrap_round_trip(self) -> None:
+        payload = self._load_json("templates/codex_remote_bootstrap.template.json")
+        model = CodexRemoteBootstrapReport.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_release_publication_round_trip(self) -> None:
         payload = self._load_json("templates/release_publication.template.json")
         model = ReleasePublicationManifest.from_dict(payload)
@@ -257,6 +263,11 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_codex_automation_catalog_fixture_validates(self) -> None:
         schema = self._load_json("schemas/codex_automation_catalog.schema.json")
         fixture = self._load_json("templates/codex_automation_catalog.template.json")
+        validate(fixture, schema)
+
+    def test_codex_remote_bootstrap_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/codex_remote_bootstrap.schema.json")
+        fixture = self._load_json("templates/codex_remote_bootstrap.template.json")
         validate(fixture, schema)
 
     def test_codex_review_qa_catalog_fixture_validates(self) -> None:

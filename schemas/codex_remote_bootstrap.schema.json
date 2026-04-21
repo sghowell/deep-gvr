@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "required": [
+    "skill_name",
+    "version",
+    "generated_at",
+    "overall_status",
+    "release_surface_ready",
+    "operator_ready",
+    "config_path",
+    "hermes_config_path",
+    "publication_manifest_path",
+    "actions",
+    "preflight"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "skill_name": { "type": "string" },
+    "version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "overall_status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+    "release_surface_ready": { "type": "boolean" },
+    "operator_ready": { "type": "boolean" },
+    "config_path": { "type": "string" },
+    "hermes_config_path": { "type": "string" },
+    "publication_manifest_path": { "type": "string" },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "changed", "summary", "details", "guidance"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+          "changed": { "type": "boolean" },
+          "summary": { "type": "string" },
+          "details": { "type": "object" },
+          "guidance": { "type": "string" }
+        }
+      }
+    },
+    "preflight": {
+      "type": "object",
+      "required": [
+        "skill_name",
+        "version",
+        "generated_at",
+        "overall_status",
+        "release_surface_ready",
+        "operator_ready",
+        "config_path",
+        "hermes_config_path",
+        "publication_manifest_path",
+        "checks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "skill_name": { "type": "string" },
+        "version": { "type": "string" },
+        "generated_at": { "type": "string" },
+        "overall_status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+        "release_surface_ready": { "type": "boolean" },
+        "operator_ready": { "type": "boolean" },
+        "config_path": { "type": "string" },
+        "hermes_config_path": { "type": "string" },
+        "publication_manifest_path": { "type": "string" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "status", "summary", "details", "guidance"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+              "summary": { "type": "string" },
+              "details": { "type": "object" },
+              "guidance": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

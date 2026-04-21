@@ -154,6 +154,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         operator_validation_commands=[
             "bash scripts/install.sh",
             "bash scripts/install_codex.sh",
+            "uv run python scripts/codex_remote_bootstrap.py --json",
             "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
             "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
             "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
@@ -601,7 +602,10 @@ def _check_codex_skill_install(codex_skills_dir: Path, root: Path) -> ReleaseChe
                     "skill_manifest_path": str(skill_manifest_path),
                     "source_manifest_path": str(source_manifest_path),
                 },
-                guidance="Re-run bash scripts/install_codex.sh if the installed Codex skill is stale.",
+                guidance=(
+                    "Re-run bash scripts/install_codex.sh if the installed Codex skill is stale, or use "
+                    "uv run python scripts/codex_remote_bootstrap.py on a remote Codex host to refresh it in place."
+                ),
             )
         return ReleaseCheck(
             name="codex_skill_install",
@@ -612,7 +616,10 @@ def _check_codex_skill_install(codex_skills_dir: Path, root: Path) -> ReleaseChe
                 "skill_manifest_path": str(skill_manifest_path),
                 "source_manifest_path": str(source_manifest_path),
             },
-            guidance="Re-run bash scripts/install_codex.sh --force to refresh the installed Codex skill.",
+            guidance=(
+                "Re-run bash scripts/install_codex.sh --force to refresh the installed Codex skill, or use "
+                "uv run python scripts/codex_remote_bootstrap.py --force on a remote Codex host."
+            ),
         )
 
     return ReleaseCheck(
@@ -624,7 +631,10 @@ def _check_codex_skill_install(codex_skills_dir: Path, root: Path) -> ReleaseChe
             "skill_manifest_path": str(skill_manifest_path),
             "source_manifest_path": str(source_manifest_path),
         },
-        guidance="Run bash scripts/install_codex.sh before invoking deep-gvr through Codex local.",
+        guidance=(
+            "Run bash scripts/install_codex.sh before invoking deep-gvr through Codex local, or use "
+            "uv run python scripts/codex_remote_bootstrap.py on a remote Codex host."
+        ),
     )
 
 
@@ -636,7 +646,10 @@ def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfi
                 status=ReleaseCheckStatus.BLOCKED,
                 summary="The runtime config file does not exist.",
                 details={"config_path": str(config_path)},
-                guidance="Run uv run deep-gvr init-config or bash scripts/install.sh to create the default config.",
+                guidance=(
+                    "Run uv run python scripts/codex_remote_bootstrap.py on remote Codex hosts, or use "
+                    "uv run deep-gvr init-config or bash scripts/install.sh to create the default config."
+                ),
             ),
             None,
         )
@@ -650,7 +663,10 @@ def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfi
                 status=ReleaseCheckStatus.BLOCKED,
                 summary="The runtime config file is present but does not validate against the repo schema.",
                 details={"config_path": str(config_path), "error": str(exc)},
-                guidance="Restore the config from templates/config.template.yaml or fix the invalid fields.",
+                guidance=(
+                    "Restore the config from templates/config.template.yaml, resync it with "
+                    "uv run python scripts/codex_remote_bootstrap.py --config-source <path>, or fix the invalid fields."
+                ),
             ),
             None,
         )
@@ -1172,7 +1188,8 @@ def _check_ssh_devbox_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCh
             summary="Codex SSH/devbox execution requires runtime.orchestrator_backend=codex_local.",
             details={"orchestrator_backend": backend.value},
             guidance=(
-                "Select the native Codex backend in the runtime config before using the SSH/devbox execution path."
+                "Select the native Codex backend in the runtime config before using the SSH/devbox execution path, "
+                "or run uv run python scripts/codex_remote_bootstrap.py to normalize the remote config."
             ),
         )
 
@@ -1207,14 +1224,16 @@ def _check_ssh_devbox_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCh
                 "The Codex-local backend can execute directly from this SSH/devbox machine using the selected local Tier 2 backend."
             )
             guidance = (
-                "Use the remote machine as the strong execution host and rerun Codex preflight if its local analysis environment changes."
+                "Use the remote machine as the strong execution host, and rerun the remote bootstrap or Codex preflight "
+                "if its local analysis environment changes."
             )
         else:
             summary = (
                 f"The Codex-local backend can execute from this SSH/devbox machine and dispatch Tier 2 through the selected {selected_backend} backend."
             )
             guidance = (
-                f"Keep the selected {selected_backend} backend configured and rerun Codex preflight when its settings change."
+                f"Keep the selected {selected_backend} backend configured and rerun the remote bootstrap or Codex "
+                f"preflight when its settings change."
             )
         return ReleaseCheck(
             name="ssh_devbox_backend",
@@ -1230,7 +1249,8 @@ def _check_ssh_devbox_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCh
         details=details,
         guidance=(
             "Fix the selected Tier 2 backend or change verification.tier2.default_backend to a ready backend before "
-            "using the remote Codex execution path."
+            "using the remote Codex execution path. Use uv run python scripts/codex_remote_bootstrap.py to "
+            "materialize the remote skill/config surface first, then rerun Codex preflight."
         ),
     )
 
