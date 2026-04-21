@@ -59,3 +59,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [55-codex-backend-abstraction.md](55-codex-backend-abstraction.md)
 - [56-codex-local-backend.md](56-codex-local-backend.md)
 - [57-codex-ssh-devbox-execution.md](57-codex-ssh-devbox-execution.md)
+- [58-codex-native-subagent-backend.md](58-codex-native-subagent-backend.md)
