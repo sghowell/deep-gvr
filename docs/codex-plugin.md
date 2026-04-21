@@ -4,6 +4,8 @@ This page covers the packaged Codex plugin surface for `deep-gvr`.
 
 The plugin surface is intentionally thin. It packages the existing Codex-local `deep-gvr` workflow as a reusable bundle; it does not introduce a separate runtime, a separate evidence model, or a non-Hermes backend.
 
+If you want recurring scheduled work rather than an interactive packaged workflow, see [Codex Automations](codex-automations.md).
+
 ## What the Plugin Contains
 
 The checked-in plugin bundle lives at:

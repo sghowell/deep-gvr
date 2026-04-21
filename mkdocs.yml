@@ -1,5 +1,5 @@
 site_name: deep-gvr
-site_description: Verification-oriented research system for Hermes Agent, Codex local, and direct CLI use.
+site_description: Verification-oriented research system for Hermes Agent, Codex local, Codex automation workflows, and direct CLI use.
 site_url: https://sghowell.github.io/deep-gvr/
 repo_url: https://github.com/sghowell/deep-gvr
 repo_name: sghowell/deep-gvr
@@ -42,6 +42,7 @@ nav:
   - Start Here: start-here.md
   - Codex Local: codex-local.md
   - Codex Plugin: codex-plugin.md
+  - Codex Automations: codex-automations.md
   - Quickstart: quickstart.md
   - Concepts: concepts.md
   - Domain Portfolio: domain-portfolio.md

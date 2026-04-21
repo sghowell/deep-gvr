@@ -41,6 +41,12 @@ If you want a standalone local Codex plugin marketplace root exported from the c
 bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
 ```
 
+If you also want the checked-in Codex automation pack exported for review, use:
+
+```bash
+bash scripts/install_codex.sh --automation-root /tmp/deep-gvr-codex-automations
+```
+
 ## 3. Run Structural Preflight
 
 ```bash
@@ -108,6 +114,7 @@ The publication bundle that should ship with the release is:
 - `release/agentskills.publication.json`
 - `plugins/deep-gvr/.codex-plugin/plugin.json`
 - `.agents/plugins/marketplace.json`
+- `codex_automations/catalog.json`
 
 That same manifest is the source of truth for `agentskills.io` publication.
 

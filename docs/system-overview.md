@@ -1,12 +1,13 @@
 # System Overview
 
-`deep-gvr` is a Hermes skill bundle plus a typed Python runtime with supported Codex-local and packaged Codex plugin peer surfaces. The runtime manages verification, evidence, and optional deeper analysis.
+`deep-gvr` is a Hermes skill bundle plus a typed Python runtime with supported Codex-local, packaged Codex plugin, and Codex automation peer surfaces. The runtime manages verification, evidence, and optional deeper analysis.
 
 ## Public Surface
 
 - `/deep-gvr <question>`
 - `/deep-gvr resume <session_id>`
 - `codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: <question>"`
+- `python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
 - `uv run python scripts/codex_preflight.py --json`
@@ -67,7 +68,7 @@ The current public analysis surface includes:
 ## Operational Defaults
 
 - Hermes delegated orchestration is the shipped execution backend
-- Codex local and the packaged Codex plugin are supported operator surfaces over that same runtime
+- Codex local, the packaged Codex plugin, and the checked-in Codex automation pack are supported operator surfaces over that same runtime
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor
 - live runs expose real provider, backend, and proof-transport behavior
