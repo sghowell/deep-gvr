@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-`deep-gvr` is a verification-oriented research system with Hermes and Codex-local operator surfaces.
+`deep-gvr` is a verification-oriented research system with Hermes, Codex-local, and packaged Codex plugin operator surfaces.
 
 It answers technical questions by running a generator-verifier-reviser loop and escalating into deeper computational or formal checks only when the claim warrants them. The system is designed for readers and operators who care about evidence, traceability, and explicit uncertainty more than raw conversational smoothness.
 
@@ -28,11 +28,11 @@ The design is organized around a few non-negotiable ideas:
 
 ## 3. System Model
 
-At a high level, `deep-gvr` is a typed Python runtime with Hermes and Codex-local surfaces:
+At a high level, `deep-gvr` is a typed Python runtime with Hermes, Codex-local, and packaged Codex plugin surfaces:
 
 <figure class="doc-figure">
   <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
-  <figcaption>Hermes and Codex local share the same typed runtime. The runtime owns evidence, adapters, formal transport, and resume semantics, while Hermes remains the delegated execution backend on the shipped path today.</figcaption>
+  <figcaption>Hermes, Codex local, and the packaged Codex plugin share the same typed runtime. The runtime owns evidence, adapters, formal transport, and resume semantics, while Hermes remains the delegated execution backend on the shipped path today.</figcaption>
 </figure>
 
 ### Main Components
@@ -155,7 +155,7 @@ The runtime persists sessions under `~/.hermes/deep-gvr/sessions/<session_id>/`,
 
 The current release surface is strong, but it is not magic.
 
-- Codex local is a supported peer surface, but it does not replace the delegated Hermes backend on the shipped path today.
+- Codex local and the packaged Codex plugin are supported peer surfaces, but they do not replace the delegated Hermes backend on the shipped path today.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.
 - Some optional backends depend on local or remote operator setup.
 - Live behavior depends on real provider routes and external systems.

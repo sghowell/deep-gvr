@@ -31,6 +31,7 @@ fallbacks are temporary gaps, not acceptable end states.
 | mathcode-formal-backend | realized | MathCode is supported as an additional local Lean formalization backend alongside Aristotle. | `src/deep_gvr/formal.py`, `src/deep_gvr/probes.py`, `eval/known_problems.json`, `plans/35-mathcode-formal-backend.md` |
 | release-surface-completion | realized | The repo ships a complete Hermes skill release surface, including checked-in publication assets, install/preflight helpers, and operator validation docs. | `scripts/install.sh`, `scripts/release_preflight.py`, `release/agentskills.publication.json`, `docs/release-workflow.md`, `plans/30-release-surface-completion.md` |
 | codex-local-surface | realized | Codex local is supported as a first-class operator surface over the same typed runtime, with a dedicated skill, install helper, and preflight path. | `codex_skill/SKILL.md`, `scripts/install_codex.sh`, `scripts/codex_preflight.py`, `plans/46-codex-local-surface.md` |
+| codex-plugin-surface | realized | The repo ships a packaged Codex plugin bundle and local marketplace metadata over the same Codex-local workflow. | `plugins/deep-gvr/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`, `plans/48-codex-plugin-surface.md` |
 | benchmark-harness | realized | Deterministic and live benchmark runners exist with recorded artifacts and repeatable subset runs. | `eval/run_eval.py`, `src/deep_gvr/evaluation.py`, `plans/07-eval-release.md` through `plans/23-analytical-breadth-stability.md` |
 
 ## Open Architecture Items

@@ -8,6 +8,7 @@ This guide gets a new operator from a local checkout to a first successful `deep
 - `uv`
 - Hermes Agent installed if you want the shipped delegated runtime path
 - Codex local installed if you want the Codex-local surface
+- a Codex client/workspace with plugin support if you want to use the packaged Codex plugin surface
 - Access to whichever model provider route your Hermes setup uses
 
 Optional extras:
@@ -37,6 +38,12 @@ bash scripts/install_codex.sh
 ```
 
 The Codex install path installs the Codex-local skill and also refreshes the underlying Hermes skill/runtime install used by the shipped delegated backend.
+
+Optional plugin export path:
+
+```bash
+bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
+```
 
 ## Run Preflight
 

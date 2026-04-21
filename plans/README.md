@@ -50,3 +50,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [45-hermes-v0.9-capability-reassessment.md](45-hermes-v0.9-capability-reassessment.md)
 - [46-codex-local-surface.md](46-codex-local-surface.md)
 - [47-auto-improve-evaluation.md](47-auto-improve-evaluation.md)
+- [48-codex-plugin-surface.md](48-codex-plugin-surface.md)

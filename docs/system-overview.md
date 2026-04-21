@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a Hermes skill bundle plus a typed Python runtime with a supported Codex-local peer surface. The runtime manages verification, evidence, and optional deeper analysis.
+`deep-gvr` is a Hermes skill bundle plus a typed Python runtime with supported Codex-local and packaged Codex plugin peer surfaces. The runtime manages verification, evidence, and optional deeper analysis.
 
 ## Public Surface
 
@@ -67,7 +67,7 @@ The current public analysis surface includes:
 ## Operational Defaults
 
 - Hermes delegated orchestration is the shipped execution backend
-- Codex local is a supported operator surface over that same runtime
+- Codex local and the packaged Codex plugin are supported operator surfaces over that same runtime
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor
 - live runs expose real provider, backend, and proof-transport behavior

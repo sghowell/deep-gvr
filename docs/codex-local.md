@@ -4,6 +4,8 @@ This guide covers the supported Codex-local surface for `deep-gvr`.
 
 Codex local is a first-class operator surface for the project, but it is not a separate runtime backend. It operates the same typed `deep-gvr` runtime and writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths.
 
+If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md).
+
 ## What Codex Local Means Here
 
 Codex local support is for:
@@ -38,6 +40,12 @@ bash scripts/install_codex.sh
 ```
 
 This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr` and refreshes the underlying Hermes skill/runtime install used by the shipped delegated backend.
+
+If you also want a standalone local plugin marketplace root exported from the checked-in bundle:
+
+```bash
+bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
+```
 
 ## Run Codex Preflight
 

@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/github/license/sghowell/deep-gvr)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 
-`deep-gvr` is a verification-oriented research system for Hermes Agent, Codex local, and direct CLI use. It uses a generator-verifier-reviser loop to answer difficult technical questions with explicit analytical, computational, and formal verification.
+`deep-gvr` is a verification-oriented research system for Hermes Agent, Codex local, packaged Codex plugin workflows, and direct CLI use. It uses a generator-verifier-reviser loop to answer difficult technical questions with explicit analytical, computational, and formal verification.
 
 It is built for people who want more than a polished answer. `deep-gvr` is designed to show its work: what it claimed, how it checked the claim, what evidence it produced, and where it could not verify enough to be confident.
 
@@ -38,7 +38,7 @@ That makes it useful for research-style questions where correctness matters more
   - Tier 3 formal verification
 - Explicit artifacts: checkpoints, evidence logs, analysis outputs, and proof transport records
 - A domain-agnostic adapter architecture with strong support for math, optimization, dynamics, and open-source quantum tooling
-- Supported local operator surfaces through Hermes, Codex local, and `uv run deep-gvr`
+- Supported local operator surfaces through Hermes, Codex local, the packaged Codex plugin bundle, and `uv run deep-gvr`
 
 ## A Typical Question
 
@@ -79,6 +79,12 @@ bash scripts/install_codex.sh
 uv run python scripts/codex_preflight.py --operator
 ```
 
+If you want a standalone exported local Codex plugin marketplace root as well:
+
+```bash
+bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
+```
+
 Once installed into Hermes, the same system is available as:
 
 ```text
@@ -95,6 +101,7 @@ Start here:
 - [Docs Home](docs/index.md)
 - [Start Here](docs/start-here.md)
 - [Codex Local](docs/codex-local.md)
+- [Codex Plugin](docs/codex-plugin.md)
 - [Quickstart](docs/quickstart.md)
 - [Concepts](docs/concepts.md)
 - [Domain Portfolio](docs/domain-portfolio.md)
@@ -118,7 +125,7 @@ Release history:
 - Tier 2 and Tier 3 are selective. They are used when the claim warrants them, not on every run.
 - Local operation is the default path. Some optional backends depend on external tools or remote infrastructure.
 - The shipped Tier 3 backends are Aristotle and MathCode. OpenGauss remains an intended backend, but it is not part of the standard release path today.
-- Codex local is a supported peer surface, but the shipped delegated execution backend still routes through Hermes today.
+- Codex local and the packaged Codex plugin are supported peer surfaces, but the shipped delegated execution backend still routes through Hermes today.
 - Some advanced Hermes-native capabilities, especially true per-subagent routing and delegated MCP inheritance, still depend on upstream Hermes support.
 
 ## What It Is Not

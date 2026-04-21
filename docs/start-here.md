@@ -10,6 +10,7 @@ Read these first:
 
 - [Docs Home](index.md)
 - [Codex Local](codex-local.md)
+- [Codex Plugin](codex-plugin.md)
 - [Concepts](concepts.md)
 - [Domain Portfolio](domain-portfolio.md)
 - [Examples](examples.md)
@@ -21,6 +22,7 @@ This path is for understanding what `deep-gvr` is, what kind of system it is, an
 Use these in order:
 
 - [Codex Local](codex-local.md)
+- [Codex Plugin](codex-plugin.md)
 - [Quickstart](quickstart.md)
 - [Release Workflow](release-workflow.md)
 - [FAQ](faq.md)

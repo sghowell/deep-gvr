@@ -35,6 +35,12 @@ bash scripts/install_codex.sh
 
 If you want an isolated install tree for packaging or smoke testing, set `HERMES_HOME` and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of `~/.hermes` and `~/.codex`.
 
+If you want a standalone local Codex plugin marketplace root exported from the checked-in plugin bundle, use:
+
+```bash
+bash scripts/install_codex.sh --plugin-root /tmp/deep-gvr-codex-plugin
+```
+
 ## 3. Run Structural Preflight
 
 ```bash
@@ -100,6 +106,8 @@ The tagged `Release` workflow will:
 The publication bundle that should ship with the release is:
 
 - `release/agentskills.publication.json`
+- `plugins/deep-gvr/.codex-plugin/plugin.json`
+- `.agents/plugins/marketplace.json`
 
 That same manifest is the source of truth for `agentskills.io` publication.
 
