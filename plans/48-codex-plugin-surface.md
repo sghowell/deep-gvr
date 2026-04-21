@@ -23,7 +23,7 @@ Start from `main` and implement this slice on `codex/codex-plugin-surface`. Merg
 - [x] Wire repo checks, preflight, and release metadata to the plugin surface.
 - [x] Update public/operator docs.
 - [x] Run full validation.
-- [ ] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
+- [x] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
 
 ## Surprises & Discoveries
 
