@@ -64,6 +64,15 @@ class ContractRoundTripTests(unittest.TestCase):
         self.assertEqual(model.verification.tier3.mathcode.run_script, "~/custom-mathcode/run")
         self.assertEqual(model.to_dict(), payload)
 
+    def test_config_accepts_missing_runtime_block_for_backward_compatibility(self) -> None:
+        payload = self._load_json("templates/config.template.json")
+        del payload["runtime"]
+
+        model = DeepGvrConfig.from_dict(payload)
+
+        self.assertEqual(model.runtime.orchestrator_backend.value, "hermes")
+        self.assertEqual(model.to_dict()["runtime"]["orchestrator_backend"], "hermes")
+
     def test_config_accepts_legacy_tier2_shape_without_modal_or_extended_ssh_fields(self) -> None:
         payload = self._load_json("templates/config.template.json")
         del payload["verification"]["tier2"]["modal"]

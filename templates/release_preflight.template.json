@@ -5,7 +5,7 @@
   "overall_status": "attention",
   "release_surface_ready": true,
   "operator_ready": false,
-  "config_path": "~/.hermes/deep-gvr/config.yaml",
+  "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
   "hermes_config_path": "~/.hermes/config.yaml",
   "publication_manifest_path": "release/agentskills.publication.json",
   "checks": [
@@ -24,7 +24,7 @@
       "status": "ready",
       "summary": "The runtime config exists and validates against the repo schema.",
       "details": {
-        "config_path": "~/.hermes/deep-gvr/config.yaml",
+        "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
         "tier2_backend": "local",
         "default_adapter_family": "qec_decoder_benchmark",
         "tier3_enabled": false
@@ -55,7 +55,7 @@
         },
         "blocked_providers": ["openrouter"]
       },
-      "guidance": "Export the expected provider API key before using the configured route in Hermes."
+      "guidance": "Export the expected provider API key before using the configured route on the selected orchestrator backend."
     },
     {
       "name": "analysis_adapter_families",
@@ -90,7 +90,7 @@
         "modal_ready": false,
         "ssh_ready": false
       },
-      "guidance": "Use scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml when backend settings change."
+      "guidance": "Use scripts/run_capability_probes.py --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml when backend settings change."
     },
     {
       "name": "tier3_transport",

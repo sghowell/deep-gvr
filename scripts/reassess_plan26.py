@@ -17,6 +17,7 @@ from deep_gvr.cli import run_session_command
 from deep_gvr.contracts import DeepGvrConfig
 from deep_gvr.orchestrator import CommandExecutionResult
 from deep_gvr.runtime_config import load_runtime_config, resolve_config_path
+from deep_gvr.runtime_paths import runtime_home_description
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ROUTE_QUESTION = "Explain why d/dx x^2 = 2x."
@@ -287,8 +288,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Reassess plan-26 delegated Hermes capabilities against the local runtime.")
     parser.add_argument(
         "--config",
-        default="~/.hermes/deep-gvr/config.yaml",
-        help="Base deep-gvr config path used as the starting point for temporary reassessment configs.",
+        default="",
+        help=f"Base deep-gvr config path used as the starting point for temporary reassessment configs. Default: {runtime_home_description()}/config.yaml",
     )
     parser.add_argument(
         "--output",

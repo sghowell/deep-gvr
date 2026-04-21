@@ -12,6 +12,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from deep_gvr.release_surface import collect_codex_preflight
+from deep_gvr.runtime_paths import runtime_home_description
 
 
 def _print_human_report(report: dict[str, object]) -> None:
@@ -51,7 +52,7 @@ def main() -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        help="Runtime config path. Default: ~/.hermes/deep-gvr/config.yaml",
+        help=f"Runtime config path. Default: {runtime_home_description()}/config.yaml",
     )
     parser.add_argument(
         "--codex-skills-dir",

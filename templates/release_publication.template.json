@@ -33,7 +33,7 @@
     "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
     "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
     "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
-    "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
+    "uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
     "uv run python scripts/codex_preflight.py --operator",
     "uv run python scripts/codex_preflight.py --ssh-devbox --json",
     "bash scripts/setup_mcp.sh --install --check"

@@ -53,6 +53,9 @@
       "model": ""
     }
   },
+  "runtime": {
+    "orchestrator_backend": "hermes"
+  },
   "evidence": {
     "directory": "~/.hermes/deep-gvr/sessions",
     "persist_to_memory": true

@@ -101,9 +101,11 @@ class SkillCliTests(unittest.TestCase):
             )
             self.assertTrue(transcript_path.exists())
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertEqual(transcripts["calls"][0]["backend"], "hermes")
             self.assertIn("delegated orchestrator runtime", transcripts["calls"][0]["query"])
-            self.assertIn("--skills", transcripts["calls"][0]["hermes_command"])
-            self.assertIn("deep-gvr", transcripts["calls"][0]["hermes_command"])
+            self.assertIn("--skills", transcripts["calls"][0]["backend_command"])
+            self.assertIn("deep-gvr", transcripts["calls"][0]["backend_command"])
+            self.assertEqual(transcripts["calls"][0]["backend_command"], transcripts["calls"][0]["hermes_command"])
             self.assertIn("role_routes", transcripts["calls"][0])
             self.assertIn("generator", transcripts["calls"][0]["role_routes"])
             self.assertIn("verifier", transcripts["calls"][0]["role_routes"])
@@ -132,8 +134,8 @@ class SkillCliTests(unittest.TestCase):
                 Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
             )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
-            self.assertIn("--toolsets", transcripts["calls"][0]["hermes_command"])
-            self.assertIn("search", transcripts["calls"][0]["hermes_command"])
+            self.assertIn("--toolsets", transcripts["calls"][0]["backend_command"])
+            self.assertIn("search", transcripts["calls"][0]["backend_command"])
 
     def test_run_session_command_supports_full_prompt_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -215,6 +217,35 @@ class SkillCliTests(unittest.TestCase):
             self.assertEqual(summary.session_id, "session_cli_resume")
             self.assertEqual(summary.final_verdict, "VERIFIED")
             self.assertTrue(any(path.endswith("_resume_orchestrator_transcript.json") for path in summary.artifacts))
+
+    def test_run_session_command_codex_backend_fails_explicitly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_codex_backend",
+                command_timeout_seconds=5,
+            )
+
+            self.assertEqual(summary.command, "run")
+            self.assertEqual(summary.final_verdict, "CANNOT_VERIFY")
+            self.assertIsNotNone(summary.error)
+            self.assertIn("Codex-local orchestrator backend selection is now recognized", summary.error)
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertEqual(transcripts["calls"][0]["backend"], "codex_local")
+            self.assertEqual(transcripts["calls"][0]["backend_command"], [])
+            self.assertNotIn("hermes_command", transcripts["calls"][0])
 
     def test_run_session_command_returns_structured_error_on_role_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

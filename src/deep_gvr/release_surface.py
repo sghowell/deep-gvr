@@ -17,6 +17,7 @@ from .codex_subagents import codex_subagent_surface_errors, subagent_catalog_pat
 from .codex_ssh_devbox import codex_ssh_devbox_surface_errors, ssh_devbox_catalog_path
 from .contracts import (
     DeepGvrConfig,
+    OrchestratorBackend,
     ProbeStatus,
     ReleaseCheck,
     ReleaseCheckStatus,
@@ -32,6 +33,7 @@ from .probes import (
     probe_opengauss_transport,
 )
 from .runtime_config import default_config_path, load_runtime_config
+from .runtime_paths import runtime_home_description
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
 _CHANGELOG_PATH = Path("CHANGELOG.md")
@@ -154,7 +156,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
             "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
             "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
-            "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
+            f"uv run python scripts/release_preflight.py --operator --config {runtime_home_description()}/config.yaml",
             "uv run python scripts/codex_preflight.py --operator",
             "uv run python scripts/codex_preflight.py --ssh-devbox --json",
             "bash scripts/setup_mcp.sh --install --check",
@@ -387,6 +389,7 @@ def collect_release_preflight(
     checks.append(_check_skill_install(effective_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
+    checks.append(_check_orchestrator_backend(runtime_config))
     checks.append(_check_hermes_cli())
     checks.append(_check_provider_credentials(runtime_config))
     checks.append(_check_analysis_adapter_families(runtime_config))
@@ -462,10 +465,11 @@ def collect_codex_preflight(
     checks.append(_check_codex_review_qa_surface(effective_root))
     checks.append(_check_codex_subagent_surface(effective_root))
     checks.append(_check_codex_ssh_devbox_surface(effective_root))
-    checks.append(_check_skill_install(effective_hermes_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
-    checks.append(_check_hermes_cli())
+    checks.append(_check_orchestrator_backend(runtime_config))
+    checks.append(_check_hermes_skill_install_for_codex(runtime_config, effective_hermes_skills_dir))
+    checks.append(_check_hermes_cli_for_codex(runtime_config))
     checks.append(_check_provider_credentials(runtime_config))
     checks.append(_check_analysis_adapter_families(runtime_config))
     checks.append(_check_tier2_backend(runtime_config))
@@ -529,6 +533,19 @@ def _check_skill_install(skills_dir: Path) -> ReleaseCheck:
         details={"install_path": str(install_path), "skill_manifest_path": str(skill_manifest_path)},
         guidance="Run bash scripts/install.sh before invoking /deep-gvr from Hermes.",
     )
+
+
+def _check_hermes_skill_install_for_codex(runtime_config: DeepGvrConfig | None, skills_dir: Path) -> ReleaseCheck:
+    if runtime_config is not None and runtime_config.runtime.orchestrator_backend is not OrchestratorBackend.HERMES:
+        install_path = skills_dir / "deep-gvr"
+        return ReleaseCheck(
+            name="skill_install",
+            status=ReleaseCheckStatus.READY,
+            summary="Hermes skill install is not required for the selected non-Hermes backend.",
+            details={"install_path": str(install_path), "orchestrator_backend": runtime_config.runtime.orchestrator_backend.value},
+            guidance="Install the Hermes skill only if you also want to use the Hermes /deep-gvr surface.",
+        )
+    return _check_skill_install(skills_dir)
 
 
 def _check_codex_cli() -> ReleaseCheck:
@@ -637,6 +654,7 @@ def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfi
             summary="The runtime config exists and validates against the repo schema.",
             details={
                 "config_path": str(config_path),
+                "orchestrator_backend": runtime_config.runtime.orchestrator_backend.value,
                 "tier2_backend": runtime_config.verification.tier2.default_backend.value,
                 "default_adapter_family": runtime_config.verification.tier2.default_adapter_family,
                 "tier3_enabled": runtime_config.verification.tier3.enabled,
@@ -644,6 +662,41 @@ def _check_runtime_config(config_path: Path) -> tuple[ReleaseCheck, DeepGvrConfi
             guidance="Keep the runtime config aligned with the checked-in YAML template.",
         ),
         runtime_config,
+    )
+
+
+def _check_orchestrator_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is None:
+        return ReleaseCheck(
+            name="orchestrator_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The orchestrator backend cannot be evaluated until the runtime config is valid.",
+            guidance="Fix the runtime config first, then rerun release preflight.",
+        )
+
+    backend = runtime_config.runtime.orchestrator_backend
+    if backend is OrchestratorBackend.HERMES:
+        return ReleaseCheck(
+            name="orchestrator_backend",
+            status=ReleaseCheckStatus.READY,
+            summary="The runtime is configured to use the shipped Hermes orchestrator backend.",
+            details={"orchestrator_backend": backend.value},
+            guidance="Use Hermes for the delegated execution path or change the backend only after the Codex-native backend lands.",
+        )
+    if backend is OrchestratorBackend.CODEX_LOCAL:
+        return ReleaseCheck(
+            name="orchestrator_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The runtime config selects the planned Codex-local backend, but that transport is not implemented on the shipped path yet.",
+            details={"orchestrator_backend": backend.value},
+            guidance="Switch back to runtime.orchestrator_backend=hermes or complete the owning Codex backend slice before operator use.",
+        )
+    return ReleaseCheck(
+        name="orchestrator_backend",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="The runtime config selects an unknown orchestrator backend.",
+        details={"orchestrator_backend": str(backend)},
+        guidance="Restore the runtime config from templates/config.template.yaml or pick a supported backend.",
     )
 
 
@@ -664,6 +717,18 @@ def _check_hermes_cli() -> ReleaseCheck:
         details={"hermes_binary": None},
         guidance="Install Hermes Agent and ensure the hermes binary is on PATH before operator use.",
     )
+
+
+def _check_hermes_cli_for_codex(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is not None and runtime_config.runtime.orchestrator_backend is not OrchestratorBackend.HERMES:
+        return ReleaseCheck(
+            name="hermes_cli",
+            status=ReleaseCheckStatus.READY,
+            summary="Hermes CLI is not required for the selected non-Hermes backend.",
+            details={"orchestrator_backend": runtime_config.runtime.orchestrator_backend.value},
+            guidance="Install Hermes only if you also want the Hermes /deep-gvr surface on this machine.",
+        )
+    return _check_hermes_cli()
 
 
 def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
@@ -688,7 +753,7 @@ def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> Release
         return ReleaseCheck(
             name="provider_credentials",
             status=ReleaseCheckStatus.READY,
-            summary="All configured routes use the Hermes default provider selection, so credential resolution stays inside Hermes.",
+            summary="All configured routes use the backend-default provider selection, so credential resolution stays inside the selected orchestrator backend.",
             details={"providers": {}},
             guidance="If you pin explicit providers later, rerun release preflight to validate the expected API keys.",
         )
@@ -725,7 +790,7 @@ def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> Release
             status=ReleaseCheckStatus.BLOCKED,
             summary="At least one explicitly configured provider is missing its expected environment credential.",
             details={"providers": provider_details, "blocked_providers": blocked_providers},
-            guidance="Export the expected provider API key before using the configured route in Hermes.",
+            guidance="Export the expected provider API key before using the configured route on the selected backend.",
         )
     if attention_providers:
         return ReleaseCheck(
@@ -733,14 +798,14 @@ def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> Release
             status=ReleaseCheckStatus.ATTENTION,
             summary="One or more explicit providers do not have a repo-local credential mapping and require manual operator verification.",
             details={"providers": provider_details, "attention_providers": attention_providers},
-            guidance="Verify the provider credential manually in Hermes, then rerun preflight after updating the repo mapping if needed.",
+            guidance="Verify the provider credential manually on the selected backend, then rerun preflight after updating the repo mapping if needed.",
         )
     return ReleaseCheck(
         name="provider_credentials",
         status=ReleaseCheckStatus.READY,
         summary="All explicitly configured providers have the expected credential environment variables.",
         details={"providers": provider_details},
-        guidance="Keep provider env vars available in the shell that launches Hermes.",
+        guidance="Keep provider env vars available in the shell that launches the selected orchestrator backend.",
     )
 
 
@@ -773,7 +838,7 @@ def _check_tier2_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
             status=ReleaseCheckStatus.READY,
             summary=f"The selected Tier 2 backend ({selected_backend}) is ready in this environment.",
             details={"selected_backend": selected_backend, **probe.details},
-            guidance="Use scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml when backend settings change.",
+            guidance=f"Use scripts/run_capability_probes.py --config {runtime_home_description()}/config.yaml when backend settings change.",
         )
     return ReleaseCheck(
         name="tier2_backend",

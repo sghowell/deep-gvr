@@ -18,7 +18,7 @@ from .contracts import (
     SessionCheckpoint,
 )
 from .domain_context import load_domain_context
-from .orchestrator import CommandExecutor, DelegatedOrchestratorConfig, HermesDelegatedOrchestratorRunner
+from .orchestrator import CommandExecutor, OrchestratorBackendConfig, build_orchestrator_runner
 from .probes import probe_model_routing
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
 from .routing import build_routing_plan
@@ -29,6 +29,7 @@ from .runtime_config import (
     resolve_config_path,
     write_default_config,
 )
+from .runtime_paths import runtime_home_description
 from .tier1 import SessionStore
 
 
@@ -168,8 +169,9 @@ def _execute_command(
     routing_probe = _resolve_routing_probe(config, routing_probe_mode)
     routing_plan = build_routing_plan(config, routing_probe=routing_probe)
     role_routes = _role_routes_payload(routing_plan)
-    orchestrator = HermesDelegatedOrchestratorRunner(
-        DelegatedOrchestratorConfig(
+    orchestrator = build_orchestrator_runner(
+        OrchestratorBackendConfig(
+            backend=config.runtime.orchestrator_backend,
             prompt_profile=prompt_profile,
             command_timeout_seconds=command_timeout_seconds,
             toolsets=list(toolsets),
@@ -209,12 +211,14 @@ def _execute_command(
     except Exception as exc:
         if session_id is None:
             raise
+        failure_verdict = str(getattr(exc, "final_verdict", "PENDING"))
         checkpoint = _record_session_artifacts(
             session_store=session_store,
             session_id=session_id,
             command=command,
             transcripts=orchestrator.transcripts,
             error=f"{type(exc).__name__}: {exc}",
+            failure_verdict=failure_verdict,
         )
         return _summary_from_failure(
             command=command,
@@ -328,6 +332,7 @@ def _record_session_artifacts(
     transcripts: list[Any],
     checkpoint: SessionCheckpoint | None = None,
     error: str | None = None,
+    failure_verdict: str = "PENDING",
 ) -> SessionCheckpoint:
     current_checkpoint = checkpoint
     if current_checkpoint is None:
@@ -409,7 +414,7 @@ def _record_session_artifacts(
                 if error is not None
                 else "Delegated orchestrator returned before a local checkpoint was available."
             ),
-            final_verdict="PENDING",
+            final_verdict=failure_verdict if error is not None else "PENDING",
             evidence_file=str(session_paths.evidence_log),
             artifacts_dir=str(session_paths.artifacts_dir),
             memory_summary_file=str(session_paths.memory_summary_file),
@@ -568,12 +573,20 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init_parser = subparsers.add_parser("init-config", help="Create the default deep-gvr config file.")
-    init_parser.add_argument("--config", default="", help="Target config path. Default: ~/.hermes/deep-gvr/config.yaml")
+    init_parser.add_argument(
+        "--config",
+        default="",
+        help=f"Target config path. Default: {runtime_home_description()}/config.yaml",
+    )
     init_parser.add_argument("--force", action="store_true", help="Overwrite an existing config file.")
     init_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
 
     common_parent = argparse.ArgumentParser(add_help=False)
-    common_parent.add_argument("--config", default="", help="Config path. Default: ~/.hermes/deep-gvr/config.yaml")
+    common_parent.add_argument(
+        "--config",
+        default="",
+        help=f"Config path. Default: {runtime_home_description()}/config.yaml",
+    )
     common_parent.add_argument("--prompt-root", default="prompts", help="Prompt directory.")
     common_parent.add_argument(
         "--prompt-profile",

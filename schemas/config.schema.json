@@ -123,6 +123,14 @@
         }
       }
     },
+    "runtime": {
+      "type": "object",
+      "required": ["orchestrator_backend"],
+      "additionalProperties": false,
+      "properties": {
+        "orchestrator_backend": { "type": "string", "enum": ["hermes", "codex_local"] }
+      }
+    },
     "evidence": {
       "type": "object",
       "required": ["directory", "persist_to_memory"],

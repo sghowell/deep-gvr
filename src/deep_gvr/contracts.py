@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from .runtime_paths import default_sessions_directory_literal
+
 
 def _serialize(value: Any) -> Any:
     if isinstance(value, StrEnum):
@@ -21,6 +23,11 @@ class Backend(StrEnum):
     LOCAL = "local"
     MODAL = "modal"
     SSH = "ssh"
+
+
+class OrchestratorBackend(StrEnum):
+    HERMES = "hermes"
+    CODEX_LOCAL = "codex_local"
 
 
 class VerificationVerdict(StrEnum):
@@ -174,8 +181,13 @@ class ModelsConfig:
 
 
 @dataclass(slots=True)
+class RuntimeConfig:
+    orchestrator_backend: OrchestratorBackend = OrchestratorBackend.HERMES
+
+
+@dataclass(slots=True)
 class EvidenceConfig:
-    directory: str = "~/.hermes/deep-gvr/sessions"
+    directory: str = field(default_factory=default_sessions_directory_literal)
     persist_to_memory: bool = True
 
 
@@ -190,6 +202,7 @@ class DeepGvrConfig:
     loop: LoopConfig = field(default_factory=LoopConfig)
     verification: VerificationConfig = field(default_factory=VerificationConfig)
     models: ModelsConfig = field(default_factory=ModelsConfig)
+    runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     evidence: EvidenceConfig = field(default_factory=EvidenceConfig)
     domain: DomainConfig = field(default_factory=DomainConfig)
 
@@ -244,8 +257,11 @@ class DeepGvrConfig:
                 verifier=ModelSelection(**data["models"]["verifier"]),
                 reviser=ModelSelection(**data["models"]["reviser"]),
             ),
+            runtime=RuntimeConfig(
+                orchestrator_backend=OrchestratorBackend((data.get("runtime") or {}).get("orchestrator_backend", "hermes")),
+            ),
             evidence=EvidenceConfig(
-                directory=data["evidence"]["directory"],
+                directory=data["evidence"].get("directory", default_sessions_directory_literal()),
                 persist_to_memory=bool(data["evidence"]["persist_to_memory"]),
             ),
             domain=DomainConfig(
