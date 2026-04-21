@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "required": [
+    "name",
+    "interface",
+    "plugins"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "interface": {
+      "type": "object",
+      "required": ["displayName"],
+      "additionalProperties": false,
+      "properties": {
+        "displayName": { "type": "string" }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "source", "policy", "category"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "source": {
+            "type": "object",
+            "required": ["source", "path"],
+            "additionalProperties": false,
+            "properties": {
+              "source": { "type": "string" },
+              "path": { "type": "string" }
+            }
+          },
+          "policy": {
+            "type": "object",
+            "required": ["installation", "authentication"],
+            "additionalProperties": false,
+            "properties": {
+              "installation": { "type": "string" },
+              "authentication": { "type": "string" }
+            }
+          },
+          "category": { "type": "string" }
+        }
+      }
+    }
+  }
+}

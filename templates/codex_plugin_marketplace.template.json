@@ -1,0 +1,20 @@
+{
+  "name": "deep-gvr-local",
+  "interface": {
+    "displayName": "deep-gvr local plugins"
+  },
+  "plugins": [
+    {
+      "name": "deep-gvr",
+      "source": {
+        "source": "local",
+        "path": "./plugins/deep-gvr"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Coding"
+    }
+  ]
+}

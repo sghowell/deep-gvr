@@ -1,0 +1,41 @@
+{
+  "name": "deep-gvr",
+  "version": "0.1.0",
+  "description": "Operate the deep-gvr verification workflow from Codex local as a packaged plugin surface.",
+  "author": {
+    "name": "Sean Howell",
+    "url": "https://github.com/sghowell"
+  },
+  "homepage": "https://sghowell.github.io/deep-gvr/codex-plugin/",
+  "repository": "https://github.com/sghowell/deep-gvr",
+  "license": "MIT",
+  "keywords": [
+    "verification",
+    "research",
+    "science",
+    "codex",
+    "hermes"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "deep-gvr",
+    "shortDescription": "Verification-first research workflow for Codex local",
+    "longDescription": "Use deep-gvr from Codex as a packaged local workflow over the same typed runtime, evidence system, and tiered verification stack used by the Hermes and CLI surfaces.",
+    "developerName": "Sean Howell",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://sghowell.github.io/deep-gvr/codex-plugin/",
+    "privacyPolicyURL": "https://sghowell.github.io/deep-gvr/plugin-privacy/",
+    "termsOfServiceURL": "https://sghowell.github.io/deep-gvr/plugin-terms/",
+    "defaultPrompt": [
+      "Use the deep-gvr plugin to investigate a technical claim with explicit evidence and tiered verification."
+    ],
+    "brandColor": "#0F7B6C",
+    "composerIcon": "./assets/deep-gvr-plugin-small.svg",
+    "logo": "./assets/deep-gvr-plugin.svg",
+    "screenshots": []
+  }
+}
