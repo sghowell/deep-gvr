@@ -91,6 +91,7 @@ If you intend to rely on the Codex remote-validator path as part of the operator
 
 ```bash
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
+uv run python scripts/codex_ssh_devbox_run.py run --help
 ```
 
 This verifies the installed skill bundle plus the live runtime path:
@@ -100,6 +101,7 @@ This verifies the installed skill bundle plus the live runtime path:
 - config validity
 - provider readiness
 - selected Tier 2 backend readiness
+- native remote Codex execution availability when `runtime.orchestrator_backend=codex_local`
 - selected Tier 3 backend readiness
 
 ## 5. Enable Tier 3 if Needed

@@ -121,7 +121,7 @@ The Codex-local surface uses the same underlying runtime state as the Hermes and
 - Checkpoint: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/checkpoint.json`
 - Artifacts: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/artifacts/`
 
-Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. With `runtime.orchestrator_backend=codex_local`, that remote Codex session can also execute the native Codex backend from the stronger environment. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
+Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. With `runtime.orchestrator_backend=codex_local`, that remote Codex session can also execute the native Codex backend from the stronger environment through `uv run python scripts/codex_ssh_devbox_run.py ...`. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
 
 ## Current Boundary
 
@@ -133,5 +133,6 @@ Codex local now covers two supported cases:
 That means:
 
 - `uv run deep-gvr run ...` can execute through Codex natively when the backend is set to `codex_local`
+- `uv run python scripts/codex_ssh_devbox_run.py run ...` can gate and execute the same native backend from a remote Codex SSH/devbox session
 - Hermes is only required if you also want the Hermes `/deep-gvr` surface or the `hermes` backend
 - provider, Tier 2, and Tier 3 readiness still depend on the same operator environment

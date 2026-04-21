@@ -9,7 +9,7 @@ This guide gets a new operator from a local checkout to a first successful `deep
 - Hermes Agent installed if you want the Hermes `/deep-gvr` path or the `hermes` backend
 - Codex local installed if you want the Codex-local surface
 - a Codex client/workspace with plugin support if you want to use the packaged Codex plugin surface
-- Access to whichever model provider route your selected runtime config uses. On the shipped path today, that still means the Hermes delegated backend.
+- Access to whichever model provider route your selected runtime config uses.
 
 Optional extras:
 
@@ -106,6 +106,12 @@ Codex-local path:
 codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: Explain why the surface code is understood to have a threshold."
 ```
 
+Codex `ssh/devbox` native remote-execution path:
+
+```bash
+uv run python scripts/codex_ssh_devbox_run.py run "Explain why the surface code is understood to have a threshold."
+```
+
 ## Resume a Prior Run
 
 ```bash
@@ -122,6 +128,12 @@ Or in Codex local:
 
 ```bash
 codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to resume session <session_id>."
+```
+
+Or from a Codex SSH/devbox session:
+
+```bash
+uv run python scripts/codex_ssh_devbox_run.py resume <session_id>
 ```
 
 ## Where Outputs Land

@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime.
+`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime, and the SSH/devbox path can now execute the native Codex backend from a remote machine.
 
 ## Public Surface
 
@@ -12,8 +12,11 @@
 - `uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
+- `uv run python scripts/codex_ssh_devbox_run.py run "<question>"`
+- `uv run python scripts/codex_ssh_devbox_run.py resume <session_id>`
 - `uv run python scripts/codex_preflight.py --json`
 - `uv run python scripts/codex_preflight.py --operator`
+- `uv run python scripts/codex_preflight.py --ssh-devbox --operator`
 - `uv run python scripts/release_preflight.py --json`
 - `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
 
@@ -71,6 +74,7 @@ The current public analysis surface includes:
 
 - The runtime selects an explicit orchestrator backend, with Hermes still the default backend in the checked-in config template
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` surface are supported operator surfaces over that same runtime
+- the Codex `ssh/devbox` path now uses the same native `codex_local` backend instead of acting only as a prompt/export bundle
 - the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor

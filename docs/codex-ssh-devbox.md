@@ -4,11 +4,12 @@ This page covers the supported Codex `ssh/devbox` operator surface for `deep-gvr
 
 This surface is for the case where Codex is already operating from a remote devbox or SSH-accessible machine and you want `deep-gvr` to use that stronger environment for simulation-heavy validation, backend checks, or artifact inspection.
 
-The repo-owned boundary stays narrow:
+The repo-owned boundary is now:
 
 - the repo ships a checked-in `ssh/devbox` prompt bundle
 - the repo ships export and install helpers for that bundle
 - the repo ships a dedicated Codex preflight mode for the remote-validator path
+- the repo ships a runtime-backed remote execution helper over the native `codex_local` backend
 
 It does not claim to create or manage Codex SSH/devbox sessions for you.
 
@@ -20,10 +21,11 @@ The checked-in `ssh/devbox` bundle lives at:
 - `codex_ssh_devbox/templates/remote_validator_run.prompt.md`
 - `codex_ssh_devbox/templates/remote_backend_triage.prompt.md`
 
-The repo also ships two export paths:
+The repo also ships two export paths plus a native remote execution helper:
 
 - `uv run python scripts/export_codex_ssh_devbox.py --output-root <dir>`
 - `bash scripts/install_codex.sh --ssh-devbox-root <dir>`
+- `uv run python scripts/codex_ssh_devbox_run.py run "<question>"`
 
 ## When to Use This Surface
 
@@ -33,7 +35,10 @@ This path is useful when:
 - your laptop is not the right place to run heavier analysis or backend checks
 - you want Codex to inspect the same checkout from a remote devbox or SSH-connected environment
 
-It is especially useful when the `deep-gvr` Tier 2 SSH backend is part of the intended operator path.
+It is especially useful when either:
+
+- the remote machine itself is the right place to run the selected local Tier 2 backend
+- the remote machine should operate the existing typed `ssh` or `modal` Tier 2 backend from a stronger Codex environment
 
 ## Export the Bundle
 
@@ -69,7 +74,21 @@ Full remote-operator check:
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
 ```
 
-That mode reuses the existing Tier 2 SSH backend readiness evidence and reports whether the remote-validator path is actually ready.
+That mode now reports whether the native `codex_local` backend plus the selected Tier 2 backend are actually ready for remote execution from the SSH/devbox machine.
+
+## Run a Remote Session
+
+New session:
+
+```bash
+uv run python scripts/codex_ssh_devbox_run.py run "Explain why the surface code is understood to have a threshold."
+```
+
+Resume:
+
+```bash
+uv run python scripts/codex_ssh_devbox_run.py resume <session_id>
+```
 
 ## What the Remote Check Requires
 
@@ -77,16 +96,17 @@ The `--ssh-devbox` operator path expects:
 
 - a valid `deep-gvr` runtime config
 - Codex local available as `codex`
-- the installed Codex `deep-gvr` skill
-- Hermes installed only if the selected backend or Tier 3 path still requires it
+- `runtime.orchestrator_backend=codex_local`
+- the installed Codex `deep-gvr` skill as part of the supported Codex-local surface bundle
+- Hermes installed only if Tier 3 or another selected path still requires it
 - the checked-in Codex `ssh/devbox` prompt pack present in the repo
-- the Tier 2 SSH backend configured and ready
+- the selected Tier 2 backend ready in the remote environment
 
 In practice, that usually means:
 
-- `verification.tier2.ssh.host` is set
-- `verification.tier2.ssh.remote_workspace` is set
-- `ssh` and `scp` are available
+- if `verification.tier2.default_backend=local`, the remote machine has the needed local analysis stack
+- if `verification.tier2.default_backend=ssh`, `verification.tier2.ssh.host` and `verification.tier2.ssh.remote_workspace` are set and `ssh`/`scp` are available
+- if `verification.tier2.default_backend=modal`, the remote machine has the configured Modal CLI and stub path available
 - provider credentials are present in the shell that launches the run
 
 ## Current Boundary
@@ -96,6 +116,7 @@ The shipped `ssh/devbox` surface is:
 - versioned in the repo
 - validated by repo checks and release preflight
 - exportable with the current checkout path substituted into the prompts
+- executable through `scripts/codex_ssh_devbox_run.py` when the native Codex backend is selected
 
 It is not:
 

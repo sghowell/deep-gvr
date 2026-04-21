@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/github/license/sghowell/deep-gvr)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 
-`deep-gvr` is a verification-oriented research system for Hermes Agent, Codex local, packaged Codex plugin workflows, Codex automation templates, Codex subagent workflows, and direct CLI use. It uses a generator-verifier-reviser loop to answer difficult technical questions with explicit analytical, computational, and formal verification.
+`deep-gvr` is a verification-oriented research system for Hermes Agent, Codex local, packaged Codex plugin workflows, Codex automation templates, Codex subagent workflows, Codex SSH/devbox execution, and direct CLI use. It uses a generator-verifier-reviser loop to answer difficult technical questions with explicit analytical, computational, and formal verification.
 
 It is built for people who want more than a polished answer. `deep-gvr` is designed to show its work: what it claimed, how it checked the claim, what evidence it produced, and where it could not verify enough to be confident.
 
@@ -116,6 +116,13 @@ If you want the Codex `ssh/devbox` remote-operator prompt pack exported for revi
 bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
 ```
 
+If you want to run the native Codex backend from a remote Codex SSH/devbox session:
+
+```bash
+uv run python scripts/codex_preflight.py --ssh-devbox --operator
+uv run python scripts/codex_ssh_devbox_run.py run "Explain why the surface code is understood to have a threshold."
+```
+
 Once installed into Hermes, the same system is available as:
 
 ```text
@@ -165,7 +172,7 @@ Release history:
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
 - The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline.
-- The repo also ships an explicit Codex `ssh/devbox` remote-operator bundle and readiness path for simulation-heavy validator environments.
+- The repo also ships an explicit Codex `ssh/devbox` bundle, readiness path, and runtime-backed remote execution helper over the native `codex_local` backend.
 - Some advanced Hermes-native capabilities, especially true per-subagent routing and delegated MCP inheritance, still depend on upstream Hermes support.
 
 ## What It Is Not

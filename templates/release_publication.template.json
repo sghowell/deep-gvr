@@ -24,7 +24,9 @@
     "/deep-gvr resume <session_id>",
     "codex exec -C /path/to/deep-gvr \"Use the deep-gvr skill to answer: <question>\"",
     "uv run deep-gvr run \"<question>\"",
-    "uv run deep-gvr resume <session_id>"
+    "uv run deep-gvr resume <session_id>",
+    "uv run python scripts/codex_ssh_devbox_run.py run \"<question>\"",
+    "uv run python scripts/codex_ssh_devbox_run.py resume <session_id>"
   ],
   "operator_validation_commands": [
     "bash scripts/install.sh",
@@ -36,6 +38,7 @@
     "uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
     "uv run python scripts/codex_preflight.py --operator",
     "uv run python scripts/codex_preflight.py --ssh-devbox --json",
+    "uv run python scripts/codex_ssh_devbox_run.py run --help",
     "bash scripts/setup_mcp.sh --install --check"
   ],
   "auto_improve": false,
