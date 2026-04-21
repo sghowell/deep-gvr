@@ -88,3 +88,4 @@ echo "  1. Review ${install_path}/README.md for quickstart, CLI, and evaluation 
 echo "  2. Run 'uv run python ${install_path}/scripts/release_preflight.py --json' to inspect the installed release surface."
 echo "  3. Run 'uv run python ${install_path}/scripts/release_preflight.py --operator --config ${config_path}' before live operator use."
 echo "  4. Run ${install_path}/scripts/setup_mcp.sh --install --check if you plan to use Tier 3."
+echo "  5. Run ${install_path}/scripts/install_codex.sh if you also want the Codex-local surface."

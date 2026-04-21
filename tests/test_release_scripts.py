@@ -11,6 +11,7 @@ import yaml
 
 from tests import _path_setup  # noqa: F401
 from deep_gvr.release_surface import (
+    collect_codex_preflight,
     collect_release_preflight,
     expected_release_tag,
     project_version,
@@ -65,6 +66,25 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertTrue((hermes_home / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((hermes_home / "deep-gvr" / "config.yaml").exists())
+
+    def test_install_codex_script_installs_codex_skill_and_underlying_hermes_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "custom-codex-home"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            completed = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertTrue((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertTrue((Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml").exists())
 
     def test_skill_manifest_exposes_required_frontmatter(self) -> None:
         skill_path = ROOT / "SKILL.md"
@@ -233,6 +253,108 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn('"release_surface_ready": true', completed.stdout)
             self.assertIn('"operator_ready": false', completed.stdout)
+
+    def test_codex_preflight_reports_structural_surface_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            for binary_name in ("codex", "hermes"):
+                binary_path = bin_dir / binary_name
+                binary_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                binary_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "codex_preflight.py"),
+                    "--json",
+                    "--codex-skills-dir",
+                    str(codex_target_dir),
+                    "--hermes-skills-dir",
+                    str(hermes_target_dir),
+                    "--config",
+                    str(Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"),
+                    "--hermes-config",
+                    str(Path(tmpdir) / ".hermes" / "config.yaml"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn('"release_surface_ready": true', completed.stdout)
+            self.assertIn('"operator_ready": false', completed.stdout)
+
+    def test_collect_codex_preflight_reports_ready_mathcode_transport_when_configured(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            mathcode_root = Path(tmpdir) / "mathcode"
+            (mathcode_root / "AUTOLEAN").mkdir(parents=True, exist_ok=True)
+            (mathcode_root / "lean-workspace").mkdir(parents=True, exist_ok=True)
+            run_script = mathcode_root / "run"
+            run_script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            run_script.chmod(0o755)
+
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            for binary_name in ("codex", "hermes"):
+                binary_path = bin_dir / binary_name
+                binary_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                binary_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            config_path = Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            payload["verification"]["tier3"]["enabled"] = True
+            payload["verification"]["tier3"]["backend"] = "mathcode"
+            payload["verification"]["tier3"]["mathcode"]["root"] = str(mathcode_root)
+            payload["verification"]["tier3"]["mathcode"]["run_script"] = str(run_script)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            report = collect_codex_preflight(
+                config_path=config_path,
+                codex_skills_dir=codex_target_dir,
+                hermes_skills_dir=hermes_target_dir,
+                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+            )
+
+        tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
+        self.assertEqual(tier3_check.status.value, "ready")
+        self.assertIn("MathCode", tier3_check.summary)
 
     def test_release_metadata_errors_are_empty_for_repo(self) -> None:
         self.assertEqual(release_metadata_errors(ROOT), [])

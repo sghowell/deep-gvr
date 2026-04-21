@@ -49,6 +49,11 @@ def default_skills_dir() -> Path:
     return hermes_home / "skills"
 
 
+def default_codex_skills_dir() -> Path:
+    codex_home = Path(os.getenv("CODEX_HOME", Path.home() / ".codex")).expanduser()
+    return codex_home / "skills"
+
+
 def default_hermes_config_path() -> Path:
     hermes_home = Path(os.getenv("HERMES_HOME", Path.home() / ".hermes")).expanduser()
     return hermes_home / "config.yaml"
@@ -107,12 +112,15 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         public_commands=[
             "/deep-gvr <question>",
             "/deep-gvr resume <session_id>",
+            'codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: <question>"',
             "uv run deep-gvr run \"<question>\"",
             "uv run deep-gvr resume <session_id>",
         ],
         operator_validation_commands=[
             "bash scripts/install.sh",
+            "bash scripts/install_codex.sh",
             "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
+            "uv run python scripts/codex_preflight.py --operator",
             "bash scripts/setup_mcp.sh --install --check",
         ],
         auto_improve=False,
@@ -259,6 +267,59 @@ def collect_release_preflight(
     )
 
 
+def collect_codex_preflight(
+    *,
+    config_path: Path | None = None,
+    codex_skills_dir: Path | None = None,
+    hermes_skills_dir: Path | None = None,
+    hermes_config_path: Path | None = None,
+) -> ReleasePreflightReport:
+    effective_root = repo_root()
+    effective_config_path = (config_path or default_config_path()).expanduser()
+    effective_codex_skills_dir = (codex_skills_dir or default_codex_skills_dir()).expanduser()
+    effective_hermes_skills_dir = (hermes_skills_dir or default_skills_dir()).expanduser()
+    effective_hermes_config_path = (hermes_config_path or default_hermes_config_path()).expanduser()
+    checks: list[ReleaseCheck] = []
+
+    checks.append(_check_codex_cli())
+    checks.append(_check_codex_skill_install(effective_codex_skills_dir, effective_root))
+    checks.append(_check_skill_install(effective_hermes_skills_dir))
+    config_check, runtime_config = _check_runtime_config(effective_config_path)
+    checks.append(config_check)
+    checks.append(_check_hermes_cli())
+    checks.append(_check_provider_credentials(runtime_config))
+    checks.append(_check_analysis_adapter_families(runtime_config))
+    checks.append(_check_tier2_backend(runtime_config))
+    checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
+
+    structural_names = {"codex_cli", "codex_skill_install", "skill_install", "runtime_config"}
+    release_surface_ready = all(
+        check.status == ReleaseCheckStatus.READY for check in checks if check.name in structural_names
+    )
+    operator_ready = all(check.status == ReleaseCheckStatus.READY for check in checks)
+    if not release_surface_ready:
+        overall_status = ReleaseCheckStatus.BLOCKED
+    elif operator_ready:
+        overall_status = ReleaseCheckStatus.READY
+    else:
+        overall_status = ReleaseCheckStatus.ATTENTION
+
+    manifest_path = publication_manifest_path(effective_root)
+    version = expected_publication_manifest(effective_root).version
+    return ReleasePreflightReport(
+        skill_name="deep-gvr",
+        version=version,
+        generated_at=datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        overall_status=overall_status,
+        release_surface_ready=release_surface_ready,
+        operator_ready=operator_ready,
+        config_path=str(effective_config_path),
+        hermes_config_path=str(effective_hermes_config_path),
+        publication_manifest_path=str(manifest_path),
+        checks=checks,
+    )
+
+
 def _check_skill_install(skills_dir: Path) -> ReleaseCheck:
     install_path = skills_dir / "deep-gvr"
     skill_manifest_path = install_path / "SKILL.md"
@@ -276,6 +337,78 @@ def _check_skill_install(skills_dir: Path) -> ReleaseCheck:
         summary="The deep-gvr skill bundle is not installed under the target Hermes skills directory.",
         details={"install_path": str(install_path), "skill_manifest_path": str(skill_manifest_path)},
         guidance="Run bash scripts/install.sh before invoking /deep-gvr from Hermes.",
+    )
+
+
+def _check_codex_cli() -> ReleaseCheck:
+    codex_binary = shutil.which("codex")
+    if codex_binary is not None:
+        return ReleaseCheck(
+            name="codex_cli",
+            status=ReleaseCheckStatus.READY,
+            summary="Codex CLI is available on PATH.",
+            details={"codex_binary": codex_binary},
+            guidance="Use the same Codex install for the local deep-gvr skill and codex exec smoke runs.",
+        )
+    return ReleaseCheck(
+        name="codex_cli",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="Codex CLI is not installed or not available on PATH.",
+        details={"codex_binary": None},
+        guidance="Install Codex local and ensure the codex binary is on PATH before using the Codex surface.",
+    )
+
+
+def _check_codex_skill_install(codex_skills_dir: Path, root: Path) -> ReleaseCheck:
+    install_path = codex_skills_dir / "deep-gvr"
+    skill_manifest_path = install_path / "SKILL.md"
+    source_manifest_path = root / "codex_skill" / "SKILL.md"
+    if not source_manifest_path.exists():
+        return ReleaseCheck(
+            name="codex_skill_install",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The repo-local Codex skill source is missing.",
+            details={"source_manifest_path": str(source_manifest_path)},
+            guidance="Restore codex_skill/SKILL.md before using the Codex-local install surface.",
+        )
+
+    if skill_manifest_path.exists():
+        source_payload = source_manifest_path.read_text(encoding="utf-8")
+        installed_payload = skill_manifest_path.read_text(encoding="utf-8")
+        if installed_payload == source_payload:
+            return ReleaseCheck(
+                name="codex_skill_install",
+                status=ReleaseCheckStatus.READY,
+                summary="The deep-gvr Codex-local skill is installed and matches the repo copy.",
+                details={
+                    "install_path": str(install_path),
+                    "skill_manifest_path": str(skill_manifest_path),
+                    "source_manifest_path": str(source_manifest_path),
+                },
+                guidance="Re-run bash scripts/install_codex.sh if the installed Codex skill is stale.",
+            )
+        return ReleaseCheck(
+            name="codex_skill_install",
+            status=ReleaseCheckStatus.ATTENTION,
+            summary="The deep-gvr Codex-local skill is installed, but it does not match the repo copy.",
+            details={
+                "install_path": str(install_path),
+                "skill_manifest_path": str(skill_manifest_path),
+                "source_manifest_path": str(source_manifest_path),
+            },
+            guidance="Re-run bash scripts/install_codex.sh --force to refresh the installed Codex skill.",
+        )
+
+    return ReleaseCheck(
+        name="codex_skill_install",
+        status=ReleaseCheckStatus.BLOCKED,
+        summary="The deep-gvr Codex-local skill is not installed under the target Codex skills directory.",
+        details={
+            "install_path": str(install_path),
+            "skill_manifest_path": str(skill_manifest_path),
+            "source_manifest_path": str(source_manifest_path),
+        },
+        guidance="Run bash scripts/install_codex.sh before invoking deep-gvr through Codex local.",
     )
 
 
