@@ -14,6 +14,7 @@ This documentation set is the public entrypoint for the project. It is designed 
 - [Codex Local](codex-local.md)
 - [Codex Plugin](codex-plugin.md)
 - [Codex Automations](codex-automations.md)
+- [Codex Review and Visual QA](codex-review-qa.md)
 - [Quickstart](quickstart.md)
 - [Concepts](concepts.md)
 - [Domain Portfolio](domain-portfolio.md)

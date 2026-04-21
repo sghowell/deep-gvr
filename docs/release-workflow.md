@@ -47,6 +47,12 @@ If you also want the checked-in Codex automation pack exported for review, use:
 bash scripts/install_codex.sh --automation-root /tmp/deep-gvr-codex-automations
 ```
 
+If you also want the Codex review and visual-QA prompt pack exported for review, use:
+
+```bash
+bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
+```
+
 ## 3. Run Structural Preflight
 
 ```bash
@@ -115,6 +121,7 @@ The publication bundle that should ship with the release is:
 - `plugins/deep-gvr/.codex-plugin/plugin.json`
 - `.agents/plugins/marketplace.json`
 - `codex_automations/catalog.json`
+- `codex_review_qa/catalog.json`
 
 That same manifest is the source of truth for `agentskills.io` publication.
 

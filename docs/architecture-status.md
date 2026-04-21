@@ -33,6 +33,7 @@ fallbacks are temporary gaps, not acceptable end states.
 | codex-local-surface | realized | Codex local is supported as a first-class operator surface over the same typed runtime, with a dedicated skill, install helper, and preflight path. | `codex_skill/SKILL.md`, `scripts/install_codex.sh`, `scripts/codex_preflight.py`, `plans/46-codex-local-surface.md` |
 | codex-plugin-surface | realized | The repo ships a packaged Codex plugin bundle and local marketplace metadata over the same Codex-local workflow. | `plugins/deep-gvr/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`, `plans/48-codex-plugin-surface.md` |
 | codex-automations | realized | The repo ships a checked-in Codex automation pack plus export helpers for recurring benchmark, CI triage, release, and docs-smoke workflows. | `codex_automations/catalog.json`, `scripts/export_codex_automations.py`, `plans/49-codex-automations.md` |
+| codex-review-and-visual-qa | realized | The repo ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven public-docs QA, including SSH/devbox-friendly operator guidance. | `codex_review_qa/catalog.json`, `scripts/export_codex_review_qa.py`, `plans/52-codex-review-and-visual-qa.md` |
 | benchmark-harness | realized | Deterministic and live benchmark runners exist with recorded artifacts and repeatable subset runs. | `eval/run_eval.py`, `src/deep_gvr/evaluation.py`, `plans/07-eval-release.md` through `plans/23-analytical-breadth-stability.md` |
 
 ## Open Architecture Items
