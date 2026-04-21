@@ -6,7 +6,8 @@ This guide gets a new operator from a local checkout to a first successful `deep
 
 - Python 3.12
 - `uv`
-- Hermes Agent installed and available on the machine
+- Hermes Agent installed if you want the shipped delegated runtime path
+- Codex local installed if you want the Codex-local surface
 - Access to whichever model provider route your Hermes setup uses
 
 Optional extras:
@@ -21,21 +22,36 @@ uv sync
 uv sync --extra analysis --extra quantum_oss
 ```
 
-## Install the Hermes Skill
+## Install a Supported Surface
+
+Hermes and direct CLI path:
 
 ```bash
 bash scripts/install.sh
 ```
 
-This installs the `deep-gvr` skill into Hermes and creates `~/.hermes/deep-gvr/config.yaml` if that config does not already exist.
+Codex-local path:
+
+```bash
+bash scripts/install_codex.sh
+```
+
+The Codex install path installs the Codex-local skill and also refreshes the underlying Hermes skill/runtime install used by the shipped delegated backend.
 
 ## Run Preflight
 
-Structural and operator preflight:
+Hermes and direct CLI path:
 
 ```bash
 uv run python scripts/release_preflight.py --json
 uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+```
+
+Codex-local path:
+
+```bash
+uv run python scripts/codex_preflight.py --json
+uv run python scripts/codex_preflight.py --operator
 ```
 
 If you intend to use Aristotle as a Tier 3 backend:
@@ -58,6 +74,12 @@ Hermes path:
 /deep-gvr "Explain why the surface code is understood to have a threshold."
 ```
 
+Codex-local path:
+
+```bash
+codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: Explain why the surface code is understood to have a threshold."
+```
+
 ## Resume a Prior Run
 
 ```bash
@@ -70,6 +92,12 @@ Or in Hermes:
 /deep-gvr resume <session_id>
 ```
 
+Or in Codex local:
+
+```bash
+codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to resume session <session_id>."
+```
+
 ## Where Outputs Land
 
 - Config: `~/.hermes/deep-gvr/config.yaml`
@@ -77,6 +105,8 @@ Or in Hermes:
 - Checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
 - Artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
 - Hermes memory summary target: `~/.hermes/memories/MEMORY.md`
+
+The Codex-local surface uses the same runtime state and artifact locations.
 
 ## How to Tell a Run Succeeded
 

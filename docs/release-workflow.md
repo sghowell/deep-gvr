@@ -26,18 +26,20 @@ uv run python scripts/render_release_notes.py --version 0.1.0
 
 The release checklist lives at [release/release-checklist.md](https://github.com/sghowell/deep-gvr/blob/main/release/release-checklist.md).
 
-## 2. Install the Skill Bundle
+## 2. Install the Supported Local Surfaces
 
 ```bash
 bash scripts/install.sh
+bash scripts/install_codex.sh
 ```
 
-If you want an isolated install tree for packaging or smoke testing, set `HERMES_HOME` first. The install and preflight helpers will use that tree instead of `~/.hermes`.
+If you want an isolated install tree for packaging or smoke testing, set `HERMES_HOME` and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of `~/.hermes` and `~/.codex`.
 
 ## 3. Run Structural Preflight
 
 ```bash
 uv run python scripts/release_preflight.py --json
+uv run python scripts/codex_preflight.py --json
 ```
 
 This checks the release bundle, config presence, and checked-in publication assets without assuming a live operator environment.
@@ -46,11 +48,13 @@ This checks the release bundle, config presence, and checked-in publication asse
 
 ```bash
 uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+uv run python scripts/codex_preflight.py --operator
 ```
 
 This verifies the installed skill bundle plus the live runtime path:
 
 - Hermes availability
+- Codex CLI and Codex-local skill availability
 - config validity
 - provider readiness
 - selected Tier 2 backend readiness

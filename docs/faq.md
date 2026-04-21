@@ -20,6 +20,14 @@ Tier 3 is used for proof-oriented or formalizable claims, not for every technica
 
 The standard release surface supports Aristotle and MathCode. OpenGauss is part of the intended backend portfolio, but it is not yet a standard release-path backend.
 
+## Is Codex supported?
+
+Yes. Codex local is a supported first-class operator surface for `deep-gvr`.
+
+## Does the Codex surface replace Hermes?
+
+No. Codex local is a supported peer surface over the same runtime. The shipped delegated execution backend still routes through Hermes today.
+
 ## Is deep-gvr only for quantum computing?
 
 No. Quantum work is an important part of the portfolio, but the current analysis surface also includes symbolic math, optimization, and dynamics.

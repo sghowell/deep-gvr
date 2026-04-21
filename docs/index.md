@@ -1,6 +1,6 @@
 # deep-gvr Docs
 
-`deep-gvr` is a verification-oriented research system for Hermes Agent. It uses a generator-verifier-reviser loop, escalates selectively into OSS-backed analysis or formal proof, and keeps explicit evidence for what it could and could not justify.
+`deep-gvr` is a verification-oriented research system for Hermes Agent, Codex local, and direct CLI use. It uses a generator-verifier-reviser loop, escalates selectively into OSS-backed analysis or formal proof, and keeps explicit evidence for what it could and could not justify.
 
 This documentation set is the public entrypoint for the project. It is designed for technically strong readers who want to evaluate the system, run it themselves, or understand its architecture without reading internal harness material.
 
@@ -11,6 +11,7 @@ This documentation set is the public entrypoint for the project. It is designed 
 ## Start with the Right Path
 
 - [Start Here](start-here.md)
+- [Codex Local](codex-local.md)
 - [Quickstart](quickstart.md)
 - [Concepts](concepts.md)
 - [Domain Portfolio](domain-portfolio.md)

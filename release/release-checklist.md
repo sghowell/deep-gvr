@@ -14,7 +14,11 @@ Use this checklist when cutting a public `deep-gvr` release.
 - Run `uv run python scripts/check_repo.py`
 - Run `uv run python scripts/run_capability_probes.py`
 - Run `uv run python -m unittest discover -s tests -v`
+- Run `bash scripts/install_codex.sh`
+- Run `uv run python scripts/codex_preflight.py --json`
+- Run `uv run python scripts/codex_preflight.py --operator`
 - Run `uv run python scripts/release_preflight.py --json`
+- Run `uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml`
 - Run `uv run python scripts/check_release_version.py --tag v<version>`
 - Run `uv run mkdocs build --strict`
 

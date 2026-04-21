@@ -88,6 +88,7 @@ PUBLIC_DOCS = [
     "README.md",
     "docs/index.md",
     "docs/start-here.md",
+    "docs/codex-local.md",
     "docs/quickstart.md",
     "docs/concepts.md",
     "docs/domain-portfolio.md",
@@ -102,6 +103,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
     "README.md": [
         "docs/index.md",
         "docs/start-here.md",
+        "docs/codex-local.md",
         "docs/quickstart.md",
         "docs/concepts.md",
         "docs/domain-portfolio.md",
@@ -113,6 +115,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
     ],
     "docs/start-here.md": [
         "index.md",
+        "codex-local.md",
         "quickstart.md",
         "concepts.md",
         "domain-portfolio.md",
@@ -333,7 +336,9 @@ def check_release_surfaces(root: Path) -> list[str]:
         errors.append("pyproject.toml: missing deep-gvr console entrypoint")
     executable_files = [
         root / "scripts" / "install.sh",
+        root / "scripts" / "install_codex.sh",
         root / "scripts" / "setup_mcp.sh",
+        root / "scripts" / "codex_preflight.py",
         root / "scripts" / "release_preflight.py",
         root / "scripts" / "check_release_version.py",
         root / "scripts" / "render_release_notes.py",
@@ -349,7 +354,9 @@ def check_release_surfaces(root: Path) -> list[str]:
         root / "CHANGELOG.md",
         root / "mkdocs.yml",
         root / "docs" / "index.md",
+        root / "docs" / "codex-local.md",
         root / "docs" / "release-workflow.md",
+        root / "codex_skill" / "SKILL.md",
         root / "release" / "agentskills.publication.json",
         root / "release" / "release-checklist.md",
         root / ".github" / "workflows" / "docs.yml",
