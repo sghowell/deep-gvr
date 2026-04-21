@@ -1432,6 +1432,114 @@ class CodexRemoteBootstrapReport:
 
 
 @dataclass(slots=True)
+class CodexNativeDelegationEvidence:
+    kind: str
+    reference: str
+    summary: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexNativeDelegationEvidence":
+        return cls(
+            kind=data["kind"],
+            reference=data["reference"],
+            summary=data["summary"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexNativeDelegationCapability:
+    capability_id: str
+    title: str
+    current_boundary: str
+    status: ReleaseCheckStatus
+    promote_into_runtime: bool
+    promotion_decision: str
+    summary: str
+    rationale: list[str] = field(default_factory=list)
+    blocking_dependencies: list[str] = field(default_factory=list)
+    evidence: list[CodexNativeDelegationEvidence] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexNativeDelegationCapability":
+        return cls(
+            capability_id=data["capability_id"],
+            title=data["title"],
+            current_boundary=data["current_boundary"],
+            status=ReleaseCheckStatus(data["status"]),
+            promote_into_runtime=bool(data["promote_into_runtime"]),
+            promotion_decision=data["promotion_decision"],
+            summary=data["summary"],
+            rationale=list(data.get("rationale", [])),
+            blocking_dependencies=list(data.get("blocking_dependencies", [])),
+            evidence=[CodexNativeDelegationEvidence.from_dict(item) for item in data.get("evidence", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexNativeDelegationRecommendation:
+    decision: str
+    summary: str
+    rationale: list[str] = field(default_factory=list)
+    next_slice: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexNativeDelegationRecommendation":
+        return cls(
+            decision=data["decision"],
+            summary=data["summary"],
+            rationale=list(data.get("rationale", [])),
+            next_slice=data.get("next_slice", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexNativeDelegationEvaluationReport:
+    skill_name: str
+    version: str
+    generated_at: str
+    repo_root: str
+    output_root: str
+    overall_status: ReleaseCheckStatus
+    codex_binary: str
+    codex_available: bool
+    codex_version: str
+    evaluation_scope: list[str]
+    notes: list[str]
+    capabilities: list[CodexNativeDelegationCapability]
+    recommendation: CodexNativeDelegationRecommendation
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexNativeDelegationEvaluationReport":
+        return cls(
+            skill_name=data["skill_name"],
+            version=data["version"],
+            generated_at=data["generated_at"],
+            repo_root=data["repo_root"],
+            output_root=data["output_root"],
+            overall_status=ReleaseCheckStatus(data["overall_status"]),
+            codex_binary=data["codex_binary"],
+            codex_available=bool(data["codex_available"]),
+            codex_version=data.get("codex_version", ""),
+            evaluation_scope=list(data.get("evaluation_scope", [])),
+            notes=list(data.get("notes", [])),
+            capabilities=[CodexNativeDelegationCapability.from_dict(item) for item in data.get("capabilities", [])],
+            recommendation=CodexNativeDelegationRecommendation.from_dict(data["recommendation"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class ReleasePublicationManifest:
     name: str
     version: str

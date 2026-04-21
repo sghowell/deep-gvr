@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Codex Native Delegation Evaluation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill_name",
+    "version",
+    "generated_at",
+    "repo_root",
+    "output_root",
+    "overall_status",
+    "codex_binary",
+    "codex_available",
+    "codex_version",
+    "evaluation_scope",
+    "notes",
+    "capabilities",
+    "recommendation"
+  ],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["ready", "attention", "blocked"]
+    },
+    "codex_binary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "codex_available": {
+      "type": "boolean"
+    },
+    "codex_version": {
+      "type": "string"
+    },
+    "evaluation_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capability_id",
+          "title",
+          "current_boundary",
+          "status",
+          "promote_into_runtime",
+          "promotion_decision",
+          "summary",
+          "rationale",
+          "blocking_dependencies",
+          "evidence"
+        ],
+        "properties": {
+          "capability_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "current_boundary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ready", "attention", "blocked"]
+          },
+          "promote_into_runtime": {
+            "type": "boolean"
+          },
+          "promotion_decision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "blocking_dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "reference", "summary"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["repo_file", "official_doc"]
+                },
+                "reference": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "summary", "rationale", "next_slice"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "next_slice": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "skill_name": "deep-gvr",
+  "version": "0.1.0",
+  "generated_at": "2026-04-21T00:00:00Z",
+  "repo_root": "/Users/example/dev/deep-gvr",
+  "output_root": "/tmp/deep-gvr-codex-native-delegation-20260421T000000Z",
+  "overall_status": "ready",
+  "codex_binary": "codex",
+  "codex_available": true,
+  "codex_version": "codex 0.10.0",
+  "evaluation_scope": [
+    "native_codex_role_backend",
+    "exported_subagent_operator_pack",
+    "repo_owned_evidence_surface",
+    "current_official_codex_product_boundary"
+  ],
+  "notes": [
+    "Observed local Codex binary version via `codex --version`: codex 0.10.0."
+  ],
+  "capabilities": [
+    {
+      "capability_id": "native_role_execution",
+      "title": "Native role-isolated runtime execution",
+      "current_boundary": "runtime_backend",
+      "status": "ready",
+      "promote_into_runtime": true,
+      "promotion_decision": "already_realized",
+      "summary": "The highest-value Codex-native delegation behavior for deep-gvr is already runtime-owned: Generator, Verifier, and Reviser execute as separate native Codex role calls over the typed loop.",
+      "rationale": [
+        "The native codex_local backend already drives Tier1LoopRunner through separate Generator, Verifier, and Reviser calls.",
+        "The runtime preserves checkpoint, evidence, escalation, Tier 2, and Tier 3 ownership while Codex handles role execution.",
+        "This captures the backend value of Codex-native delegation without coupling the runtime to Codex app-state internals."
+      ],
+      "blocking_dependencies": [],
+      "evidence": [
+        {
+          "kind": "repo_file",
+          "reference": "src/deep_gvr/orchestrator.py",
+          "summary": "CodexLocalOrchestratorRunner executes Generator, Verifier, and Reviser as separate native role calls."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "src/deep_gvr/cli.py",
+          "summary": "CLI capability evidence already records codex_native_role_execution for native backend runs."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "plans/58-codex-native-subagent-backend.md",
+          "summary": "Plan 58 established the native role-separated Codex backend boundary."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "plans/60-codex-runtime-hardening.md",
+          "summary": "Plan 60 hardened transcript and capability-evidence capture for native Codex role execution."
+        }
+      ]
+    },
+    {
+      "capability_id": "parallel_work_ownership",
+      "title": "Parallel work ownership and worktree coordination",
+      "current_boundary": "operator_pack",
+      "status": "attention",
+      "promote_into_runtime": false,
+      "promotion_decision": "keep_operator_pack",
+      "summary": "Parallel multi-agent work ownership should stay in the shipped Codex subagent operator pack rather than becoming a runtime scheduling API inside deep-gvr.",
+      "rationale": [
+        "The repo already ships a checked-in subagent pack with safe worktree, scope, and integration rules.",
+        "deep-gvr's runtime value is typed evidence and verification orchestration, not direct management of concurrent Codex agents.",
+        "Promoting parallel work ownership into the runtime would duplicate product-managed worktree and thread behavior without adding stronger verification guarantees."
+      ],
+      "blocking_dependencies": [],
+      "evidence": [
+        {
+          "kind": "repo_file",
+          "reference": "docs/codex-subagents.md",
+          "summary": "The current subagent surface is explicitly documented as an operator coordination layer rather than the backend itself."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "codex_subagents/catalog.json",
+          "summary": "The shipped Codex subagent pack already encodes disjoint scopes, worktree isolation, and main-agent integration ownership."
+        },
+        {
+          "kind": "official_doc",
+          "reference": "https://openai.com/index/introducing-the-codex-app/",
+          "summary": "OpenAI's Codex app docs describe multi-agent threads and built-in worktrees as product-managed coordination features."
+        }
+      ]
+    },
+    {
+      "capability_id": "delegation_observability",
+      "title": "Delegation observability and evidence capture",
+      "current_boundary": "repo_owned_evidence",
+      "status": "ready",
+      "promote_into_runtime": true,
+      "promotion_decision": "already_realized",
+      "summary": "The observability that deep-gvr actually needs is already repo-owned through transcripts, parsed role payloads, capability-evidence artifacts, and review/QA evidence bundles.",
+      "rationale": [
+        "The native backend transcript captures per-role selected routes, parsed response payloads, and failures.",
+        "Review/QA and SSH/devbox flows already prepare repo-owned evidence bundles before live human or Codex inspection.",
+        "What remains outside the repo contract is Codex's own internal thread state, which is not necessary for deep-gvr's typed verification evidence model."
+      ],
+      "blocking_dependencies": [],
+      "evidence": [
+        {
+          "kind": "repo_file",
+          "reference": "src/deep_gvr/orchestrator.py",
+          "summary": "Native Codex role transcripts persist selected routes, parsed response objects, and structured failures."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "src/deep_gvr/cli.py",
+          "summary": "CLI capability evidence emits codex_native_role_execution without conflating it with Hermes-only delegated-capability probes."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "docs/contracts-and-artifacts.md",
+          "summary": "The standard artifact surface already documents Codex-native transcript and capability-evidence files."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "plans/62-codex-review-qa-execution.md",
+          "summary": "Plan 62 added repo-owned evidence workflows for PR review and public-docs visual QA."
+        }
+      ]
+    },
+    {
+      "capability_id": "live_subagent_state_integration",
+      "title": "Live Codex subagent-state integration",
+      "current_boundary": "product_managed",
+      "status": "blocked",
+      "promote_into_runtime": false,
+      "promotion_decision": "defer_product_owned",
+      "summary": "deep-gvr should not attempt to own Codex's live subagent state, spawning, or app-managed delegation internals until OpenAI exposes a stable repo-usable contract for that surface.",
+      "rationale": [
+        "Current official Codex docs describe multi-agent threads, cloud tasks, browser/computer-use, and remote devboxes as product-managed client capabilities.",
+        "The repo can export prompts, install skills/plugins, prepare evidence, and run the native backend, but it cannot reliably own Codex's internal live delegation state today.",
+        "Treating live subagent state as a backend contract now would overclaim support and create coupling to product behavior outside the repo's control."
+      ],
+      "blocking_dependencies": [
+        "A stable OpenAI-supported programmatic contract for live Codex delegation or subagent-state control.",
+        "A repo-owned artifact and resume model that can honestly represent that external state without guessing."
+      ],
+      "evidence": [
+        {
+          "kind": "official_doc",
+          "reference": "https://openai.com/index/introducing-the-codex-app/",
+          "summary": "The Codex app docs describe a product-managed command center for multiple agents and worktrees, not a repo-controlled delegation API."
+        },
+        {
+          "kind": "official_doc",
+          "reference": "https://openai.com/index/codex-for-almost-everything/",
+          "summary": "The April 16, 2026 Codex product update expands product-managed capabilities such as browser, computer use, SSH/devboxes, and ongoing work."
+        },
+        {
+          "kind": "official_doc",
+          "reference": "https://platform.openai.com/docs/codex/overview",
+          "summary": "OpenAI's Codex cloud overview describes parallel background delegation in cloud sandboxes as a separate Codex product surface."
+        },
+        {
+          "kind": "repo_file",
+          "reference": "docs/codex-subagents.md",
+          "summary": "The current repo docs already keep the boundary honest: the repo does not claim to configure Codex's live subagent runtime or app state."
+        }
+      ]
+    }
+  ],
+  "recommendation": {
+    "decision": "keep_current_boundary",
+    "summary": "Keep the current Codex boundary: native role-separated codex_local execution stays runtime-owned, while deeper parallel delegation and live subagent state remain operator-pack or product-managed surfaces.",
+    "rationale": [
+      "The backend value of Codex-native delegation is already captured by the realized native role-separated codex_local runtime.",
+      "The repo already ships the right operator surfaces for parallel work, review, visual QA, SSH/devbox execution, and remote bootstrap.",
+      "Deeper live delegation integration would currently overstep into product-managed Codex state without a stable repo-owned contract."
+    ],
+    "next_slice": "plans/64-codex-cloud-surface.md"
+  }
+}
