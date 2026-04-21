@@ -48,3 +48,5 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [43-diagram-heading-containment.md](43-diagram-heading-containment.md)
 - [44-diagram-body-clearance.md](44-diagram-body-clearance.md)
 - [45-hermes-v0.9-capability-reassessment.md](45-hermes-v0.9-capability-reassessment.md)
+- [46-codex-local-surface.md](46-codex-local-surface.md)
+- [47-auto-improve-evaluation.md](47-auto-improve-evaluation.md)
