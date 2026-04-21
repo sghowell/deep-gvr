@@ -6,12 +6,13 @@ usage() {
 Install the deep-gvr Codex-local skill surface.
 
 Usage:
-  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--automation-root DIR] [--copy] [--force] [--skip-hermes-install]
+  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--automation-root DIR] [--review-qa-root DIR] [--copy] [--force] [--skip-hermes-install]
 
 Options:
   --target DIR           Target Codex skills directory. Default: ~/.codex/skills
   --plugin-root DIR      Export a standalone local Codex plugin marketplace root at DIR.
   --automation-root DIR  Export a standalone local Codex automation bundle at DIR.
+  --review-qa-root DIR   Export a standalone local Codex review and visual-QA prompt bundle at DIR.
   --copy                 Copy the Codex skill instead of creating a symlink.
   --force                Replace an existing deep-gvr Codex skill install in the target directory.
   --skip-hermes-install  Do not also install the underlying Hermes skill/runtime surface.
@@ -37,6 +38,7 @@ plugin_root=""
 plugin_export_path=""
 plugin_marketplace_path=""
 automation_root=""
+review_qa_root=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --automation-root)
       automation_root="$2"
+      shift 2
+      ;;
+    --review-qa-root)
+      review_qa_root="$2"
       shift 2
       ;;
     --copy)
@@ -147,6 +153,19 @@ if [[ -n "${automation_root}" ]]; then
   "${automation_args[@]}"
 fi
 
+if [[ -n "${review_qa_root}" ]]; then
+  review_args=(
+    python3
+    "${repo_root}/scripts/export_codex_review_qa.py"
+    --output-root
+    "${review_qa_root}"
+  )
+  if [[ "${force}" == "true" ]]; then
+    review_args+=(--force)
+  fi
+  "${review_args[@]}"
+fi
+
 if [[ "${skip_hermes_install}" != "true" ]]; then
   if [[ "${force}" == "true" ]]; then
     bash "${repo_root}/scripts/install.sh" --force
@@ -170,6 +189,9 @@ fi
 if [[ -n "${automation_root}" ]]; then
   echo "Exported the deep-gvr Codex automation bundle to ${automation_root}."
 fi
+if [[ -n "${review_qa_root}" ]]; then
+  echo "Exported the deep-gvr Codex review/QA prompt bundle to ${review_qa_root}."
+fi
 if [[ "${skip_hermes_install}" == "true" ]]; then
   echo "Skipped underlying Hermes install at your request."
 elif [[ "${hermes_install_state}" == "refreshed" ]]; then
@@ -183,4 +205,5 @@ echo "  2. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --json' to
 echo "  3. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --operator' before live Codex operator use."
 echo "  4. If you want the packaged plugin bundle as well, review ${repo_root}/docs/codex-plugin.md."
 echo "  5. If you want recurring Codex automation templates as well, review ${repo_root}/docs/codex-automations.md."
-echo "  6. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."
+echo "  6. If you want the Codex review and visual-QA prompt kit as well, review ${repo_root}/docs/codex-review-qa.md."
+echo "  7. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."

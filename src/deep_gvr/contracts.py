@@ -1204,6 +1204,56 @@ class CodexAutomationCatalog:
 
 
 @dataclass(slots=True)
+class CodexReviewQaSpec:
+    prompt_id: str
+    name: str
+    description: str
+    template_path: str
+    export_path: str
+    model: str
+    reasoning_effort: str
+    capabilities: list[str]
+    prompt: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexReviewQaSpec":
+        return cls(
+            prompt_id=data["prompt_id"],
+            name=data["name"],
+            description=data["description"],
+            template_path=data["template_path"],
+            export_path=data["export_path"],
+            model=data["model"],
+            reasoning_effort=data["reasoning_effort"],
+            capabilities=list(data.get("capabilities", [])),
+            prompt=data["prompt"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexReviewQaCatalog:
+    name: str
+    version: str
+    repo_root_placeholder: str
+    templates: list[CodexReviewQaSpec]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexReviewQaCatalog":
+        return cls(
+            name=data["name"],
+            version=data["version"],
+            repo_root_placeholder=data["repo_root_placeholder"],
+            templates=[CodexReviewQaSpec.from_dict(item) for item in data.get("templates", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class ReleasePreflightReport:
     skill_name: str
     version: str
@@ -1248,6 +1298,7 @@ class ReleasePublicationManifest:
     codex_plugin_skill_manifest_path: str
     codex_plugin_marketplace_path: str
     codex_automation_catalog_path: str
+    codex_review_qa_catalog_path: str
     readme_path: str
     install_script: str
     preflight_script: str
@@ -1273,6 +1324,7 @@ class ReleasePublicationManifest:
             codex_plugin_skill_manifest_path=data["codex_plugin_skill_manifest_path"],
             codex_plugin_marketplace_path=data["codex_plugin_marketplace_path"],
             codex_automation_catalog_path=data["codex_automation_catalog_path"],
+            codex_review_qa_catalog_path=data["codex_review_qa_catalog_path"],
             readme_path=data["readme_path"],
             install_script=data["install_script"],
             preflight_script=data["preflight_script"],
