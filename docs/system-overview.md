@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a Hermes skill bundle plus a typed Python runtime with supported Codex-local, packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` peer surfaces. The runtime manages verification, evidence, and optional deeper analysis.
+`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the shipped backend is Hermes; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported peer surfaces over that same runtime while the Codex-native backend is staged separately.
 
 ## Public Surface
 
@@ -15,14 +15,14 @@
 - `uv run python scripts/codex_preflight.py --json`
 - `uv run python scripts/codex_preflight.py --operator`
 - `uv run python scripts/release_preflight.py --json`
-- `uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml`
+- `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
 
 Core runtime locations:
 
-- Config: `~/.hermes/deep-gvr/config.yaml`
-- Sessions: `~/.hermes/deep-gvr/sessions/<session_id>/`
-- Checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
-- Artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
+- Config: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
+- Sessions: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/`
+- Checkpoint: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/checkpoint.json`
+- Artifacts: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/artifacts/`
 - Hermes memory target: `~/.hermes/memories/MEMORY.md`
 
 ## Core Components
@@ -69,7 +69,7 @@ The current public analysis surface includes:
 
 ## Operational Defaults
 
-- Hermes delegated orchestration is the shipped execution backend
+- The runtime selects an explicit orchestrator backend, and Hermes delegated orchestration is the shipped default backend today
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` surface are supported operator surfaces over that same runtime
 - the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth

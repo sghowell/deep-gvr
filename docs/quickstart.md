@@ -9,7 +9,7 @@ This guide gets a new operator from a local checkout to a first successful `deep
 - Hermes Agent installed if you want the shipped delegated runtime path
 - Codex local installed if you want the Codex-local surface
 - a Codex client/workspace with plugin support if you want to use the packaged Codex plugin surface
-- Access to whichever model provider route your Hermes setup uses
+- Access to whichever model provider route your selected runtime config uses. On the shipped path today, that still means the Hermes delegated backend.
 
 Optional extras:
 
@@ -57,7 +57,7 @@ Hermes and direct CLI path:
 
 ```bash
 uv run python scripts/release_preflight.py --json
-uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 ```
 
 Codex-local path:
@@ -120,10 +120,10 @@ codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to resume session <sessi
 
 ## Where Outputs Land
 
-- Config: `~/.hermes/deep-gvr/config.yaml`
-- Sessions: `~/.hermes/deep-gvr/sessions/<session_id>/`
-- Checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
-- Artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
+- Config: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
+- Sessions: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/`
+- Checkpoint: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/checkpoint.json`
+- Artifacts: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/artifacts/`
 - Hermes memory summary target: `~/.hermes/memories/MEMORY.md`
 
 The Codex-local surface uses the same runtime state and artifact locations.

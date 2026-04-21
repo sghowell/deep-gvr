@@ -2,7 +2,7 @@
 
 This guide covers the supported Codex-local surface for `deep-gvr`.
 
-Codex local is a first-class operator surface for the project, but it is not a separate runtime backend. It operates the same typed `deep-gvr` runtime and writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths.
+Codex local is a first-class operator surface for the project. The runtime now has an explicit backend-selection seam, but the shipped execution backend today is still Hermes, so the current Codex-local path operates the same typed `deep-gvr` runtime and writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths.
 
 If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want a Codex-native review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
 
@@ -22,7 +22,7 @@ It is not the same thing as Codex Cloud. The standard shipped path today is loca
 - `uv`
 - Codex local installed and available as `codex`
 - Hermes Agent installed and available as `hermes`
-- Access to the model provider route used by your Hermes runtime
+- Access to the model provider route used by your selected runtime config. On the shipped path today, that still means the Hermes delegated backend.
 
 Optional extras:
 
@@ -39,7 +39,7 @@ uv sync --extra analysis --extra quantum_oss
 bash scripts/install_codex.sh
 ```
 
-This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr` and refreshes the underlying Hermes skill/runtime install used by the shipped delegated backend.
+This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr` and refreshes the underlying Hermes skill/runtime install used by the shipped default backend.
 
 If you also want a standalone local plugin marketplace root exported from the checked-in bundle:
 
@@ -88,7 +88,7 @@ uv run python scripts/codex_preflight.py --operator
 If you want to validate the Hermes slash-command path directly as well, run:
 
 ```bash
-uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 ```
 
 ## Use It From Codex
@@ -108,18 +108,18 @@ codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: Explain why t
 
 ## Shared Runtime State
 
-The Codex-local surface uses the same underlying runtime state as the Hermes and direct CLI paths:
+The Codex-local surface uses the same underlying runtime state as the Hermes and direct CLI paths. The runtime home is selected through `DEEP_GVR_HOME` when set and otherwise falls back to the compatibility path under `${HERMES_HOME:-~/.hermes}/deep-gvr`:
 
-- Config: `~/.hermes/deep-gvr/config.yaml`
-- Sessions: `~/.hermes/deep-gvr/sessions/<session_id>/`
-- Checkpoint: `~/.hermes/deep-gvr/sessions/<session_id>/checkpoint.json`
-- Artifacts: `~/.hermes/deep-gvr/sessions/<session_id>/artifacts/`
+- Config: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
+- Sessions: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/`
+- Checkpoint: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/checkpoint.json`
+- Artifacts: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/artifacts/`
 
 Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. That does not change the runtime boundary; it only changes where Codex is operating from. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
 
 ## Current Boundary
 
-Codex local is a supported peer surface over the same runtime. It does not replace the delegated Hermes execution backend on the shipped path today.
+Codex local is a supported peer surface over the same runtime. The runtime is now backend-abstracted, but Codex local still does not replace the delegated Hermes execution backend on the shipped path today.
 
 That means:
 

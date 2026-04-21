@@ -33,7 +33,7 @@ bash scripts/install.sh
 bash scripts/install_codex.sh
 ```
 
-If you want an isolated install tree for packaging or smoke testing, set `HERMES_HOME` and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of `~/.hermes` and `~/.codex`.
+If you want an isolated install tree for packaging or smoke testing, set `DEEP_GVR_HOME`, `HERMES_HOME`, and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of the default runtime and operator homes.
 
 If you want a standalone local Codex plugin marketplace root exported from the checked-in plugin bundle, use:
 
@@ -77,7 +77,7 @@ This checks the release bundle, config presence, and checked-in publication asse
 ## 4. Run Operator Preflight
 
 ```bash
-uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 uv run python scripts/codex_preflight.py --operator
 ```
 

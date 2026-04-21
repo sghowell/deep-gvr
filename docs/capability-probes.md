@@ -63,7 +63,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - Question: how should `local`, `modal`, and `ssh` be selected and validated?
 - Implemented baseline: the `qec_decoder_benchmark` analysis family now executes real Stim/PyMatching runs through local, Modal, and SSH backends while preserving the same normalized result contract.
 - Current probe behavior: `scripts/run_capability_probes.py` reports per-environment readiness for all three backends, including local dependency checks, Modal CLI plus stub availability, and SSH/`scp` plus runtime-config readiness.
-- Operator path: use `scripts/run_capability_probes.py --config ~/.hermes/deep-gvr/config.yaml` after configuring any remote backend so the probe details reflect the actual Modal and SSH settings you intend to use.
+- Operator path: use `scripts/run_capability_probes.py --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` after configuring any remote backend so the probe details reflect the actual Modal and SSH settings you intend to use.
 - Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH readiness details.
 
 ### Analysis adapter families

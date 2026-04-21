@@ -39,6 +39,7 @@ That makes it useful for research-style questions where correctness matters more
 - Explicit artifacts: checkpoints, evidence logs, analysis outputs, and proof transport records
 - A domain-agnostic adapter architecture with strong support for math, optimization, dynamics, and open-source quantum tooling
 - Supported local operator surfaces through Hermes, Codex local, the packaged Codex plugin bundle, a checked-in Codex automation pack, and `uv run deep-gvr`
+- An explicit orchestrator-backend boundary in the runtime, with Hermes as the shipped default backend today and a Codex-native backend staged next
 
 ## A Typical Question
 
@@ -58,7 +59,7 @@ A successful run typically:
 2. produces a candidate explanation
 3. checks the explanation adversarially at Tier 1
 4. requests Tier 2 or Tier 3 only if the claim actually needs them
-5. writes evidence and artifacts under `~/.hermes/deep-gvr/sessions/<session_id>/`
+5. writes evidence and artifacts under `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/`
 
 ## Quick Start
 
@@ -68,7 +69,7 @@ A successful run typically:
 uv sync
 uv sync --extra analysis --extra quantum_oss
 bash scripts/install.sh
-uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml
+uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 uv run deep-gvr run "Explain why the surface code is understood to have a threshold."
 ```
 
@@ -154,6 +155,7 @@ Release history:
 - Local operation is the default path. Some optional backends depend on external tools or remote infrastructure.
 - The shipped Tier 3 backends are Aristotle and MathCode. OpenGauss remains an intended backend, but it is not part of the standard release path today.
 - Codex local, the packaged Codex plugin, and the checked-in Codex automation pack are supported peer surfaces, but the shipped delegated execution backend still routes through Hermes today.
+- The runtime now has an explicit backend-selection seam, but the only shipped execution backend today is still Hermes.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
 - The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline.

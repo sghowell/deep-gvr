@@ -4,17 +4,17 @@ The `deep-gvr` Codex plugin is a local workflow bundle over the repository’s e
 
 ## What It Stores Locally
 
-When you use the plugin through the supported local runtime, `deep-gvr` writes local state under the same paths used by the Hermes and CLI surfaces:
+When you use the plugin through the supported local runtime, `deep-gvr` writes local state under the same runtime home used by the Hermes, Codex-local, and direct CLI surfaces. That home is selected through `DEEP_GVR_HOME` when set and otherwise falls back to the compatibility path under `${HERMES_HOME:-~/.hermes}/deep-gvr`:
 
-- `~/.hermes/deep-gvr/config.yaml`
-- `~/.hermes/deep-gvr/sessions/<session_id>/`
+- `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
+- `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/`
 - evidence, checkpoints, and analysis/formal artifacts under the session directory
 
 ## What It Sends Externally
 
 `deep-gvr` may send prompts or verification requests to external services that you configure explicitly, including:
 
-- the model provider selected by your Hermes runtime
+- the model provider selected by your runtime config and orchestrator backend
 - optional Tier 2 remote backends such as Modal or SSH
 - optional Tier 3 formal backends such as Aristotle or MathCode, if you enable them
 
