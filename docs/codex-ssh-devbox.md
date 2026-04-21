@@ -78,7 +78,7 @@ The `--ssh-devbox` operator path expects:
 - a valid `deep-gvr` runtime config
 - Codex local available as `codex`
 - the installed Codex `deep-gvr` skill
-- Hermes installed for the shipped delegated backend
+- Hermes installed only if the selected backend or Tier 3 path still requires it
 - the checked-in Codex `ssh/devbox` prompt pack present in the repo
 - the Tier 2 SSH backend configured and ready
 
@@ -99,8 +99,7 @@ The shipped `ssh/devbox` surface is:
 
 It is not:
 
-- a second `deep-gvr` runtime backend
-- a replacement for Hermes as the shipped delegated execution backend
+- a second `deep-gvr` runtime backend beyond the existing backend selector
 - a claim that the repo can provision Codex SSH/devbox sessions directly
 
 If you want the main interactive local operator path, see [Codex Local](codex-local.md). If you want a browser-driven review workflow, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md).

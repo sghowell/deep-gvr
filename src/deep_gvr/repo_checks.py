@@ -75,7 +75,6 @@ REQUIRED_PROMPT_MARKERS = {
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
-    "codex-local-backend": "56-codex-local-backend.md",
 }
 
 ALLOWED_OPEN_ARCHITECTURE_STATUSES = {"temporary_gap", "planned", "blocked_external"}

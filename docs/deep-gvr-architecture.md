@@ -32,7 +32,7 @@ At a high level, `deep-gvr` is a typed Python runtime with an explicit orchestra
 
 <figure class="doc-figure">
   <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
-<figcaption>Hermes, Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent surface, and the explicit Codex `ssh/devbox` surface share the same typed runtime. The repo also ships a separate Codex review/QA prompt kit for high-signal review workflows. The runtime owns evidence, adapters, formal transport, resume semantics, and backend selection, while Hermes remains the shipped execution backend today.</figcaption>
+<figcaption>Hermes, Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent surface, and the explicit Codex `ssh/devbox` surface share the same typed runtime. The repo also ships a separate Codex review/QA prompt kit for high-signal review workflows. The runtime owns evidence, adapters, formal transport, resume semantics, and backend selection, with Hermes as the default backend in the checked-in config and Codex local as a native backend option.</figcaption>
 </figure>
 
 ### Main Components
@@ -158,7 +158,7 @@ The runtime persists sessions under `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/
 
 The current release surface is strong, but it is not magic.
 
-- Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` path are supported peer surfaces, and the runtime is now backend-abstracted, but the only shipped execution backend today is still Hermes.
+- Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` path are supported surfaces over the same runtime, and the runtime now supports both `hermes` and `codex_local` backends.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo ships a reviewable Codex subagent prompt pack for safe multi-agent coordination, not direct control of Codex's internal delegation state.
 - The repo also ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven docs QA.

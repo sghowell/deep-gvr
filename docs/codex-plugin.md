@@ -2,7 +2,7 @@
 
 This page covers the packaged Codex plugin surface for `deep-gvr`.
 
-The plugin surface is intentionally thin. It packages the existing Codex-local `deep-gvr` workflow as a reusable bundle; it does not introduce a separate runtime, a separate evidence model, or a non-Hermes backend.
+The plugin surface is intentionally thin. It packages the existing Codex-local `deep-gvr` workflow as a reusable bundle; it does not introduce a separate runtime or a separate evidence model.
 
 If you want recurring scheduled work rather than an interactive packaged workflow, see [Codex Automations](codex-automations.md). If you want the Codex review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md).
 
@@ -25,12 +25,12 @@ Together, those files let the repository act as a local Codex plugin source inst
 The plugin surface packages the existing Codex-local workflow:
 
 - it operates the same typed `deep-gvr` runtime
-- it writes the same Hermes config, checkpoints, and evidence artifacts
-- it still depends on the underlying Hermes runtime and provider environment
+- it writes the same runtime config, checkpoints, and evidence artifacts
+- it can operate either on the `hermes` backend or the native `codex_local` backend, depending on the selected runtime config
 
 It does not:
 
-- replace Hermes as the shipped delegated execution backend
+- create a third orchestrator runtime beyond the repo's existing backend selection
 - add a Codex Cloud runtime path
 - add new app or MCP integrations beyond the existing `deep-gvr` workflow
 

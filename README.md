@@ -39,7 +39,7 @@ That makes it useful for research-style questions where correctness matters more
 - Explicit artifacts: checkpoints, evidence logs, analysis outputs, and proof transport records
 - A domain-agnostic adapter architecture with strong support for math, optimization, dynamics, and open-source quantum tooling
 - Supported local operator surfaces through Hermes, Codex local, the packaged Codex plugin bundle, a checked-in Codex automation pack, and `uv run deep-gvr`
-- An explicit orchestrator-backend boundary in the runtime, with Hermes as the shipped default backend today and a Codex-native backend staged next
+- An explicit orchestrator-backend boundary in the runtime, with both `hermes` and `codex_local` supported today
 
 ## A Typical Question
 
@@ -78,6 +78,12 @@ If you want the Codex-local surface as well:
 ```bash
 bash scripts/install_codex.sh
 uv run python scripts/codex_preflight.py --operator
+```
+
+If you want the Codex-native backend path without installing the Hermes surface as well:
+
+```bash
+bash scripts/install_codex.sh --skip-hermes-install
 ```
 
 If you want a standalone exported local Codex plugin marketplace root as well:
@@ -154,8 +160,8 @@ Release history:
 - Tier 2 and Tier 3 are selective. They are used when the claim warrants them, not on every run.
 - Local operation is the default path. Some optional backends depend on external tools or remote infrastructure.
 - The shipped Tier 3 backends are Aristotle and MathCode. OpenGauss remains an intended backend, but it is not part of the standard release path today.
-- Codex local, the packaged Codex plugin, and the checked-in Codex automation pack are supported peer surfaces, but the shipped delegated execution backend still routes through Hermes today.
-- The runtime now has an explicit backend-selection seam, but the only shipped execution backend today is still Hermes.
+- Codex local can now act as a real orchestrator backend when `runtime.orchestrator_backend=codex_local` is selected.
+- Hermes remains the default backend in the checked-in config template, and the Hermes `/deep-gvr` surface still requires Hermes to be installed.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
 - The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline.

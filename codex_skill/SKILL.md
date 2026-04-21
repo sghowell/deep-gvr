@@ -17,7 +17,6 @@ Use it when the user wants Codex to run `deep-gvr` from a local checkout instead
 
 ## What this skill does not do
 
-- it does not replace the underlying Hermes delegated runtime
 - it does not answer a `deep-gvr` request directly in free-form prose when the user wants the real harness path
 - it does not modify release policy or `auto_improve` settings unless the user explicitly asks for that
 
@@ -33,10 +32,13 @@ When the user wants to run `deep-gvr` from Codex local:
    - `uv run deep-gvr run "<question>"`
 4. For resume, use:
    - `uv run deep-gvr resume <session_id>`
-5. After the run, inspect the session artifacts under `~/.hermes/deep-gvr/sessions/<session_id>/` when the user needs evidence, failure diagnosis, or backend details.
+5. Treat `runtime.orchestrator_backend` as authoritative:
+   - `hermes` means the run executes through Hermes
+   - `codex_local` means the run executes through Codex natively and does not require Hermes underneath
+6. After the run, inspect the session artifacts under `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/` when the user needs evidence, failure diagnosis, or backend details.
 
 ## Boundaries
 
-- Treat Codex local as a supported peer surface over the same runtime, not as a separate orchestration backend.
-- If the underlying Hermes or provider environment is not ready, say so explicitly and point the user at `scripts/codex_preflight.py --operator`.
+- Treat Codex local as a first-class surface over the same typed runtime. The actual backend comes from `runtime.orchestrator_backend`.
+- If the selected backend or provider environment is not ready, say so explicitly and point the user at `scripts/codex_preflight.py --operator`.
 - If the user wants the Hermes slash-command path specifically, direct them to `/deep-gvr` rather than trying to emulate it in Codex chat.

@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the shipped backend is Hermes; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported peer surfaces over that same runtime while the Codex-native backend is staged separately.
+`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime.
 
 ## Public Surface
 
@@ -69,7 +69,7 @@ The current public analysis surface includes:
 
 ## Operational Defaults
 
-- The runtime selects an explicit orchestrator backend, and Hermes delegated orchestration is the shipped default backend today
+- The runtime selects an explicit orchestrator backend, with Hermes still the default backend in the checked-in config template
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` surface are supported operator surfaces over that same runtime
 - the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth

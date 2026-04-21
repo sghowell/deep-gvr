@@ -18,23 +18,29 @@ Start from `main` after plan 55 is merged and implement this slice on `codex/cod
 
 ## Progress
 
-- [ ] Wait for plan 55 to land.
-- [ ] Design the Codex-local backend invocation and transcript contract.
-- [ ] Implement the backend and integrate it into CLI/config/preflight paths.
-- [ ] Add targeted tests and update docs and architecture status.
+- [x] Wait for plan 55 to land.
+- [x] Design the Codex-local backend invocation and transcript contract.
+- [x] Implement the backend and integrate it into CLI/config/preflight paths.
+- [x] Add targeted tests and update docs and architecture status.
 - [ ] Run validation, merge locally, revalidate on `main`, push, confirm CI and Docs, and delete the feature branch.
 
 ## Surprises & Discoveries
 
-- Pending implementation.
+- The cleanest Codex-native transport is `codex exec` with `--output-schema` plus `--output-last-message`, not the existing skill wrapper. That avoids recursion back through `uv run deep-gvr ...`.
+- Release/operator checks still had a hidden Hermes assumption even after the backend seam landed; those needed to become backend-sensitive, not just backend-aware.
+- The Codex-local skill and plugin surfaces still matter after the native backend lands, but they now need to describe `runtime.orchestrator_backend` as the source of truth rather than presenting Hermes as mandatory.
 
 ## Decision Log
 
-- Pending implementation.
+- Decision: implement the backend through direct `codex exec` transport instead of routing through the Codex `deep-gvr` skill, because the skill intentionally wraps `uv run deep-gvr ...` and would recurse.
+- Decision: keep Hermes as the default backend in the checked-in config template even after the Codex backend lands.
+- Decision: make release preflight check backend-specific CLI/skill requirements instead of assuming Hermes everywhere.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- The runtime can now execute through a real Codex-local backend when `runtime.orchestrator_backend=codex_local` is selected.
+- Codex and release preflight now stop requiring Hermes install/CLI on the operator path when the selected backend is Codex-local.
+- Codex-facing docs and skill bundles now describe Codex as a real backend option rather than only a peer surface over Hermes.
 
 ## Context and Orientation
 

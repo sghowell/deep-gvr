@@ -26,7 +26,7 @@ Yes. Codex local is a supported first-class operator surface for `deep-gvr`.
 
 ## Does the Codex surface replace Hermes?
 
-No. Codex local is a supported peer surface over the same runtime. The shipped delegated execution backend still routes through Hermes today.
+It can. If you set `runtime.orchestrator_backend=codex_local`, the runtime executes through Codex natively. Hermes is still supported and remains the default backend in the checked-in config template.
 
 ## Is deep-gvr only for quantum computing?
 
@@ -44,7 +44,7 @@ No. Live runs depend on real model routes and external systems. The repo also sh
 
 The main ones are:
 
-- Hermes itself
+- the selected orchestrator backend (`hermes` or `codex_local`)
 - the configured model provider route
 - optional Tier 2 backend tools and libraries
 - optional Tier 3 backend setup such as Aristotle MCP or a local MathCode checkout

@@ -35,6 +35,12 @@ bash scripts/install_codex.sh
 
 If you want an isolated install tree for packaging or smoke testing, set `DEEP_GVR_HOME`, `HERMES_HOME`, and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of the default runtime and operator homes.
 
+If you want the Codex-native backend path on a machine that does not need the Hermes surface, use:
+
+```bash
+bash scripts/install_codex.sh --skip-hermes-install
+```
+
 If you want a standalone local Codex plugin marketplace root exported from the checked-in plugin bundle, use:
 
 ```bash
@@ -89,7 +95,7 @@ uv run python scripts/codex_preflight.py --ssh-devbox --operator
 
 This verifies the installed skill bundle plus the live runtime path:
 
-- Hermes availability
+- Hermes availability when the selected backend or Tier 3 path still requires it
 - Codex CLI and Codex-local skill availability
 - config validity
 - provider readiness

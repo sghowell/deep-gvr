@@ -18,6 +18,6 @@ It is not:
 
 ## Operational Boundary
 
-The plugin packages an existing workflow. It does not replace the underlying Hermes-backed runtime, and its successful operation still depends on your local environment, configured providers, and optional backend availability.
+The plugin packages an existing workflow. It does not replace the repository runtime or evidence model, and its successful operation still depends on your local environment, configured providers, selected orchestrator backend, and optional backend availability.
 
 Use it only if you understand the runtime and provider dependencies involved in your chosen path.
