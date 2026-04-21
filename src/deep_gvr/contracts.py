@@ -1299,6 +1299,7 @@ class ReleasePublicationManifest:
     codex_plugin_marketplace_path: str
     codex_automation_catalog_path: str
     codex_review_qa_catalog_path: str
+    codex_subagent_catalog_path: str
     codex_ssh_devbox_catalog_path: str
     readme_path: str
     install_script: str
@@ -1326,6 +1327,7 @@ class ReleasePublicationManifest:
             codex_plugin_marketplace_path=data["codex_plugin_marketplace_path"],
             codex_automation_catalog_path=data["codex_automation_catalog_path"],
             codex_review_qa_catalog_path=data["codex_review_qa_catalog_path"],
+            codex_subagent_catalog_path=data["codex_subagent_catalog_path"],
             codex_ssh_devbox_catalog_path=data["codex_ssh_devbox_catalog_path"],
             readme_path=data["readme_path"],
             install_script=data["install_script"],

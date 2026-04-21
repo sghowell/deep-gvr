@@ -1,0 +1,29 @@
+{
+  "name": "deep-gvr",
+  "version": "0.1.0",
+  "repo_root_placeholder": "__DEEP_GVR_REPO_ROOT__",
+  "templates": [
+    {
+      "prompt_id": "parallel_validator_fanout",
+      "name": "deep-gvr parallel validator fanout",
+      "description": "Use Codex subagents to decompose deep-gvr validation or implementation work safely across disjoint scopes.",
+      "template_path": "codex_subagents/templates/parallel_validator_fanout.prompt.md",
+      "export_path": "prompts/parallel_validator_fanout.md",
+      "model": "gpt-5.3-codex",
+      "reasoning_effort": "high",
+      "capabilities": ["subagents", "worktrees", "validation"],
+      "prompt": "# deep-gvr parallel validator fanout\n\nUse Codex subagents to decompose `deep-gvr` work from the checkout at `__DEEP_GVR_REPO_ROOT__`.\n\nInstructions:\n\n1. The main agent owns planning, integration, final validation, staging, commits, merge, and push decisions.\n2. Before delegating, inspect the repo state and identify concrete, non-overlapping scopes.\n3. If any delegated task will edit files, give that subagent a separate worktree or a strictly disjoint write set.\n4. Good subagent splits for `deep-gvr` include:\n   - runtime or contract changes\n   - tests and validation follow-up\n   - public docs or release-surface adjustments\n   - targeted backend or prompt-pack analysis\n5. Bad splits include:\n   - two subagents editing the same file set without coordination\n   - subagents making release-policy changes independently\n   - subagents pushing branches or merging on their own\n6. Each subagent report should include:\n   - exact files changed or inspected\n   - exact commands run\n   - concrete findings, blockers, or patch summary\n7. After subagents return, the main agent should:\n   - review and integrate the changes\n   - rerun the required repo validation path\n   - summarize final integrated results clearly\n8. Use the repo's enforced workflow rules:\n   - feature-branch discipline\n   - sensible commit chunks\n   - local validation before merge\n   - local fast-forward merge to `main`\n   - validation again on `main`\n9. Do not treat Codex subagents as a second runtime backend. This is an operator workflow over the existing `deep-gvr` runtime.\n\nRepository-specific priorities:\n\n- Keep the main agent responsible for final integration and release-surface correctness.\n- Prefer separate worktrees when multiple subagents will write code.\n- Preserve alignment between code, schemas, templates, prompts, tests, and docs in the integrated result.\n"
+    },
+    {
+      "prompt_id": "parallel_surface_review",
+      "name": "deep-gvr parallel surface review",
+      "description": "Use Codex subagents to review runtime, tests, docs, and release-surface drift in parallel.",
+      "template_path": "codex_subagents/templates/parallel_surface_review.prompt.md",
+      "export_path": "prompts/parallel_surface_review.md",
+      "model": "gpt-5.3-codex",
+      "reasoning_effort": "high",
+      "capabilities": ["subagents", "review", "docs", "release"],
+      "prompt": "# deep-gvr parallel surface review\n\nUse Codex subagents to perform a high-signal parallel review of the `deep-gvr` checkout at `__DEEP_GVR_REPO_ROOT__`.\n\nInstructions:\n\n1. Keep the main agent in charge of final synthesis and any resulting edits.\n2. Split review work into clearly different surfaces. Recommended split:\n   - subagent 1: runtime, contracts, adapters, and tests\n   - subagent 2: public docs, diagrams, and hosted-docs surface\n   - subagent 3: release/publication/install/preflight surface\n3. Each subagent should review with a bug-risk-first mindset and focus on:\n   - behavioral regressions\n   - missing tests or schema drift\n   - public-surface inconsistencies\n   - release-surface breakage or stale commands\n4. If a subagent is asked to edit, keep the write scope isolated and use a separate worktree when needed.\n5. Require each subagent to return:\n   - findings first, ordered by severity\n   - exact file references\n   - commands run or checks inspected\n   - any residual uncertainty\n6. The main agent should reconcile duplicate or conflicting findings, decide what is real, apply any integrated fixes, and rerun the top-level validation path.\n7. Do not allow subagents to push, merge, or independently rewrite shared repo policy.\n\nRepository-specific priorities:\n\n- Treat public docs as part of the shipped product surface, not an afterthought.\n- Treat release metadata, install helpers, and Codex/Hermes operator surfaces as part of the review scope when they are touched.\n- Keep the distinction explicit between repo-owned prompt/export surfaces and Codex product-managed runtime features.\n"
+    }
+  ]
+}

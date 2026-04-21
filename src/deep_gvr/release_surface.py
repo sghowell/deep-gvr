@@ -13,6 +13,7 @@ import yaml
 
 from .codex_automations import automation_catalog_path, codex_automation_surface_errors
 from .codex_review_qa import codex_review_qa_surface_errors, review_qa_catalog_path
+from .codex_subagents import codex_subagent_surface_errors, subagent_catalog_path
 from .codex_ssh_devbox import codex_ssh_devbox_surface_errors, ssh_devbox_catalog_path
 from .contracts import (
     DeepGvrConfig,
@@ -131,6 +132,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         codex_plugin_marketplace_path=".agents/plugins/marketplace.json",
         codex_automation_catalog_path="codex_automations/catalog.json",
         codex_review_qa_catalog_path="codex_review_qa/catalog.json",
+        codex_subagent_catalog_path="codex_subagents/catalog.json",
         codex_ssh_devbox_catalog_path="codex_ssh_devbox/catalog.json",
         readme_path="README.md",
         install_script="scripts/install.sh",
@@ -150,6 +152,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "bash scripts/install_codex.sh",
             "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
             "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+            "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
             "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
             "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
             "uv run python scripts/codex_preflight.py --operator",
@@ -393,6 +396,7 @@ def collect_release_preflight(
     checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_codex_review_qa_surface(effective_root))
+    checks.append(_check_codex_subagent_surface(effective_root))
     checks.append(_check_codex_ssh_devbox_surface(effective_root))
     checks.append(_check_release_metadata(effective_root))
     checks.append(_check_auto_improve_policy(effective_root))
@@ -404,6 +408,7 @@ def collect_release_preflight(
         "codex_plugin_surface",
         "codex_automation_surface",
         "codex_review_qa_surface",
+        "codex_subagent_surface",
         "codex_ssh_devbox_surface",
         "release_metadata",
         "auto_improve_policy",
@@ -455,6 +460,7 @@ def collect_codex_preflight(
     checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_codex_review_qa_surface(effective_root))
+    checks.append(_check_codex_subagent_surface(effective_root))
     checks.append(_check_codex_ssh_devbox_surface(effective_root))
     checks.append(_check_skill_install(effective_hermes_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
@@ -473,6 +479,7 @@ def collect_codex_preflight(
         "codex_plugin_surface",
         "codex_automation_surface",
         "codex_review_qa_surface",
+        "codex_subagent_surface",
         "codex_ssh_devbox_surface",
         "skill_install",
         "runtime_config",
@@ -1003,6 +1010,32 @@ def _check_codex_review_qa_surface(root: Path) -> ReleaseCheck:
         guidance=(
             "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh "
             "--review-qa-root <dir> to export a reviewable Codex review/QA bundle."
+        ),
+    )
+
+
+def _check_codex_subagent_surface(root: Path) -> ReleaseCheck:
+    errors = codex_subagent_surface_errors(root)
+    catalog_path = subagent_catalog_path(root)
+    if errors:
+        return ReleaseCheck(
+            name="codex_subagent_surface",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in Codex subagent prompt pack is missing or out of sync with the repo surface.",
+            details={"catalog_path": str(catalog_path), "errors": errors},
+            guidance=(
+                "Restore or update the checked-in Codex subagent catalog and prompt templates so the multi-agent "
+                "operator surface stays reviewable and exportable from the repo."
+            ),
+        )
+    return ReleaseCheck(
+        name="codex_subagent_surface",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in Codex subagent catalog and prompt templates match the repo surface.",
+        details={"catalog_path": str(catalog_path)},
+        guidance=(
+            "Use uv run python scripts/export_codex_subagents.py --output-root <dir> or bash scripts/install_codex.sh "
+            "--subagents-root <dir> to export a reviewable Codex subagent bundle."
         ),
     )
 

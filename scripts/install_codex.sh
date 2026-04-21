@@ -6,13 +6,14 @@ usage() {
 Install the deep-gvr Codex-local skill surface.
 
 Usage:
-  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--automation-root DIR] [--review-qa-root DIR] [--ssh-devbox-root DIR] [--copy] [--force] [--skip-hermes-install]
+  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--automation-root DIR] [--review-qa-root DIR] [--subagents-root DIR] [--ssh-devbox-root DIR] [--copy] [--force] [--skip-hermes-install]
 
 Options:
   --target DIR           Target Codex skills directory. Default: ~/.codex/skills
   --plugin-root DIR      Export a standalone local Codex plugin marketplace root at DIR.
   --automation-root DIR  Export a standalone local Codex automation bundle at DIR.
   --review-qa-root DIR   Export a standalone local Codex review and visual-QA prompt bundle at DIR.
+  --subagents-root DIR   Export a standalone local Codex subagent prompt bundle at DIR.
   --ssh-devbox-root DIR  Export a standalone local Codex SSH/devbox prompt bundle at DIR.
   --copy                 Copy the Codex skill instead of creating a symlink.
   --force                Replace an existing deep-gvr Codex skill install in the target directory.
@@ -40,6 +41,7 @@ plugin_export_path=""
 plugin_marketplace_path=""
 automation_root=""
 review_qa_root=""
+subagents_root=""
 ssh_devbox_root=""
 
 while [[ $# -gt 0 ]]; do
@@ -58,6 +60,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --review-qa-root)
       review_qa_root="$2"
+      shift 2
+      ;;
+    --subagents-root)
+      subagents_root="$2"
       shift 2
       ;;
     --ssh-devbox-root)
@@ -176,6 +182,21 @@ if [[ -n "${review_qa_root}" ]]; then
   "${review_args[@]}"
 fi
 
+if [[ -n "${subagents_root}" ]]; then
+  subagent_args=(
+    uv
+    run
+    python
+    "${repo_root}/scripts/export_codex_subagents.py"
+    --output-root
+    "${subagents_root}"
+  )
+  if [[ "${force}" == "true" ]]; then
+    subagent_args+=(--force)
+  fi
+  "${subagent_args[@]}"
+fi
+
 if [[ -n "${ssh_devbox_root}" ]]; then
   ssh_devbox_args=(
     uv
@@ -217,6 +238,9 @@ fi
 if [[ -n "${review_qa_root}" ]]; then
   echo "Exported the deep-gvr Codex review/QA prompt bundle to ${review_qa_root}."
 fi
+if [[ -n "${subagents_root}" ]]; then
+  echo "Exported the deep-gvr Codex subagent prompt bundle to ${subagents_root}."
+fi
 if [[ -n "${ssh_devbox_root}" ]]; then
   echo "Exported the deep-gvr Codex SSH/devbox prompt bundle to ${ssh_devbox_root}."
 fi
@@ -234,5 +258,6 @@ echo "  3. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --operator
 echo "  4. If you want the packaged plugin bundle as well, review ${repo_root}/docs/codex-plugin.md."
 echo "  5. If you want recurring Codex automation templates as well, review ${repo_root}/docs/codex-automations.md."
 echo "  6. If you want the Codex review and visual-QA prompt kit as well, review ${repo_root}/docs/codex-review-qa.md."
-echo "  7. If you want the Codex SSH/devbox remote-operator kit as well, review ${repo_root}/docs/codex-ssh-devbox.md."
-echo "  8. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."
+echo "  7. If you want the Codex subagent prompt kit as well, review ${repo_root}/docs/codex-subagents.md."
+echo "  8. If you want the Codex SSH/devbox remote-operator kit as well, review ${repo_root}/docs/codex-ssh-devbox.md."
+echo "  9. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."

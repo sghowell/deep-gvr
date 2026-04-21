@@ -55,3 +55,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [50-hermes-v0.10-plan26-recheck.md](50-hermes-v0.10-plan26-recheck.md)
 - [52-codex-review-and-visual-qa.md](52-codex-review-and-visual-qa.md)
 - [53-codex-ssh-devbox-surface.md](53-codex-ssh-devbox-surface.md)
+- [54-codex-subagent-integration.md](54-codex-subagent-integration.md)

@@ -178,6 +178,11 @@ class ContractRoundTripTests(unittest.TestCase):
         model = CodexReviewQaCatalog.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_codex_subagents_catalog_round_trip(self) -> None:
+        payload = self._load_json("templates/codex_subagents_catalog.template.json")
+        model = CodexReviewQaCatalog.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_session_checkpoint_round_trip(self) -> None:
         payload = self._load_json("templates/session_checkpoint.template.json")
         model = SessionCheckpoint.from_dict(payload)
@@ -253,6 +258,11 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_codex_ssh_devbox_catalog_fixture_validates(self) -> None:
         schema = self._load_json("schemas/codex_ssh_devbox_catalog.schema.json")
         fixture = self._load_json("templates/codex_ssh_devbox_catalog.template.json")
+        validate(fixture, schema)
+
+    def test_codex_subagents_catalog_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/codex_subagents_catalog.schema.json")
+        fixture = self._load_json("templates/codex_subagents_catalog.template.json")
         validate(fixture, schema)
 
     def test_session_checkpoint_fixture_validates(self) -> None:

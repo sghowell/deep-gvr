@@ -12,6 +12,7 @@ import yaml
 from tests import _path_setup  # noqa: F401
 from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
+from deep_gvr.codex_subagents import codex_subagent_surface_errors
 from deep_gvr.codex_ssh_devbox import codex_ssh_devbox_surface_errors
 from deep_gvr.release_surface import (
     codex_plugin_surface_errors,
@@ -162,6 +163,31 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((review_root / "catalog.json").exists())
             self.assertTrue((review_root / "prompts" / "pull_request_review.md").exists())
             rendered = (review_root / "prompts" / "pull_request_review.md").read_text(encoding="utf-8")
+            self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
+            self.assertIn(str(ROOT), rendered)
+
+    def test_install_codex_script_exports_subagent_bundle_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subagents_root = Path(tmpdir) / "codex-subagents-root"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "install_codex.sh"),
+                    "--subagents-root",
+                    str(subagents_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((subagents_root / "catalog.json").exists())
+            self.assertTrue((subagents_root / "prompts" / "parallel_validator_fanout.md").exists())
+            rendered = (subagents_root / "prompts" / "parallel_validator_fanout.md").read_text(encoding="utf-8")
             self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
             self.assertIn(str(ROOT), rendered)
 
@@ -508,9 +534,6 @@ class ReleaseScriptTests(unittest.TestCase):
     def test_release_metadata_errors_are_empty_for_repo(self) -> None:
         self.assertEqual(release_metadata_errors(ROOT), [])
 
-    def test_codex_ssh_devbox_surface_matches_repo_metadata(self) -> None:
-        self.assertEqual(codex_ssh_devbox_surface_errors(ROOT), [])
-
     def test_release_notes_for_current_version_are_non_empty(self) -> None:
         notes = release_notes_for_version(project_version(ROOT), ROOT)
         self.assertIn("GitHub Releases", notes)
@@ -612,6 +635,12 @@ class ReleaseScriptTests(unittest.TestCase):
 
     def test_codex_review_qa_surface_matches_repo_metadata(self) -> None:
         self.assertEqual(codex_review_qa_surface_errors(ROOT), [])
+
+    def test_codex_subagent_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_subagent_surface_errors(ROOT), [])
+
+    def test_codex_ssh_devbox_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_ssh_devbox_surface_errors(ROOT), [])
 
     def test_release_preflight_uses_mathcode_transport_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
