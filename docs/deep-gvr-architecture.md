@@ -28,7 +28,7 @@ The design is organized around a few non-negotiable ideas:
 
 ## 3. System Model
 
-At a high level, `deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes, Codex-local, a packaged Codex plugin, Codex automation surfaces, a Codex subagent surface, and an explicit Codex `ssh/devbox` surface:
+At a high level, `deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes, Codex-local, a packaged Codex plugin, Codex automation surfaces, a Codex subagent surface, and an explicit Codex `ssh/devbox` surface. A separate OpenAI-native backend is now planned as a future expansion, but it is not implemented today:
 
 <figure class="doc-figure">
   <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
@@ -171,6 +171,11 @@ The current release surface is strong, but it is not magic.
 - The repo now also ships an explicit Codex-native delegation evaluation report path that records why deeper live Codex delegation stays operator-pack or product-managed rather than becoming a runtime contract today.
 - The repo also ships an exportable Codex review/QA prompt kit plus a repo-owned evidence helper for pull-request review and browser-driven docs QA.
 - The repo ships an explicit Codex `ssh/devbox` remote-operator bundle, readiness path, native remote execution helper, and a rerunnable remote-bootstrap helper that syncs config plus Codex surface state on the remote machine, but it still does not provision Codex remote sessions itself.
+- A separate `openai_native` backend is now planned. If it lands, it should target OpenAI's official API or harness primitives rather than trying to turn deeper Codex product-managed state into a repo-owned backend contract.
+- There are still real backend asymmetries:
+  - Hermes remains the only backend with a blocked delegated-capability closure plan for real per-subagent route proof and delegated verifier-side Aristotle MCP access.
+  - Codex local is stronger on native role execution, transcript granularity, and repo-owned SSH/devbox execution.
+  - Aristotle transport is still Hermes-shaped even when `codex_local` is the selected backend.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.
 - Some optional backends depend on local or remote operator setup.
 - Live behavior depends on real provider routes and external systems.

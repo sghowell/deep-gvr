@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime. The native `codex_local` backend now executes Generator, Verifier, and Reviser as separate Codex role calls over the typed loop, and the SSH/devbox path can execute that same backend from a remote machine.
+`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime. The native `codex_local` backend now executes Generator, Verifier, and Reviser as separate Codex role calls over the typed loop, and the SSH/devbox path can execute that same backend from a remote machine. A separate `openai_native` backend is now planned, but it is not part of the shipped runtime surface yet.
 
 ## Public Surface
 
@@ -84,3 +84,12 @@ The current public analysis surface includes:
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor
 - live runs expose real provider, backend, and proof-transport behavior
+
+## Current Backend Gaps
+
+| Area | Hermes backend today | Codex backend today | Current gap |
+|---|---|---|---|
+| Core orchestrator execution | Delegated Hermes skill wrapper | Native role-separated `codex exec` loop | Hermes does not yet expose the same repo-owned per-role transcript and parsed-response surface |
+| Live delegated subagent closure | Intended target, but still blocked in the delegated-capability closure slice | Intentionally stays outside the runtime contract and remains product-managed/operator-pack territory | No backend currently ships repo-owned live delegated subagent closure |
+| Aristotle Tier 3 transport | Primary shipped path via Hermes MCP with CLI fallback | Uses the same shared formal layer | `codex_local` still depends on Hermes-shaped Aristotle transport when Aristotle is selected |
+| Remote stronger-machine execution | No backend-specific orchestrator remote bootstrap path | Repo-owned SSH/devbox bootstrap and runtime-backed execution helper | Codex has a stronger repo-owned remote execution surface today |
