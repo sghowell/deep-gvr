@@ -66,3 +66,5 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [62-codex-review-qa-execution.md](62-codex-review-qa-execution.md)
 - [63-codex-native-delegation-evaluation.md](63-codex-native-delegation-evaluation.md)
 - [64-codex-cloud-surface.md](64-codex-cloud-surface.md)
+- [65-openai-native-backend-evaluation.md](65-openai-native-backend-evaluation.md)
+- [66-openai-native-backend.md](66-openai-native-backend.md)
