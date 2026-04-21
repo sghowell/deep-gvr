@@ -1,0 +1,29 @@
+{
+  "name": "deep-gvr",
+  "version": "0.1.0",
+  "repo_root_placeholder": "__DEEP_GVR_REPO_ROOT__",
+  "templates": [
+    {
+      "prompt_id": "remote_validator_run",
+      "name": "deep-gvr remote validator run",
+      "description": "Operate deep-gvr from a Codex SSH/devbox session for simulation-heavy remote validation.",
+      "template_path": "codex_ssh_devbox/templates/remote_validator_run.prompt.md",
+      "export_path": "prompts/remote_validator_run.md",
+      "model": "gpt-5.3-codex",
+      "reasoning_effort": "high",
+      "capabilities": ["ssh_devbox", "remote_validation", "artifacts"],
+      "prompt": "# deep-gvr remote validator run\n\nOperate `deep-gvr` from a Codex session that is already connected to a remote devbox or SSH-accessible validator machine for `__DEEP_GVR_REPO_ROOT__`.\n\nInstructions:\n\n1. Confirm you are working inside the intended checkout and that the remote machine can access the required validator or simulation dependencies.\n2. Run `uv run python scripts/codex_preflight.py --ssh-devbox --operator` from the repo root before attempting a live run.\n3. If remote preflight is blocked, report the exact failing check and stop unless the operator explicitly asks you to remediate it.\n4. If remote preflight passes, use the installed `deep-gvr` skill or `codex exec` workflow to run the requested investigation from the same checkout.\n5. Prefer the remote machine for simulation-heavy validation, backend dispatch checks, or artifact inspection that would be weak or slow on a laptop.\n6. Summarize:\n   - what question or claim you ran\n   - which backend path was used\n   - where the session artifacts were written\n   - any remote-only limitations or missing dependencies\n7. Do not edit repo files, change release metadata, or push anything unless explicitly asked.\n\nRepository-specific priorities:\n\n- Treat `scripts/codex_preflight.py --ssh-devbox --operator` as the gate for remote-validator readiness.\n- Reuse the existing typed runtime and SSH Tier 2 backend; do not invent a second remote execution path.\n- Call out missing SSH backend config, missing remote workspace settings, or missing provider credentials explicitly.\n"
+    },
+    {
+      "prompt_id": "remote_backend_triage",
+      "name": "deep-gvr remote backend triage",
+      "description": "Debug deep-gvr remote validator or SSH-backend readiness issues from a Codex SSH/devbox session.",
+      "template_path": "codex_ssh_devbox/templates/remote_backend_triage.prompt.md",
+      "export_path": "prompts/remote_backend_triage.md",
+      "model": "gpt-5.3-codex",
+      "reasoning_effort": "high",
+      "capabilities": ["ssh_devbox", "backend_triage", "probes"],
+      "prompt": "# deep-gvr remote backend triage\n\nDebug a `deep-gvr` remote validator or Tier 2 SSH-backend issue from a Codex session that is already connected to a remote devbox or SSH-accessible machine for `__DEEP_GVR_REPO_ROOT__`.\n\nInstructions:\n\n1. Start by running:\n   - `uv run python scripts/codex_preflight.py --ssh-devbox --json`\n   - `uv run python scripts/run_capability_probes.py`\n2. Identify whether the failure is in:\n   - Codex remote-session prerequisites\n   - `deep-gvr` runtime config\n   - SSH backend config\n   - remote workspace or Python path setup\n   - optional analysis-family dependencies\n3. Use the existing SSH Tier 2 backend settings and artifacts as the source of truth. Do not invent an alternate transport.\n4. Summarize only concrete blockers and the smallest next fix. Include:\n   - the failing surface\n   - the exact evidence or command output\n   - the likely offending file or config field\n5. If everything required for the remote path is ready, say that explicitly and identify what the operator should run next.\n6. Do not edit files or push changes unless explicitly asked.\n\nRepository-specific priorities:\n\n- Prefer exact readiness and configuration failures over broad advice.\n- Keep the distinction between repo-owned support and Codex product-managed SSH/devbox state explicit.\n- Treat `docs/codex-ssh-devbox.md` as the human-facing surface for this path.\n"
+    }
+  ]
+}
