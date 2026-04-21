@@ -186,6 +186,31 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
             self.assertIn(str(ROOT), rendered)
 
+    def test_codex_review_qa_execute_script_writes_review_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "codex-review-qa-evidence"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "codex_review_qa_execute.py"),
+                    "pull_request_review",
+                    "--output-root",
+                    str(output_root),
+                    "--force",
+                    "--json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            self.assertEqual(payload["workflow_id"], "pull_request_review")
+            self.assertTrue((output_root / "report.json").exists())
+            self.assertTrue((output_root / "review_target.json").exists())
+            self.assertTrue((output_root / "release_preflight.json").exists())
+
     def test_install_codex_script_exports_subagent_bundle_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             subagents_root = Path(tmpdir) / "codex-subagents-root"

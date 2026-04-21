@@ -157,6 +157,8 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "uv run python scripts/codex_remote_bootstrap.py --json",
             "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
             "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+            "uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force",
+            "uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force",
             "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
             "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
             f"uv run python scripts/release_preflight.py --operator --config {runtime_home_description()}/config.yaml",
@@ -1100,21 +1102,23 @@ def _check_codex_review_qa_surface(root: Path) -> ReleaseCheck:
         return ReleaseCheck(
             name="codex_review_qa_surface",
             status=ReleaseCheckStatus.BLOCKED,
-            summary="The checked-in Codex review/QA prompt pack is missing or out of sync with the repo surface.",
+            summary="The checked-in Codex review/QA surface is missing or out of sync with the repo surface.",
             details={"catalog_path": str(catalog_path), "errors": errors},
             guidance=(
-                "Restore or update the checked-in Codex review/QA catalog and prompt templates so Codex review and "
-                "visual-QA workflows stay reviewable and exportable from the repo."
+                "Restore or update the checked-in Codex review/QA catalog, prompt templates, and execution assets so "
+                "Codex review and visual-QA workflows stay reviewable and evidence-backed from the repo."
             ),
         )
     return ReleaseCheck(
         name="codex_review_qa_surface",
         status=ReleaseCheckStatus.READY,
-        summary="The checked-in Codex review/QA catalog and prompt templates match the repo surface.",
+        summary="The checked-in Codex review/QA catalog, prompt templates, and execution assets match the repo surface.",
         details={"catalog_path": str(catalog_path)},
         guidance=(
             "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh "
-            "--review-qa-root <dir> to export a reviewable Codex review/QA bundle."
+            "--review-qa-root <dir> to export a reviewable Codex review/QA bundle. Use "
+            "uv run python scripts/codex_review_qa_execute.py <workflow> --output-root <dir> to prepare a repo-owned "
+            "review evidence bundle before live Codex review or browser inspection."
         ),
     )
 

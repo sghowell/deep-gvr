@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "Agentic scientific research harness for Hermes with a generator-verifier-reviser loop and tiered verification",
   "package_layout": "hermes_skill_and_codex_surface_bundle",
-  "distribution_targets": ["github", "agentskills.io"],
+  "distribution_targets": [
+    "github",
+    "agentskills.io"
+  ],
   "skill_manifest_path": "SKILL.md",
   "codex_skill_manifest_path": "codex_skill/SKILL.md",
   "codex_plugin_manifest_path": "plugins/deep-gvr/.codex-plugin/plugin.json",
@@ -34,6 +37,8 @@
     "uv run python scripts/codex_remote_bootstrap.py --json",
     "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
     "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
+    "uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force",
+    "uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force",
     "uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force",
     "uv run python scripts/export_codex_ssh_devbox.py --output-root /tmp/deep-gvr-codex-ssh-devbox --force",
     "uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",

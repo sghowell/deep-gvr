@@ -293,6 +293,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "release_publication.template.json": "release_publication.schema.json",
         "codex_automation_catalog.template.json": "codex_automation_catalog.schema.json",
         "codex_review_qa_catalog.template.json": "codex_review_qa_catalog.schema.json",
+        "codex_review_qa_execution.template.json": "codex_review_qa_execution.schema.json",
         "codex_subagents_catalog.template.json": "codex_subagents_catalog.schema.json",
         "codex_ssh_devbox_catalog.template.json": "codex_ssh_devbox_catalog.schema.json",
         "codex_remote_bootstrap.template.json": "codex_remote_bootstrap.schema.json",

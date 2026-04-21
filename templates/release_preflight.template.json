@@ -210,11 +210,11 @@
     {
       "name": "codex_review_qa_surface",
       "status": "ready",
-      "summary": "The checked-in Codex review/QA catalog and prompt templates match the repo surface.",
+      "summary": "The checked-in Codex review/QA catalog, prompt templates, and execution assets match the repo surface.",
       "details": {
         "catalog_path": "codex_review_qa/catalog.json"
       },
-      "guidance": "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh --review-qa-root <dir> to export a reviewable Codex review/QA bundle."
+      "guidance": "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh --review-qa-root <dir> to export a reviewable Codex review/QA bundle. Use uv run python scripts/codex_review_qa_execute.py <workflow> --output-root <dir> to prepare a repo-owned review evidence bundle before live Codex review or browser inspection."
     },
     {
       "name": "codex_subagent_surface",
