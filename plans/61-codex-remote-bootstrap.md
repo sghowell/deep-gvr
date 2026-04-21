@@ -9,10 +9,13 @@ the repo provisions Codex SSH/devbox sessions itself.
 
 ## Branch Strategy
 
-Start from `main` and implement this slice on `codex/codex-remote-bootstrap`.
-Merge back into `main` locally with a fast-forward only after branch validation
-passes, then validate the merged result again, push `main`, confirm CI and
-Docs, and delete the feature branch when it is no longer needed.
+Start from `main` and implement this slice on `codex-remote-bootstrap`. The
+intended branch name was `codex/codex-remote-bootstrap`, but this checkout's
+local git ref layout rejected nested `codex/...` branch creation, so the slice
+uses the closest `codex-` prefixed branch instead. Merge back into `main`
+locally with a fast-forward only after branch validation passes, then validate
+the merged result again, push `main`, confirm CI and Docs, and delete the
+feature branch when it is no longer needed.
 
 ## Commit Plan
 
@@ -22,23 +25,45 @@ Docs, and delete the feature branch when it is no longer needed.
 
 ## Progress
 
-- [ ] Validate the current remote bootstrap pain points from the SSH/devbox path.
-- [ ] Add repo-owned helpers for remote environment materialization where the
+- [x] Validate the current remote bootstrap pain points from the SSH/devbox path.
+- [x] Add repo-owned helpers for remote environment materialization where the
       boundary is honest.
-- [ ] Update remote preflight/docs accordingly.
+- [x] Update remote preflight/docs accordingly.
 
 ## Surprises & Discoveries
 
-- Pending.
+- The local git ref layout in this checkout refused nested `codex/...` branch
+  creation even though the repo normally uses that naming convention, so this
+  slice used `codex-remote-bootstrap`.
+- The strongest repo-owned remote bootstrap boundary is not remote session
+  provisioning; it is config sync plus local surface installation plus the same
+  typed preflight report already used elsewhere.
 
 ## Decision Log
 
 - Decision: keep session provisioning and Codex SSH/devbox creation out of
   scope; focus on repo-owned remote environment readiness and repeatability.
+- Decision: implement remote bootstrap as a dedicated script and typed report
+  rather than extending `codex_preflight.py` with mutation flags. That keeps
+  preflight read-only and makes bootstrap actions auditable.
+- Decision: normalize `runtime.orchestrator_backend=codex_local` during remote
+  bootstrap. The helper is for the Codex SSH/devbox path specifically, so that
+  mutation is part of the contract rather than a surprising side effect.
+- Decision: treat Hermes install as policy-driven during remote bootstrap. Skip
+  it by default when the remote config does not require it, but keep Aristotle
+  and explicit operator overrides able to refresh the Hermes surface.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- The repo now ships `scripts/codex_remote_bootstrap.py` plus
+  `src/deep_gvr/codex_remote_bootstrap.py` as a rerunnable remote-machine
+  bootstrap path for Codex SSH/devbox operators.
+- The helper can create or sync the runtime config, normalize the backend to
+  `codex_local`, install the Codex skill surface, optionally export a standalone
+  plugin root, ensure the evidence directory exists, and then emit the nested
+  `--ssh-devbox` preflight report.
+- The public/operator docs, release manifest, schemas, templates, and tests now
+  treat that bootstrap report as part of the supported Codex remote surface.
 
 ## Context and Orientation
 
