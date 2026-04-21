@@ -1,0 +1,148 @@
+{
+  "type": "object",
+  "required": [
+    "skill_name",
+    "version",
+    "generated_at",
+    "output_root",
+    "runtime_binding",
+    "repo_runtime_consumes_auto_improve",
+    "evaluations",
+    "policy",
+    "isolation",
+    "recommendation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "skill_name": { "type": "string" },
+    "version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "output_root": { "type": "string" },
+    "runtime_binding": {
+      "type": "string",
+      "enum": ["publication_manifest_only"]
+    },
+    "repo_runtime_consumes_auto_improve": { "type": "boolean" },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mode",
+          "status",
+          "subset",
+          "repeat_count",
+          "baseline_auto_improve",
+          "experimental_auto_improve",
+          "selected_case_ids",
+          "baseline_report_path",
+          "experimental_report_path",
+          "baseline_summary",
+          "experimental_summary",
+          "drift_detected",
+          "summary_changed",
+          "case_outcomes_changed",
+          "differing_case_ids",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "mode": { "type": "string", "enum": ["deterministic", "live"] },
+          "status": { "type": "string", "enum": ["completed", "skipped", "blocked"] },
+          "subset": { "type": "string" },
+          "repeat_count": { "type": "integer", "minimum": 1 },
+          "baseline_auto_improve": { "type": "boolean" },
+          "experimental_auto_improve": { "type": "boolean" },
+          "selected_case_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "baseline_report_path": { "type": "string" },
+          "experimental_report_path": { "type": "string" },
+          "baseline_summary": { "type": "object" },
+          "experimental_summary": { "type": "object" },
+          "drift_detected": { "type": "boolean" },
+          "summary_changed": { "type": "boolean" },
+          "case_outcomes_changed": { "type": "boolean" },
+          "differing_case_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "notes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "manifest_path",
+        "baseline_status",
+        "experimental_status",
+        "experimental_blocks_release",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "manifest_path": { "type": "string" },
+        "baseline_status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+        "experimental_status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+        "experimental_blocks_release": { "type": "boolean" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "isolation": {
+      "type": "object",
+      "required": [
+        "manifest_path",
+        "manifest_digest_before",
+        "manifest_digest_after",
+        "manifest_unchanged",
+        "worktree_status_before",
+        "worktree_status_after",
+        "worktree_clean_before",
+        "worktree_clean_after",
+        "worktree_unchanged"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "manifest_path": { "type": "string" },
+        "manifest_digest_before": { "type": "string" },
+        "manifest_digest_after": { "type": "string" },
+        "manifest_unchanged": { "type": "boolean" },
+        "worktree_status_before": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "worktree_status_after": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "worktree_clean_before": { "type": "boolean" },
+        "worktree_clean_after": { "type": "boolean" },
+        "worktree_unchanged": { "type": "boolean" }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["decision", "summary", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["disabled_by_default", "opt_in_supported", "enable_by_default"]
+        },
+        "summary": { "type": "string" },
+        "rationale": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

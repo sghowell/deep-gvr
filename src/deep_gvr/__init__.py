@@ -1,5 +1,15 @@
 """deep-gvr contracts, probes, and Tier 1 loop helpers."""
 
+from .auto_improve import (
+    AutoImproveEvaluationReport,
+    AutoImproveIsolationReport,
+    AutoImproveModeEvaluation,
+    AutoImprovePolicyEvaluation,
+    AutoImproveRecommendation,
+    evaluate_auto_improve,
+    format_auto_improve_evaluation_overview,
+    write_auto_improve_evaluation_report,
+)
 from .contracts import (
     AnalysisMeasurement,
     AnalysisResources,
@@ -77,6 +87,11 @@ from .tier1 import (
 )
 
 __all__ = [
+    "AutoImproveEvaluationReport",
+    "AutoImproveIsolationReport",
+    "AutoImproveModeEvaluation",
+    "AutoImprovePolicyEvaluation",
+    "AutoImproveRecommendation",
     "AnalysisMeasurement",
     "AnalysisRequest",
     "AnalysisResources",
@@ -132,6 +147,8 @@ __all__ = [
     "inspect_aristotle_transport",
     "inspect_mathcode_transport",
     "build_formal_verifier",
+    "evaluate_auto_improve",
+    "format_auto_improve_evaluation_overview",
     "benchmark_routing_probe",
     "load_benchmark_suite",
     "FormalVerificationResultSet",
@@ -147,4 +164,5 @@ __all__ = [
     "build_live_routing_plan",
     "run_capability_probes",
     "write_benchmark_report",
+    "write_auto_improve_evaluation_report",
 ]

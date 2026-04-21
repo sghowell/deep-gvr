@@ -1,0 +1,108 @@
+{
+  "skill_name": "deep-gvr",
+  "version": "0.1.0",
+  "generated_at": "2026-04-20T00:00:00Z",
+  "output_root": "/tmp/deep-gvr-auto-improve-20260420T000000Z",
+  "runtime_binding": "publication_manifest_only",
+  "repo_runtime_consumes_auto_improve": false,
+  "evaluations": [
+    {
+      "mode": "deterministic",
+      "status": "completed",
+      "subset": "analysis-full",
+      "repeat_count": 3,
+      "baseline_auto_improve": false,
+      "experimental_auto_improve": true,
+      "selected_case_ids": [
+        "symbolic-verified-equivalence",
+        "formal-proved-repetition-majority"
+      ],
+      "baseline_report_path": "/tmp/deep-gvr-auto-improve-20260420T000000Z/deterministic/baseline_consistency.json",
+      "experimental_report_path": "/tmp/deep-gvr-auto-improve-20260420T000000Z/deterministic/experimental_consistency.json",
+      "baseline_summary": {
+        "repeat_count": 3,
+        "total_cases": 2,
+        "total_case_runs": 6,
+        "passed_case_runs": 6,
+        "failed_case_runs": 0,
+        "fully_passing_runs": 3,
+        "stable_case_passes": 2,
+        "unstable_cases": 0,
+        "case_pass_rate": 1.0,
+        "run_pass_rate": 1.0,
+        "all_runs_passed": true
+      },
+      "experimental_summary": {
+        "repeat_count": 3,
+        "total_cases": 2,
+        "total_case_runs": 6,
+        "passed_case_runs": 6,
+        "failed_case_runs": 0,
+        "fully_passing_runs": 3,
+        "stable_case_passes": 2,
+        "unstable_cases": 0,
+        "case_pass_rate": 1.0,
+        "run_pass_rate": 1.0,
+        "all_runs_passed": true
+      },
+      "drift_detected": false,
+      "summary_changed": false,
+      "case_outcomes_changed": false,
+      "differing_case_ids": [],
+      "notes": [
+        "No repo-local benchmark drift was observed after toggling the release-policy variant."
+      ]
+    },
+    {
+      "mode": "live",
+      "status": "skipped",
+      "subset": "live-expansion",
+      "repeat_count": 2,
+      "baseline_auto_improve": false,
+      "experimental_auto_improve": true,
+      "selected_case_ids": [],
+      "baseline_report_path": "",
+      "experimental_report_path": "",
+      "baseline_summary": {},
+      "experimental_summary": {},
+      "drift_detected": false,
+      "summary_changed": false,
+      "case_outcomes_changed": false,
+      "differing_case_ids": [],
+      "notes": [
+        "Live evaluation was not requested for this run."
+      ]
+    }
+  ],
+  "policy": {
+    "manifest_path": "release/agentskills.publication.json",
+    "baseline_status": "ready",
+    "experimental_status": "blocked",
+    "experimental_blocks_release": true,
+    "notes": [
+      "Baseline policy remains release-ready only when auto_improve is false.",
+      "The experimental variant intentionally models the proposed opt-in state without mutating the checked-in manifest."
+    ]
+  },
+  "isolation": {
+    "manifest_path": "release/agentskills.publication.json",
+    "manifest_digest_before": "abc123",
+    "manifest_digest_after": "abc123",
+    "manifest_unchanged": true,
+    "worktree_status_before": [],
+    "worktree_status_after": [],
+    "worktree_clean_before": true,
+    "worktree_clean_after": true,
+    "worktree_unchanged": true
+  },
+  "recommendation": {
+    "decision": "disabled_by_default",
+    "summary": "Keep auto_improve disabled by default until a future evaluation shows a real operator benefit without introducing benchmark drift or weakening release-surface rollback guarantees.",
+    "rationale": [
+      "Completed benchmark comparisons showed no repo-local drift across policy variants.",
+      "The experimental variant still violates the documented public-release default and remains blocked.",
+      "The repo runtime does not consume auto_improve directly; the field is currently a release-surface policy input.",
+      "No completed live operator comparison was collected in this run."
+    ]
+  }
+}

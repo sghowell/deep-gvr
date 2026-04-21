@@ -272,6 +272,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "verification_report.template.json": "verification_report.schema.json",
         "release_preflight.template.json": "release_preflight.schema.json",
         "release_publication.template.json": "release_publication.schema.json",
+        "auto_improve_evaluation.template.json": "auto_improve_evaluation.schema.json",
         "analysis_spec.template.json": "analysis_spec.schema.json",
         "analysis_results.template.json": "analysis_results.schema.json",
         "sim_spec.template.json": "sim_spec.schema.json",
@@ -342,6 +343,7 @@ def check_release_surfaces(root: Path) -> list[str]:
         root / "scripts" / "release_preflight.py",
         root / "scripts" / "check_release_version.py",
         root / "scripts" / "render_release_notes.py",
+        root / "scripts" / "evaluate_auto_improve.py",
         root / "eval" / "run_eval.py",
     ]
     for path in executable_files:
