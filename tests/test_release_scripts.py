@@ -595,12 +595,20 @@ class ReleaseScriptTests(unittest.TestCase):
             config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
-            report = collect_codex_preflight(
-                config_path=config_path,
-                codex_skills_dir=codex_target_dir,
-                hermes_skills_dir=hermes_target_dir,
-                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
-            )
+            prior_path = os.environ.get("PATH")
+            os.environ["PATH"] = env["PATH"]
+            try:
+                report = collect_codex_preflight(
+                    config_path=config_path,
+                    codex_skills_dir=codex_target_dir,
+                    hermes_skills_dir=hermes_target_dir,
+                    hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                )
+            finally:
+                if prior_path is None:
+                    del os.environ["PATH"]
+                else:
+                    os.environ["PATH"] = prior_path
 
         checks = {check.name: check for check in report.checks}
         self.assertEqual(checks["orchestrator_backend"].status.value, "ready")
