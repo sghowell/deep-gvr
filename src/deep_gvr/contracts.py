@@ -1183,6 +1183,10 @@ class ReleasePublicationManifest:
     package_layout: str
     distribution_targets: list[str]
     skill_manifest_path: str
+    codex_skill_manifest_path: str
+    codex_plugin_manifest_path: str
+    codex_plugin_skill_manifest_path: str
+    codex_plugin_marketplace_path: str
     readme_path: str
     install_script: str
     preflight_script: str
@@ -1203,6 +1207,10 @@ class ReleasePublicationManifest:
             package_layout=data["package_layout"],
             distribution_targets=list(data["distribution_targets"]),
             skill_manifest_path=data["skill_manifest_path"],
+            codex_skill_manifest_path=data["codex_skill_manifest_path"],
+            codex_plugin_manifest_path=data["codex_plugin_manifest_path"],
+            codex_plugin_skill_manifest_path=data["codex_plugin_skill_manifest_path"],
+            codex_plugin_marketplace_path=data["codex_plugin_marketplace_path"],
             readme_path=data["readme_path"],
             install_script=data["install_script"],
             preflight_script=data["preflight_script"],

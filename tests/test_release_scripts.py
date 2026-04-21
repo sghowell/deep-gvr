@@ -11,6 +11,7 @@ import yaml
 
 from tests import _path_setup  # noqa: F401
 from deep_gvr.release_surface import (
+    codex_plugin_surface_errors,
     collect_codex_preflight,
     collect_release_preflight,
     expected_release_tag,
@@ -85,6 +86,29 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml").exists())
+
+    def test_install_codex_script_exports_plugin_marketplace_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plugin_root = Path(tmpdir) / "codex-plugin-root"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "install_codex.sh"),
+                    "--plugin-root",
+                    str(plugin_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((plugin_root / "plugins" / "deep-gvr" / ".codex-plugin" / "plugin.json").exists())
+            self.assertTrue((plugin_root / "plugins" / "deep-gvr" / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertTrue((plugin_root / ".agents" / "plugins" / "marketplace.json").exists())
 
     def test_skill_manifest_exposes_required_frontmatter(self) -> None:
         skill_path = ROOT / "SKILL.md"
@@ -451,6 +475,9 @@ class ReleaseScriptTests(unittest.TestCase):
 
     def test_publication_manifest_matches_repo_metadata(self) -> None:
         self.assertEqual(publication_manifest_errors(ROOT), [])
+
+    def test_codex_plugin_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_plugin_surface_errors(ROOT), [])
 
     def test_release_preflight_uses_mathcode_transport_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

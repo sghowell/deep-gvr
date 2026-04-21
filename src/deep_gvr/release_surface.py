@@ -31,6 +31,9 @@ from .runtime_config import default_config_path, load_runtime_config
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
 _CHANGELOG_PATH = Path("CHANGELOG.md")
+_CODEX_PLUGIN_MANIFEST_PATH = Path("plugins/deep-gvr/.codex-plugin/plugin.json")
+_CODEX_PLUGIN_SKILL_PATH = Path("plugins/deep-gvr/skills/deep-gvr/SKILL.md")
+_CODEX_PLUGIN_MARKETPLACE_PATH = Path(".agents/plugins/marketplace.json")
 _PROVIDER_ENV_MAP = {
     "anthropic": ["ANTHROPIC_API_KEY"],
     "google": ["GOOGLE_API_KEY"],
@@ -63,6 +66,18 @@ def publication_manifest_path(root: Path | None = None) -> Path:
     return (root or repo_root()) / _PUBLICATION_MANIFEST_PATH
 
 
+def codex_plugin_manifest_path(root: Path | None = None) -> Path:
+    return (root or repo_root()) / _CODEX_PLUGIN_MANIFEST_PATH
+
+
+def codex_plugin_skill_path(root: Path | None = None) -> Path:
+    return (root or repo_root()) / _CODEX_PLUGIN_SKILL_PATH
+
+
+def codex_plugin_marketplace_path(root: Path | None = None) -> Path:
+    return (root or repo_root()) / _CODEX_PLUGIN_MARKETPLACE_PATH
+
+
 def changelog_path(root: Path | None = None) -> Path:
     return (root or repo_root()) / _CHANGELOG_PATH
 
@@ -78,6 +93,10 @@ def _skill_frontmatter(root: Path | None = None) -> dict[str, Any]:
         raise ValueError("SKILL.md is missing YAML frontmatter.")
     _, frontmatter, _ = payload.split("---", 2)
     return yaml.safe_load(frontmatter)
+
+
+def _codex_skill_payload(root: Path | None = None) -> str:
+    return ((root or repo_root()) / "codex_skill" / "SKILL.md").read_text(encoding="utf-8")
 
 
 def _pyproject_metadata(root: Path | None = None) -> dict[str, Any]:
@@ -100,9 +119,13 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         name=skill_manifest["name"],
         version=project_version(effective_root),
         description=skill_manifest["description"],
-        package_layout="hermes_skill_bundle",
+        package_layout="hermes_skill_and_codex_plugin_bundle",
         distribution_targets=["github", "agentskills.io"],
         skill_manifest_path="SKILL.md",
+        codex_skill_manifest_path="codex_skill/SKILL.md",
+        codex_plugin_manifest_path="plugins/deep-gvr/.codex-plugin/plugin.json",
+        codex_plugin_skill_manifest_path="plugins/deep-gvr/skills/deep-gvr/SKILL.md",
+        codex_plugin_marketplace_path=".agents/plugins/marketplace.json",
         readme_path="README.md",
         install_script="scripts/install.sh",
         preflight_script="scripts/release_preflight.py",
@@ -130,6 +153,132 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "human review and republish the same validated release bundle."
         ),
     )
+
+
+def expected_codex_plugin_manifest(root: Path | None = None) -> dict[str, Any]:
+    effective_root = root or repo_root()
+    return {
+        "name": "deep-gvr",
+        "version": project_version(effective_root),
+        "description": "Operate the deep-gvr verification workflow from Codex local as a packaged plugin surface.",
+        "author": {
+            "name": "Sean Howell",
+            "url": "https://github.com/sghowell",
+        },
+        "homepage": "https://sghowell.github.io/deep-gvr/codex-plugin/",
+        "repository": "https://github.com/sghowell/deep-gvr",
+        "license": "MIT",
+        "keywords": ["verification", "research", "science", "codex", "hermes"],
+        "skills": "./skills/",
+        "interface": {
+            "displayName": "deep-gvr",
+            "shortDescription": "Verification-first research workflow for Codex local",
+            "longDescription": (
+                "Use deep-gvr from Codex as a packaged local workflow over the same typed runtime, "
+                "evidence system, and tiered verification stack used by the Hermes and CLI surfaces."
+            ),
+            "developerName": "Sean Howell",
+            "category": "Coding",
+            "capabilities": ["Interactive", "Write"],
+            "websiteURL": "https://sghowell.github.io/deep-gvr/codex-plugin/",
+            "privacyPolicyURL": "https://sghowell.github.io/deep-gvr/plugin-privacy/",
+            "termsOfServiceURL": "https://sghowell.github.io/deep-gvr/plugin-terms/",
+            "defaultPrompt": [
+                "Use the deep-gvr plugin to investigate a technical claim with explicit evidence and tiered verification."
+            ],
+            "brandColor": "#0F7B6C",
+            "composerIcon": "./assets/deep-gvr-plugin-small.svg",
+            "logo": "./assets/deep-gvr-plugin.svg",
+            "screenshots": [],
+        },
+    }
+
+
+def expected_codex_plugin_marketplace(root: Path | None = None) -> dict[str, Any]:
+    _ = root or repo_root()
+    return {
+        "name": "deep-gvr-local",
+        "interface": {
+            "displayName": "deep-gvr local plugins",
+        },
+        "plugins": [
+            {
+                "name": "deep-gvr",
+                "source": {
+                    "source": "local",
+                    "path": "./plugins/deep-gvr",
+                },
+                "policy": {
+                    "installation": "AVAILABLE",
+                    "authentication": "ON_INSTALL",
+                },
+                "category": "Coding",
+            }
+        ],
+    }
+
+
+def codex_plugin_surface_errors(root: Path | None = None) -> list[str]:
+    effective_root = root or repo_root()
+    errors: list[str] = []
+    manifest_path = codex_plugin_manifest_path(effective_root)
+    skill_path = codex_plugin_skill_path(effective_root)
+    marketplace_path = codex_plugin_marketplace_path(effective_root)
+    plugin_schema = json.loads(_schema_path("codex_plugin.schema.json", effective_root).read_text(encoding="utf-8"))
+    marketplace_schema = json.loads(
+        _schema_path("codex_plugin_marketplace.schema.json", effective_root).read_text(encoding="utf-8")
+    )
+
+    if not manifest_path.exists():
+        errors.append(f"{manifest_path.relative_to(effective_root)}: required Codex plugin manifest is missing")
+    else:
+        try:
+            actual_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            validate(actual_manifest, plugin_schema)
+        except (json.JSONDecodeError, OSError, SchemaValidationError, ValueError) as exc:
+            errors.append(f"{manifest_path.relative_to(effective_root)}: invalid Codex plugin manifest: {exc}")
+        else:
+            expected_manifest = expected_codex_plugin_manifest(effective_root)
+            if actual_manifest != expected_manifest:
+                errors.append(
+                    f"{manifest_path.relative_to(effective_root)}: Codex plugin manifest is out of sync with repo metadata"
+                )
+
+    source_skill_path = effective_root / "codex_skill" / "SKILL.md"
+    if not skill_path.exists():
+        errors.append(f"{skill_path.relative_to(effective_root)}: required Codex plugin skill is missing")
+    elif not source_skill_path.exists():
+        errors.append("codex_skill/SKILL.md: required Codex skill source is missing")
+    else:
+        if skill_path.read_text(encoding="utf-8") != _codex_skill_payload(effective_root):
+            errors.append(
+                f"{skill_path.relative_to(effective_root)}: plugin-packaged skill does not match codex_skill/SKILL.md"
+            )
+
+    for relative in (
+        Path("plugins/deep-gvr/assets/deep-gvr-plugin-small.svg"),
+        Path("plugins/deep-gvr/assets/deep-gvr-plugin.svg"),
+    ):
+        asset_path = effective_root / relative
+        if not asset_path.exists():
+            errors.append(f"{relative}: required Codex plugin asset is missing")
+
+    if not marketplace_path.exists():
+        errors.append(f"{marketplace_path.relative_to(effective_root)}: required Codex plugin marketplace is missing")
+    else:
+        try:
+            actual_marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
+            validate(actual_marketplace, marketplace_schema)
+        except (json.JSONDecodeError, OSError, SchemaValidationError, ValueError) as exc:
+            errors.append(f"{marketplace_path.relative_to(effective_root)}: invalid Codex plugin marketplace: {exc}")
+        else:
+            expected_marketplace = expected_codex_plugin_marketplace(effective_root)
+            if actual_marketplace != expected_marketplace:
+                errors.append(
+                    f"{marketplace_path.relative_to(effective_root)}: Codex plugin marketplace is out of sync with repo metadata"
+                )
+
+    return errors
 
 
 def load_publication_manifest(root: Path | None = None) -> ReleasePublicationManifest:
@@ -231,6 +380,7 @@ def collect_release_preflight(
     checks.append(_check_tier2_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
     checks.append(_check_publication_manifest(effective_root))
+    checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_release_metadata(effective_root))
     checks.append(_check_auto_improve_policy(effective_root))
 
@@ -238,6 +388,7 @@ def collect_release_preflight(
         "skill_install",
         "runtime_config",
         "publication_manifest",
+        "codex_plugin_surface",
         "release_metadata",
         "auto_improve_policy",
     }
@@ -284,6 +435,7 @@ def collect_codex_preflight(
 
     checks.append(_check_codex_cli())
     checks.append(_check_codex_skill_install(effective_codex_skills_dir, effective_root))
+    checks.append(_check_codex_plugin_surface(effective_root))
     checks.append(_check_skill_install(effective_hermes_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
@@ -293,7 +445,7 @@ def collect_codex_preflight(
     checks.append(_check_tier2_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
 
-    structural_names = {"codex_cli", "codex_skill_install", "skill_install", "runtime_config"}
+    structural_names = {"codex_cli", "codex_skill_install", "codex_plugin_surface", "skill_install", "runtime_config"}
     release_surface_ready = all(
         check.status == ReleaseCheckStatus.READY for check in checks if check.name in structural_names
     )
@@ -738,6 +890,37 @@ def _check_publication_manifest(root: Path) -> ReleaseCheck:
         summary="The checked-in publication manifest matches the current repo metadata and release surface.",
         details={"manifest_path": str(manifest_path)},
         guidance="Use the manifest as the publication bundle source for GitHub and agentskills.io release work.",
+    )
+
+
+def _check_codex_plugin_surface(root: Path) -> ReleaseCheck:
+    errors = codex_plugin_surface_errors(root)
+    manifest_path = codex_plugin_manifest_path(root)
+    marketplace_path = codex_plugin_marketplace_path(root)
+    if errors:
+        return ReleaseCheck(
+            name="codex_plugin_surface",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in Codex plugin bundle is missing or out of sync with the repo surface.",
+            details={
+                "manifest_path": str(manifest_path),
+                "marketplace_path": str(marketplace_path),
+                "errors": errors,
+            },
+            guidance=(
+                "Restore or update the checked-in Codex plugin bundle and marketplace so the repo can act "
+                "as a valid local plugin source."
+            ),
+        )
+    return ReleaseCheck(
+        name="codex_plugin_surface",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in Codex plugin bundle and local marketplace metadata match the repo surface.",
+        details={
+            "manifest_path": str(manifest_path),
+            "marketplace_path": str(marketplace_path),
+        },
+        guidance="Use bash scripts/install_codex.sh --plugin-root <dir> to export a standalone local plugin marketplace root when needed.",
     )
 
 
