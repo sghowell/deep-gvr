@@ -26,22 +26,43 @@ when it is no longer needed.
 
 ## Progress
 
-- [ ] Define the specific Codex-native delegation behaviors worth evaluating.
-- [ ] Add a safe evaluation path and evidence format.
-- [ ] Record the findings and recommended boundary.
+- [x] Define the specific Codex-native delegation behaviors worth evaluating.
+- [x] Add a safe evaluation path and evidence format.
+- [x] Record the findings and recommended boundary.
 
 ## Surprises & Discoveries
 
-- Pending.
+- The strongest evaluation result is not "add more runtime control." It is that
+  the high-value runtime-owned Codex behavior is already realized through the
+  native role-separated backend plus the existing transcript/evidence surface.
+- Parallel work ownership remains better as a checked-in operator pack than as
+  a runtime scheduler because the repo already ships the right worktree/scope
+  discipline there.
+- The remaining tempting expansion, live Codex subagent-state integration, is
+  still product-managed rather than repo-owned and should stay documented that
+  way until OpenAI exposes a stable programmatic contract for it.
 
 ## Decision Log
 
 - Decision: do not promise deeper Codex-native delegation until the repo has
   actual evaluation evidence for it.
+- Decision: evaluate four concrete boundaries instead of abstract "delegation"
+  in the large: native role execution, parallel work ownership, delegation
+  observability, and live subagent-state integration.
+- Decision: keep the current boundary after evaluation. Native role-separated
+  execution and repo-owned evidence stay runtime-owned; exported subagent packs
+  stay operator-owned; live Codex subagent state remains explicitly
+  product-managed.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Added a typed Codex-native delegation evaluation report surface in
+  `src/deep_gvr/codex_native_delegation.py` plus the operator-facing
+  `scripts/evaluate_codex_native_delegation.py` helper.
+- Added schema/template/test coverage for the new evaluation artifact.
+- Updated the Codex-local, Codex-subagents, architecture, and contract docs so
+  the repo states the current Codex boundary explicitly and with concrete
+  evidence instead of implication.
 
 ## Context and Orientation
 
@@ -81,6 +102,8 @@ Acceptance evidence:
   deeper Codex-native delegation.
 - The resulting docs stay honest about what is runtime-owned versus
   product-owned.
+- `uv run python scripts/evaluate_codex_native_delegation.py --output /tmp/deep-gvr-codex-native-delegation/report.json --json`
+  writes a typed evaluation report that recommends keeping the current boundary.
 
 ## Merge, Push, and Cleanup
 

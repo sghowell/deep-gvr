@@ -85,6 +85,21 @@ Both commands produce an export bundle containing:
 
 The subagent pack is different: it is for deliberate multi-agent coordination over the same runtime and checkout discipline.
 
+## Native Delegation Evaluation
+
+If you want the concrete repo-owned evaluation for whether deeper Codex-native
+delegation should move beyond the current boundary, run:
+
+```bash
+uv run python scripts/evaluate_codex_native_delegation.py --output /tmp/deep-gvr-codex-native-delegation/report.json --json
+```
+
+The current conclusion is:
+
+- native role-separated Codex execution is already the right runtime-owned backend boundary
+- parallel multi-agent work ownership should stay in the exported subagent operator pack
+- live Codex subagent state, spawning, and app-managed delegation remain product-managed rather than runtime-owned
+
 ## Current Boundary
 
 The shipped subagent pack is:

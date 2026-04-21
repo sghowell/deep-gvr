@@ -132,6 +132,13 @@ When `runtime.orchestrator_backend=codex_local` is selected, `deep-gvr` now uses
 
 That is the main architectural difference between the current Codex backend and the earlier thin-wrapper phase.
 
+If you want the concrete repo-owned evaluation for why `deep-gvr` stops there
+instead of trying to own live Codex subagent state, run:
+
+```bash
+uv run python scripts/evaluate_codex_native_delegation.py --output /tmp/deep-gvr-codex-native-delegation/report.json --json
+```
+
 ## Shared Runtime State
 
 The Codex-local surface uses the same underlying runtime state as the Hermes and direct CLI paths. The runtime home is selected through `DEEP_GVR_HOME` when set and otherwise falls back to the compatibility path under `${HERMES_HOME:-~/.hermes}/deep-gvr`:
@@ -162,5 +169,6 @@ That means:
 - `uv run deep-gvr run ...` can execute through Codex natively when the backend is set to `codex_local`
 - the Codex backend now runs Generator, Verifier, and Reviser as separate native role executions over the typed loop
 - `uv run python scripts/codex_ssh_devbox_run.py run ...` can gate and execute that same native backend from a remote Codex SSH/devbox session
+- deeper live Codex delegation remains intentionally outside the runtime contract; use the exported subagent operator pack for supervised multi-agent work instead of treating Codex app-state control as a supported backend surface
 - Hermes is only required if you also want the Hermes `/deep-gvr` surface or the `hermes` backend
 - provider, Tier 2, and Tier 3 readiness still depend on the same operator environment

@@ -168,6 +168,7 @@ The current release surface is strong, but it is not magic.
 - Native Codex runs now preserve structured per-role response and failure data in the standard transcript artifact and emit a Codex-specific runtime evidence record without claiming Hermes delegated-capability closure.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo ships a reviewable Codex subagent prompt pack for safe multi-agent coordination, not direct control of Codex's internal delegation state and not the runtime backend itself.
+- The repo now also ships an explicit Codex-native delegation evaluation report path that records why deeper live Codex delegation stays operator-pack or product-managed rather than becoming a runtime contract today.
 - The repo also ships an exportable Codex review/QA prompt kit plus a repo-owned evidence helper for pull-request review and browser-driven docs QA.
 - The repo ships an explicit Codex `ssh/devbox` remote-operator bundle, readiness path, native remote execution helper, and a rerunnable remote-bootstrap helper that syncs config plus Codex surface state on the remote machine, but it still does not provision Codex remote sessions itself.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.

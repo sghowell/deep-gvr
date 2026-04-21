@@ -34,7 +34,7 @@ confirm CI/Docs, and delete the feature branch when it is no longer needed.
 - [x] Define the immediate next slice as Codex runtime hardening.
 - [x] Add concrete follow-on plan files for the remaining queued phase-2 slices.
 - [ ] Execute the remaining queued phase-2 slices.
-  Completed so far: `60`, `61`, `62`.
+  Completed so far: `60`, `61`, `62`, `63`.
 
 ## Surprises & Discoveries
 
@@ -70,8 +70,9 @@ confirm CI/Docs, and delete the feature branch when it is no longer needed.
   `plans/61-codex-remote-bootstrap.md`.
 - The review/QA execution follow-on is now also executed as
   `plans/62-codex-review-qa-execution.md`.
+- The native delegation evaluation follow-on is now also executed as
+  `plans/63-codex-native-delegation-evaluation.md`.
 - Future queued slices now also exist as repo-local plan files:
-  `plans/63-codex-native-delegation-evaluation.md`, and
   `plans/64-codex-cloud-surface.md`.
 
 ## Context and Orientation
