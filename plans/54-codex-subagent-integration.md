@@ -24,10 +24,10 @@ Start from `main` and implement this slice on `codex/codex-subagent-integration`
 ## Progress
 
 - [x] Draft the plan and index it from `plans/README.md`.
-- [ ] Add the checked-in Codex subagent bundle, export helper, schema, and tests.
-- [ ] Wire the subagent surface into install, release metadata, preflight, and repo checks.
-- [ ] Update public/operator docs and the architecture ledger.
-- [ ] Run validation, merge locally, revalidate on `main`, push, confirm CI and Docs, and delete the feature branch.
+- [x] Add the checked-in Codex subagent bundle, export helper, schema, and tests.
+- [x] Wire the subagent surface into install, release metadata, preflight, and repo checks.
+- [x] Update public/operator docs and the architecture ledger.
+- [x] Run validation, merge locally, revalidate on `main`, push, confirm CI and Docs, and delete the feature branch.
 
 ## Surprises & Discoveries
 
@@ -43,7 +43,15 @@ Start from `main` and implement this slice on `codex/codex-subagent-integration`
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Added a checked-in Codex subagent bundle at `codex_subagents/` plus an export helper at `scripts/export_codex_subagents.py`.
+- Wired the subagent surface into the enforced Codex/release surface through publication metadata, preflight, repo checks, install helpers, schemas, and tests.
+- Added a dedicated human-facing `docs/codex-subagents.md` page plus docs-map and architecture updates so the new surface is explicit and discoverable.
+- Branch validation passed with:
+  - `uv run python scripts/check_repo.py`
+  - `uv run python scripts/run_capability_probes.py`
+  - `uv run python -m unittest discover -s tests -v`
+  - `uv run mkdocs build --strict`
+  - `uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents --force --json`
 
 ## Context and Orientation
 
