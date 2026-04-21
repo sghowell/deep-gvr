@@ -1144,6 +1144,66 @@ class ReleaseCheck:
 
 
 @dataclass(slots=True)
+class CodexAutomationSpec:
+    automation_id: str
+    name: str
+    description: str
+    schedule_summary: str
+    template_path: str
+    export_path: str
+    kind: str
+    status: str
+    rrule: str
+    execution_environment: str
+    model: str
+    reasoning_effort: str
+    cwds: list[str]
+    prompt: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexAutomationSpec":
+        return cls(
+            automation_id=data["automation_id"],
+            name=data["name"],
+            description=data["description"],
+            schedule_summary=data["schedule_summary"],
+            template_path=data["template_path"],
+            export_path=data["export_path"],
+            kind=data["kind"],
+            status=data["status"],
+            rrule=data["rrule"],
+            execution_environment=data["execution_environment"],
+            model=data["model"],
+            reasoning_effort=data["reasoning_effort"],
+            cwds=list(data["cwds"]),
+            prompt=data["prompt"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexAutomationCatalog:
+    name: str
+    version: str
+    repo_root_placeholder: str
+    templates: list[CodexAutomationSpec]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexAutomationCatalog":
+        return cls(
+            name=data["name"],
+            version=data["version"],
+            repo_root_placeholder=data["repo_root_placeholder"],
+            templates=[CodexAutomationSpec.from_dict(item) for item in data.get("templates", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class ReleasePreflightReport:
     skill_name: str
     version: str
@@ -1187,6 +1247,7 @@ class ReleasePublicationManifest:
     codex_plugin_manifest_path: str
     codex_plugin_skill_manifest_path: str
     codex_plugin_marketplace_path: str
+    codex_automation_catalog_path: str
     readme_path: str
     install_script: str
     preflight_script: str
@@ -1211,6 +1272,7 @@ class ReleasePublicationManifest:
             codex_plugin_manifest_path=data["codex_plugin_manifest_path"],
             codex_plugin_skill_manifest_path=data["codex_plugin_skill_manifest_path"],
             codex_plugin_marketplace_path=data["codex_plugin_marketplace_path"],
+            codex_automation_catalog_path=data["codex_automation_catalog_path"],
             readme_path=data["readme_path"],
             install_script=data["install_script"],
             preflight_script=data["preflight_script"],

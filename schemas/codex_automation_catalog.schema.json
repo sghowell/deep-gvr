@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "repo_root_placeholder",
+    "templates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "repo_root_placeholder": { "type": "string" },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "automation_id",
+          "name",
+          "description",
+          "schedule_summary",
+          "template_path",
+          "export_path",
+          "kind",
+          "status",
+          "rrule",
+          "execution_environment",
+          "model",
+          "reasoning_effort",
+          "cwds",
+          "prompt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "automation_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "schedule_summary": { "type": "string" },
+          "template_path": { "type": "string" },
+          "export_path": { "type": "string" },
+          "kind": { "type": "string" },
+          "status": { "type": "string" },
+          "rrule": { "type": "string" },
+          "execution_environment": { "type": "string" },
+          "model": { "type": "string" },
+          "reasoning_effort": { "type": "string" },
+          "cwds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "prompt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

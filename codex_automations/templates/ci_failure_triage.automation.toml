@@ -1,0 +1,9 @@
+name = "deep-gvr CI triage"
+prompt = "Inspect the newest GitHub Actions runs for the deep-gvr repository. If the latest CI or Docs run on main is failing, identify the failing job, summarize the concrete error, point to the likeliest offending files or workflow definitions, and propose the smallest next fix. If the latest runs are green, say that no triage is needed. Do not edit files or push changes."
+rrule = "FREQ=HOURLY;INTERVAL=6;BYDAY=MO,TU,WE,TH,FR"
+kind = "cron"
+status = "PAUSED"
+cwds = ["__DEEP_GVR_REPO_ROOT__"]
+executionEnvironment = "local"
+model = "gpt-5.3-codex"
+reasoningEffort = "medium"

@@ -1,0 +1,9 @@
+name = "deep-gvr release sweep"
+prompt = "From the deep-gvr repo root, run the release-critical validation path: `uv run python scripts/check_repo.py`, `uv run python scripts/run_capability_probes.py`, `uv run python -m unittest discover -s tests -v`, `uv run python scripts/release_preflight.py --json`, `uv run python scripts/codex_preflight.py --json`, and `uv run mkdocs build --strict`. Summarize blockers for cutting the next tagged release and point to the exact failing surface. Do not modify version, changelog, or publication manifests automatically."
+rrule = "FREQ=WEEKLY;BYDAY=FR;BYHOUR=10;BYMINUTE=0"
+kind = "cron"
+status = "PAUSED"
+cwds = ["__DEEP_GVR_REPO_ROOT__"]
+executionEnvironment = "local"
+model = "gpt-5.3-codex"
+reasoningEffort = "high"

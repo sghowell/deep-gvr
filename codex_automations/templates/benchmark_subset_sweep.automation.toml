@@ -1,0 +1,9 @@
+name = "deep-gvr benchmark sweep"
+prompt = "Run deterministic deep-gvr benchmark subsets from the repo root using uv-managed commands. Use the checked-in subsets `core-science`, `quantum-oss`, and `photonic-mbqc`, write outputs under /tmp/deep-gvr-codex-automation-benchmarks, and compare outcomes against the checked-in baseline. Summarize only regressions, flaky behavior, or newly failing cases. Do not edit files, change release policy, or push anything."
+rrule = "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=9;BYMINUTE=0"
+kind = "cron"
+status = "PAUSED"
+cwds = ["__DEEP_GVR_REPO_ROOT__"]
+executionEnvironment = "local"
+model = "gpt-5.3-codex"
+reasoningEffort = "high"

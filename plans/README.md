@@ -51,3 +51,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [46-codex-local-surface.md](46-codex-local-surface.md)
 - [47-auto-improve-evaluation.md](47-auto-improve-evaluation.md)
 - [48-codex-plugin-surface.md](48-codex-plugin-surface.md)
+- [49-codex-automations.md](49-codex-automations.md)

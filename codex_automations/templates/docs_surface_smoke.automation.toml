@@ -1,0 +1,9 @@
+name = "deep-gvr docs smoke"
+prompt = "Run the deep-gvr hosted-docs safety path from the repo root: `uv run mkdocs build --strict`. Then inspect the public docs entrypoints `README.md`, `docs/index.md`, `docs/start-here.md`, `docs/codex-local.md`, `docs/codex-plugin.md`, and `docs/codex-automations.md` for broken links, missing assets, or obvious public-surface drift. Summarize only actionable issues. Do not edit files or push changes automatically."
+rrule = "FREQ=HOURLY;INTERVAL=24"
+kind = "cron"
+status = "PAUSED"
+cwds = ["__DEEP_GVR_REPO_ROOT__"]
+executionEnvironment = "local"
+model = "gpt-5.3-codex"
+reasoningEffort = "medium"
