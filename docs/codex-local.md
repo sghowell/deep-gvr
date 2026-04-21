@@ -4,7 +4,7 @@ This guide covers the supported Codex-local surface for `deep-gvr`.
 
 Codex local is a first-class operator surface for the project, and `runtime.orchestrator_backend=codex_local` is now a real native backend option. The Codex-local path writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths, but it no longer needs Hermes underneath when the Codex backend is selected. The native Codex backend now executes Generator, Verifier, and Reviser as separate Codex role calls over the same typed Tier 1 loop rather than routing the whole session through one opaque summary prompt.
 
-If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want a Codex-native review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
+If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want the Codex review/QA surface, including the repo-owned evidence helper for review and visual QA, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
 
 ## What Codex Local Means Here
 
@@ -63,6 +63,13 @@ If you also want the Codex review and visual-QA prompt pack exported for review:
 
 ```bash
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
+```
+
+If you want the repo to materialize a review-evidence bundle before live Codex review or browser inspection:
+
+```bash
+uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force
+uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force
 ```
 
 If you also want the Codex subagent prompt pack exported for review:
@@ -134,7 +141,7 @@ The Codex-local surface uses the same underlying runtime state as the Hermes and
 - Checkpoint: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/checkpoint.json`
 - Artifacts: `${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/sessions/<session_id>/artifacts/`
 
-Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. With `runtime.orchestrator_backend=codex_local`, that remote Codex session can also execute the native Codex backend from the stronger environment through `uv run python scripts/codex_ssh_devbox_run.py ...`. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
+Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. With `runtime.orchestrator_backend=codex_local`, that remote Codex session can also execute the native Codex backend from the stronger environment through `uv run python scripts/codex_ssh_devbox_run.py ...`, and the review/QA surface can prepare the same local evidence bundles there through `uv run python scripts/codex_review_qa_execute.py ...`. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
 
 If you want the repo to materialize the remote skill/config surface on that machine first, use:
 

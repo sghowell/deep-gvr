@@ -10,6 +10,8 @@
 - `uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations`
 - `uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents`
 - `uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
+- `uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force`
+- `uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
 - `uv run python scripts/codex_remote_bootstrap.py --json`
@@ -78,7 +80,7 @@ The current public analysis surface includes:
 - the native `codex_local` backend now drives Generator, Verifier, and Reviser through separate Codex role executions instead of one opaque backend-summary call
 - the Codex `ssh/devbox` path now uses the same native `codex_local` backend instead of acting only as a prompt/export bundle
 - the repo now ships a rerunnable remote-bootstrap helper that materializes the remote config and Codex surface before the SSH/devbox preflight gate
-- the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
+- the repo also ships a Codex review/QA prompt pack plus a repo-owned evidence helper for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor
 - live runs expose real provider, backend, and proof-transport behavior

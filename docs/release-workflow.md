@@ -59,6 +59,13 @@ If you also want the Codex review and visual-QA prompt pack exported for review,
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you also want the repo-owned review/QA evidence bundles prepared for operator inspection, use:
+
+```bash
+uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force
+uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force
+```
+
 If you also want the Codex subagent prompt pack exported for review, use:
 
 ```bash

@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-`deep-gvr` is a verification-oriented research system with Hermes, Codex-local, a packaged Codex plugin, Codex automation operator surfaces, a repo-owned Codex subagent prompt kit, a repo-owned Codex review/QA prompt kit, and an explicit Codex `ssh/devbox` operator and execution path. The Codex-local backend is now a real role-separated runtime path, not only a top-level wrapper over the same session summary prompt, and the remote Codex path now includes a repo-owned bootstrap helper instead of only manual setup guidance.
+`deep-gvr` is a verification-oriented research system with Hermes, Codex-local, a packaged Codex plugin, Codex automation operator surfaces, a repo-owned Codex subagent prompt kit, a repo-owned Codex review/QA surface, and an explicit Codex `ssh/devbox` operator and execution path. The Codex-local backend is now a real role-separated runtime path, not only a top-level wrapper over the same session summary prompt, the remote Codex path now includes a repo-owned bootstrap helper instead of only manual setup guidance, and the review/QA surface now includes a typed evidence-preparation helper instead of only prompt exports.
 
 It answers technical questions by running a generator-verifier-reviser loop and escalating into deeper computational or formal checks only when the claim warrants them. The system is designed for readers and operators who care about evidence, traceability, and explicit uncertainty more than raw conversational smoothness.
 
@@ -32,7 +32,7 @@ At a high level, `deep-gvr` is a typed Python runtime with an explicit orchestra
 
 <figure class="doc-figure">
   <img src="../assets/system-model.svg" alt="deep-gvr system model diagram" />
-<figcaption>Hermes, Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent surface, and the explicit Codex `ssh/devbox` surface share the same typed runtime. The repo also ships a separate Codex review/QA prompt kit for high-signal review workflows. The runtime owns evidence, adapters, formal transport, resume semantics, backend selection, and remote bootstrap, with Hermes as the default backend in the checked-in config and Codex local as a native backend option that now executes Generator, Verifier, and Reviser through separate Codex role calls and can also run from a remote Codex SSH/devbox machine.</figcaption>
+<figcaption>Hermes, Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent surface, and the explicit Codex `ssh/devbox` surface share the same typed runtime. The repo also ships a separate Codex review/QA surface for high-signal review workflows, including repo-owned evidence-bundle preparation before live review or browser inspection. The runtime owns evidence, adapters, formal transport, resume semantics, backend selection, and remote bootstrap, with Hermes as the default backend in the checked-in config and Codex local as a native backend option that now executes Generator, Verifier, and Reviser through separate Codex role calls and can also run from a remote Codex SSH/devbox machine.</figcaption>
 </figure>
 
 ### Main Components
@@ -149,6 +149,8 @@ The public command surface is:
 - `uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations`
 - `uv run python scripts/export_codex_subagents.py --output-root /tmp/deep-gvr-codex-subagents`
 - `uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
+- `uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force`
+- `uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
 - `uv run python scripts/codex_remote_bootstrap.py --json`
@@ -166,7 +168,7 @@ The current release surface is strong, but it is not magic.
 - Native Codex runs now preserve structured per-role response and failure data in the standard transcript artifact and emit a Codex-specific runtime evidence record without claiming Hermes delegated-capability closure.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo ships a reviewable Codex subagent prompt pack for safe multi-agent coordination, not direct control of Codex's internal delegation state and not the runtime backend itself.
-- The repo also ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven docs QA.
+- The repo also ships an exportable Codex review/QA prompt kit plus a repo-owned evidence helper for pull-request review and browser-driven docs QA.
 - The repo ships an explicit Codex `ssh/devbox` remote-operator bundle, readiness path, native remote execution helper, and a rerunnable remote-bootstrap helper that syncs config plus Codex surface state on the remote machine, but it still does not provision Codex remote sessions itself.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.
 - Some optional backends depend on local or remote operator setup.

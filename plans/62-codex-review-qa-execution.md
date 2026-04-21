@@ -17,29 +17,47 @@ when it is no longer needed.
 
 ## Commit Plan
 
-- `plan codex review qa execution`
-- `add codex review qa execution helpers`
+- `add codex review qa execution contracts`
+- `wire codex review qa execution surface`
 - `document codex review qa execution`
 
 ## Progress
 
-- [ ] Evaluate which current review/QA flows can be made repo-owned and
+- [x] Evaluate which current review/QA flows can be made repo-owned and
       evidence-backed.
-- [ ] Add execution helpers or artifact paths for those flows.
-- [ ] Update docs and release checks accordingly.
+- [x] Add execution helpers or artifact paths for those flows.
+- [x] Update docs and release checks accordingly.
+- [x] Run full validation on the feature branch.
+- [ ] Merge, push, and close out the slice.
 
 ## Surprises & Discoveries
 
-- Pending.
+- The cleanest repo-owned boundary is a typed evidence-bundle helper, not an
+  attempt to drive live Codex review or browser state from the repository.
+- The most useful first workflows are the ones already represented in the
+  prompt pack: pull-request review and public-docs visual QA.
+- Public-docs visual QA should stay `attention` even when the helper succeeds,
+  because the bundle prepares inspection; it does not replace live visual
+  judgment.
 
 ## Decision Log
 
 - Decision: keep this slice focused on repo-owned execution/evidence, not live
   Codex app settings or GitHub review configuration.
+- Decision: materialize one typed execution report plus workflow-specific
+  artifacts rather than adding separate ad hoc helpers for each review flow.
+- Decision: anchor the shipped prompts to the new helper so Codex starts from
+  the repo-owned evidence bundle before wider review or browser work.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- Added `scripts/codex_review_qa_execute.py` plus a typed
+  `CodexReviewQaExecutionReport` surface for repo-owned review/QA evidence.
+- Added workflow-specific evidence bundles for:
+  - `pull_request_review`
+  - `public_docs_visual_qa`
+- Updated the shipped prompts, release metadata, schema/template checks, and
+  docs so the review/QA surface is no longer described as prompt-only.
 
 ## Context and Orientation
 

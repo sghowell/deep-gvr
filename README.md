@@ -105,6 +105,13 @@ If you want the Codex review and visual-QA prompt pack exported for review as we
 bash scripts/install_codex.sh --review-qa-root /tmp/deep-gvr-codex-review-qa
 ```
 
+If you want a repo-owned review-evidence bundle for Codex before live review or browser inspection:
+
+```bash
+uv run python scripts/codex_review_qa_execute.py pull_request_review --output-root /tmp/deep-gvr-codex-review-qa-evidence/review --force
+uv run python scripts/codex_review_qa_execute.py public_docs_visual_qa --output-root /tmp/deep-gvr-codex-review-qa-evidence/docs --force
+```
+
 If you want the Codex subagent prompt pack exported for review as well:
 
 ```bash
@@ -172,7 +179,7 @@ Release history:
 - Codex local can now act as a real orchestrator backend when `runtime.orchestrator_backend=codex_local` is selected, and that backend now runs Generator, Verifier, and Reviser as separate native Codex role calls over the typed loop.
 - Hermes remains the default backend in the checked-in config template, and the Hermes `/deep-gvr` surface still requires Hermes to be installed.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
-- The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
+- The repo also ships an exportable Codex review/QA prompt pack plus a repo-owned evidence helper for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
 - The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline; that pack complements the native Codex backend and is not the backend itself.
 - The repo also ships an explicit Codex `ssh/devbox` bundle, readiness path, and runtime-backed remote execution helper over the native `codex_local` backend.
 - The repo also ships a rerunnable `scripts/codex_remote_bootstrap.py` helper that syncs remote config, installs the Codex surface, ensures the evidence directory exists, and then reports the remaining SSH/devbox readiness deltas.
