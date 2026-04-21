@@ -120,6 +120,8 @@ When `runtime.orchestrator_backend=codex_local` is selected, `deep-gvr` now uses
 - the checked-in role prompts under `prompts/` remain authoritative
 - checkpoints, evidence, branch escalation, Tier 2 analysis, and Tier 3 formal verification remain owned by the typed Python runtime
 - the transcript artifact records the individual Codex role calls instead of only one backend-summary exchange
+- successful role calls persist parsed JSON payloads in the transcript artifact, and failed role calls still leave a structured error record there
+- the existing capability-evidence artifact now includes a Codex-specific `codex_native_role_execution` record when the native backend runs
 
 That is the main architectural difference between the current Codex backend and the earlier thin-wrapper phase.
 

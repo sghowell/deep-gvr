@@ -5,7 +5,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 ## Core Contracts
 
 - `DeepGvrConfig`: loop settings, verification tiers, explicit orchestrator plus per-role model routing, evidence storage, domain defaults, backend runtime config for Tier 2 execution, and Tier 3 backend selection including local MathCode settings
-- `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface, including any observed delegated `capability_evidence`
+- `SkillSessionSummary`: operator-facing result emitted by the `deep-gvr` command surface, including any observed delegated or Codex-native `capability_evidence`
 - `BenchmarkCase`: one deterministic release-benchmark case with its expected verdict and expected tier path
 - `BenchmarkReport`: recorded benchmark results plus release-readiness metrics
 - `CandidateSolution`: generator or reviser output
@@ -47,8 +47,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `eval/results/live/<run_id>/cases/<case_id>/case_result.json`: normalized per-case live benchmark summary
 - `/tmp/deep-gvr-auto-improve-<run_id>/report.json`: default auto-improve evaluation report written outside the worktree
 - `eval/results/live/<run_id>/sessions/<session_id>/checkpoint.json`: persisted Tier 1 state for a live benchmark session
-- `sessions/<session_id>/artifacts/<timestamp>_run_orchestrator_transcript.json`: delegated top-level Hermes session transcript for the shipped CLI wrapper
-- `sessions/<session_id>/artifacts/<timestamp>_run_capability_evidence.json`: delegated capability-evidence artifact emitted by the CLI wrapper when the delegated runtime returns observed role-routing or delegated-MCP evidence
+- `sessions/<session_id>/artifacts/<timestamp>_run_orchestrator_transcript.json`: top-level CLI wrapper transcript artifact. Hermes runs record the delegated orchestrator exchange there; native Codex runs record one entry per role call, including selected routes, parsed response payloads, and any role-level errors
+- `sessions/<session_id>/artifacts/<timestamp>_run_capability_evidence.json`: capability-evidence artifact emitted by the CLI wrapper when the runtime can report observed delegated or Codex-native execution evidence
 - `sessions/<session_id>/checkpoint.json`: persisted Tier 1 loop state for resume
 - `sessions/<session_id>/artifacts/session_memory_summary.json`: derived structured summary used for Hermes memory persistence
 - `sessions/<session_id>/artifacts/parallax_manifest.json`: Parallax-compatible manifest for the session evidence set

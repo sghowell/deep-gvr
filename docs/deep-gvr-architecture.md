@@ -162,6 +162,7 @@ The current release surface is strong, but it is not magic.
 
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` path are supported surfaces over the same runtime, and the runtime now supports both `hermes` and `codex_local` backends.
 - The native `codex_local` backend now runs Generator, Verifier, and Reviser as separate Codex role executions over `Tier1LoopRunner` rather than using one opaque backend-summary prompt.
+- Native Codex runs now preserve structured per-role response and failure data in the standard transcript artifact and emit a Codex-specific runtime evidence record without claiming Hermes delegated-capability closure.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo ships a reviewable Codex subagent prompt pack for safe multi-agent coordination, not direct control of Codex's internal delegation state and not the runtime backend itself.
 - The repo also ships an exportable Codex review/QA prompt kit for pull-request review and browser-driven docs QA.
