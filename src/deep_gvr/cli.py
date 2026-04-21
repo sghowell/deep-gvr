@@ -12,17 +12,15 @@ from uuid import uuid4
 from .contracts import (
     BranchStatus,
     BranchStrategy,
-    CapabilityProbeResult,
     DeepGvrConfig,
     HypothesisBranch,
-    ProbeStatus,
+    OrchestratorBackend,
     SessionCheckpoint,
 )
 from .domain_context import load_domain_context
 from .orchestrator import CommandExecutor, OrchestratorBackendConfig, build_orchestrator_runner
-from .probes import probe_model_routing
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, PROMPT_PROFILES
-from .routing import build_routing_plan
+from .routing import build_native_role_routing_plan, build_routing_plan, resolve_routing_probe
 from .runtime_config import (
     default_config_path,
     default_config_payload,
@@ -167,8 +165,12 @@ def _execute_command(
     )
     session_id = run_session_id if command == "run" else resume_session_id
     prompt_root_path = _resolve_prompt_root(prompt_root)
-    routing_probe = _resolve_routing_probe(config, routing_probe_mode)
-    routing_plan = build_routing_plan(config, routing_probe=routing_probe)
+    routing_probe = resolve_routing_probe(routing_probe_mode)
+    routing_plan = (
+        build_native_role_routing_plan(config, routing_probe=routing_probe)
+        if config.runtime.orchestrator_backend is OrchestratorBackend.CODEX_LOCAL
+        else build_routing_plan(config, routing_probe=routing_probe)
+    )
     role_routes = _role_routes_payload(routing_plan)
     orchestrator = build_orchestrator_runner(
         OrchestratorBackendConfig(
@@ -292,31 +294,6 @@ def _backend_writable_roots(
         if normalized not in unique_roots:
             unique_roots.append(normalized)
     return unique_roots
-
-
-def _resolve_routing_probe(config: DeepGvrConfig, mode: str) -> CapabilityProbeResult:
-    normalized = mode.strip().lower()
-    if normalized == "auto":
-        return probe_model_routing()
-    if normalized == "ready":
-        return CapabilityProbeResult(
-            name="per_subagent_model_routing",
-            status=ProbeStatus.READY,
-            summary="Routing probe forced to ready by CLI flag for delegated runtime planning.",
-            preferred_outcome="Route generator and verifier to distinct providers or models.",
-            fallback="If runtime behavior disagrees, revert to prompt separation plus temperature decorrelation.",
-            details={"forced_by": "routing_probe_mode", "mode": normalized},
-        )
-    if normalized == "fallback":
-        return CapabilityProbeResult(
-            name="per_subagent_model_routing",
-            status=ProbeStatus.FALLBACK,
-            summary="Routing probe forced to fallback by CLI flag for delegated runtime planning.",
-            preferred_outcome="Route generator and verifier to distinct providers or models.",
-            fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
-            details={"forced_by": "routing_probe_mode", "mode": normalized},
-        )
-    raise ValueError(f"Unsupported routing probe mode {mode!r}.")
 
 
 def _route_payload(route: Any) -> dict[str, Any]:

@@ -9,8 +9,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from .contracts import OrchestratorBackend
-from .prompt_profiles import DEFAULT_PROMPT_PROFILE
+from .contracts import CandidateSolution, OrchestratorBackend, VerificationReport
+from .domain_context import load_domain_context
+from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query, normalize_prompt_profile
+from .routing import EffectiveModelRoute, build_native_role_routing_plan, resolve_routing_probe
+from .runtime_config import load_runtime_config
+from .tier1 import GenerationRequest, RevisionRequest, Tier1LoopRunner, VerificationRequest
 
 
 @dataclass(slots=True)
@@ -63,9 +67,11 @@ class OrchestratorTranscript:
     capability_evidence: dict[str, Any] = field(default_factory=dict)
     question: str | None = None
     domain_override: str | None = None
+    role: str | None = None
+    selected_route: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "backend": self.backend,
             "command": self.command,
             "session_id": self.session_id,
@@ -81,7 +87,14 @@ class OrchestratorTranscript:
             "capability_evidence": dict(self.capability_evidence),
             "question": self.question,
             "domain_override": self.domain_override,
-        } | ({"hermes_command": list(self.backend_command)} if self.backend == OrchestratorBackend.HERMES.value else {})
+        }
+        if self.role is not None:
+            payload["role"] = self.role
+        if self.selected_route is not None:
+            payload["selected_route"] = dict(self.selected_route)
+        if self.backend == OrchestratorBackend.HERMES.value:
+            payload["hermes_command"] = list(self.backend_command)
+        return payload
 
 
 class OrchestratorRunner(Protocol):
@@ -305,33 +318,261 @@ class CodexLocalOrchestratorRunner:
         domain_override: str | None = None,
         role_routes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        request_payload = _orchestrator_request_payload(
-            command=command,
-            session_id=session_id,
-            config_path=config_path,
-            prompt_root=prompt_root,
-            prompt_profile=self.config.prompt_profile,
-            routing_probe_mode=routing_probe_mode,
-            question=question,
-            domain_override=domain_override,
-            role_routes=role_routes or self.config.role_routes,
-            workspace_root=self.cwd,
-        )
-        query = _build_codex_orchestrator_query(
-            request_payload=request_payload,
-            response_contract=_orchestrator_response_contract(),
-        )
         if self.executor is None:
             _ensure_binary_available(self.config.codex_binary, backend_name="Codex-local orchestrator")
+        runtime_config = load_runtime_config(config_path)
+        routing_probe = resolve_routing_probe(routing_probe_mode)
+        routing_plan = build_native_role_routing_plan(runtime_config, routing_probe=routing_probe)
+        loop_runner = Tier1LoopRunner(
+            runtime_config,
+            routing_probe=routing_probe,
+            routing_plan=routing_plan,
+        )
 
-        with tempfile.TemporaryDirectory(prefix="deep-gvr-codex-backend-") as tmpdir:
-            temp_root = Path(tmpdir)
-            response_schema_path = temp_root / "orchestrator_response.schema.json"
-            output_path = temp_root / "orchestrator_response.json"
-            response_schema_path.write_text(
-                json.dumps(_orchestrator_response_schema(), indent=2),
-                encoding="utf-8",
+        if command == "run":
+            if question is None:
+                raise ValueError("Codex-local run requires a research question.")
+            selected_domain, literature_context = load_domain_context(runtime_config, domain_override=domain_override)
+            result = loop_runner.run(
+                problem=question,
+                domain=selected_domain,
+                literature_context=literature_context,
+                session_id=session_id,
+                generator=lambda request: self._run_codex_generator(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
+                verifier=lambda request: self._run_codex_verifier(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
+                reviser=lambda request: self._run_codex_reviser(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
             )
+        elif command == "resume":
+            result = loop_runner.resume(
+                session_id,
+                generator=lambda request: self._run_codex_generator(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
+                verifier=lambda request: self._run_codex_verifier(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
+                reviser=lambda request: self._run_codex_reviser(
+                    command=command,
+                    request=request,
+                    config_path=config_path,
+                    prompt_root=prompt_root,
+                    routing_probe_mode=routing_probe_mode,
+                    role_routes=role_routes,
+                ),
+            )
+        else:
+            raise ValueError(f"Unsupported command {command!r}.")
+
+        return _tier1_result_payload(
+            command=command,
+            config_path=config_path,
+            result=result,
+        )
+
+    def _run_codex_generator(
+        self,
+        *,
+        command: str,
+        request: GenerationRequest,
+        config_path: Path,
+        prompt_root: Path,
+        routing_probe_mode: str,
+        role_routes: dict[str, Any] | None,
+    ) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "problem": request.problem,
+            "domain": request.domain,
+            "literature_context": list(request.literature_context),
+            "prior_verdicts": [item.to_dict() for item in request.prior_verdicts],
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
+            "trigger_flaws": list(request.trigger_flaws),
+        }
+        result = self._execute_codex_role(
+            command=command,
+            role="generator",
+            route=request.route,
+            config_path=config_path,
+            prompt_root=prompt_root,
+            routing_probe_mode=routing_probe_mode,
+            role_routes=role_routes,
+            payload=payload,
+            response_contract=_candidate_response_contract(),
+            response_schema=_candidate_response_schema(),
+            session_id=request.session_id,
+            question=request.problem,
+        )
+        return CandidateSolution.from_dict(result)
+
+    def _run_codex_verifier(
+        self,
+        *,
+        command: str,
+        request: VerificationRequest,
+        config_path: Path,
+        prompt_root: Path,
+        routing_probe_mode: str,
+        role_routes: dict[str, Any] | None,
+    ) -> VerificationReport:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "analysis_results": request.analysis_results.to_dict() if request.analysis_results is not None else None,
+            "formal_results": [item.to_dict() for item in request.formal_results or []],
+        }
+        result = self._execute_codex_role(
+            command=command,
+            role="verifier",
+            route=request.route,
+            config_path=config_path,
+            prompt_root=prompt_root,
+            routing_probe_mode=routing_probe_mode,
+            role_routes=role_routes,
+            payload=payload,
+            response_contract=_verification_response_contract(),
+            response_schema=_verification_response_schema(),
+            session_id=request.session_id,
+        )
+        return VerificationReport.from_dict(result)
+
+    def _run_codex_reviser(
+        self,
+        *,
+        command: str,
+        request: RevisionRequest,
+        config_path: Path,
+        prompt_root: Path,
+        routing_probe_mode: str,
+        role_routes: dict[str, Any] | None,
+    ) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "verification_report": request.verification_report.to_dict(),
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
+        }
+        result = self._execute_codex_role(
+            command=command,
+            role="reviser",
+            route=request.route,
+            config_path=config_path,
+            prompt_root=prompt_root,
+            routing_probe_mode=routing_probe_mode,
+            role_routes=role_routes,
+            payload=payload,
+            response_contract=_candidate_response_contract(),
+            response_schema=_candidate_response_schema(),
+            session_id=request.session_id,
+        )
+        return CandidateSolution.from_dict(result)
+
+    def _execute_codex_role(
+        self,
+        *,
+        command: str,
+        role: str,
+        route: EffectiveModelRoute,
+        config_path: Path,
+        prompt_root: Path,
+        routing_probe_mode: str,
+        role_routes: dict[str, Any] | None,
+        payload: dict[str, Any],
+        response_contract: dict[str, Any],
+        response_schema: dict[str, Any],
+        session_id: str,
+        question: str | None = None,
+    ) -> dict[str, Any]:
+        effective_route = _codex_effective_route(route)
+        query = build_live_role_query(
+            role=role,
+            prompt_text=_runtime_role_prompt(prompt_root, role, self.config.prompt_profile),
+            payload=payload,
+            response_contract=response_contract,
+            route_notes=_codex_route_notes(effective_route),
+            route_temperature=effective_route.temperature,
+            prompt_profile=self.config.prompt_profile,
+        )
+        codex_command, response_text = self._run_codex_command(
+            query=query,
+            response_schema=response_schema,
+            route=effective_route,
+        )
+        transcript = OrchestratorTranscript(
+            backend=OrchestratorBackend.CODEX_LOCAL.value,
+            command=command,
+            session_id=session_id,
+            config_path=str(config_path),
+            prompt_root=str(prompt_root),
+            prompt_profile=self.config.prompt_profile,
+            routing_probe=routing_probe_mode,
+            role_routes=dict(role_routes or self.config.role_routes),
+            skills=[],
+            backend_command=list(codex_command),
+            query=query,
+            response=response_text,
+            question=question,
+            role=role,
+            selected_route=_effective_route_payload(effective_route),
+        )
+        self.transcripts.append(transcript)
+        try:
+            return _extract_json_object(response_text)
+        except ValueError as exc:
+            raise OrchestratorBackendUnavailableError(
+                f"Codex-local {role} role did not return a valid JSON payload: {exc}"
+            ) from exc
+
+    def _run_codex_command(
+        self,
+        *,
+        query: str,
+        response_schema: dict[str, Any],
+        route: EffectiveModelRoute,
+    ) -> tuple[list[str], str]:
+        with tempfile.TemporaryDirectory(prefix="deep-gvr-codex-role-") as tmpdir:
+            temp_root = Path(tmpdir)
+            response_schema_path = temp_root / "role_response.schema.json"
+            output_path = temp_root / "role_response.json"
+            response_schema_path.write_text(json.dumps(response_schema, indent=2), encoding="utf-8")
             codex_command = [
                 self.config.codex_binary,
                 "exec",
@@ -348,12 +589,10 @@ class CodexLocalOrchestratorRunner:
                 "--output-last-message",
                 str(output_path),
             ]
-            for writable_root in _normalized_writable_roots(self.config.writable_roots, self.cwd):
-                codex_command.extend(["--add-dir", writable_root])
-            if self.config.provider not in {"", "default", "auto"}:
-                codex_command.extend(["-c", f'model_provider="{self.config.provider}"'])
-            if self.config.model not in {"", "configured-by-codex", "provider-default"}:
-                codex_command.extend(["--model", self.config.model])
+            if route.provider not in {"", "default", "auto"}:
+                codex_command.extend(["-c", f'model_provider="{route.provider}"'])
+            if route.model not in {"", "configured-by-codex", "provider-default"}:
+                codex_command.extend(["--model", route.model])
             codex_command.append(query)
 
             if self.executor is not None:
@@ -369,41 +608,12 @@ class CodexLocalOrchestratorRunner:
             response_text = output_path.read_text(encoding="utf-8").strip() if output_path.exists() else ""
             if not response_text:
                 response_text = result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip()
-            transcript = OrchestratorTranscript(
-                backend=OrchestratorBackend.CODEX_LOCAL.value,
-                command=command,
-                session_id=session_id,
-                config_path=str(config_path),
-                prompt_root=str(prompt_root),
-                prompt_profile=self.config.prompt_profile,
-                routing_probe=routing_probe_mode,
-                role_routes=dict(role_routes or self.config.role_routes),
-                skills=[],
-                backend_command=list(codex_command),
-                query=query,
-                response=response_text,
-                question=question,
-                domain_override=domain_override,
-            )
-            self.transcripts.append(transcript)
-
             if result.returncode != 0:
                 raise OrchestratorBackendUnavailableError(
                     "Codex-local orchestrator failed "
                     f"with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
                 )
-
-            try:
-                payload = _extract_json_object(response_text)
-            except ValueError as exc:
-                raise OrchestratorBackendUnavailableError(
-                    f"Codex-local orchestrator did not return a valid JSON summary: {exc}"
-                ) from exc
-
-            capability_evidence = payload.get("capability_evidence")
-            if isinstance(capability_evidence, dict):
-                transcript.capability_evidence = dict(capability_evidence)
-            return payload
+            return codex_command, response_text
 
 
 def build_orchestrator_runner(
@@ -417,6 +627,250 @@ def build_orchestrator_runner(
     if config.backend is OrchestratorBackend.CODEX_LOCAL:
         return CodexLocalOrchestratorRunner(config, cwd=cwd, executor=executor)
     raise ValueError(f"Unsupported orchestrator backend {config.backend!r}.")
+
+
+def _runtime_role_prompt(prompt_root: Path, role: str, prompt_profile: str) -> str:
+    base_prompt = _load_role_prompt(prompt_root, role=role, prompt_profile=prompt_profile)
+    runtime_constraints = (
+        "\n\n## Runtime Constraints\n"
+        "- This is a runtime role execution, not a repository development task.\n"
+        "- Do not edit repository source files, tests, docs, plans, or release assets.\n"
+        "- Do not call `uv run deep-gvr run` or `uv run deep-gvr resume`.\n"
+        "- Do not run Tier 2 adapters or Tier 3 proof backends directly from this role call.\n"
+        "- Return only the requested JSON object and no extra prose.\n"
+    )
+    return base_prompt + runtime_constraints
+
+
+def _load_role_prompt(prompt_root: Path, *, role: str, prompt_profile: str) -> str:
+    normalized_profile = normalize_prompt_profile(prompt_profile)
+    prompt_name = f"{role}.md"
+    if role == "verifier" and normalized_profile == "compact":
+        prompt_name = "verifier_compact.md"
+    prompt_path = prompt_root / prompt_name
+    if not prompt_path.exists():
+        raise OrchestratorBackendUnavailableError(f"Missing role prompt at {prompt_path}.")
+    return prompt_path.read_text(encoding="utf-8").strip()
+
+
+def _candidate_response_contract() -> dict[str, Any]:
+    return {
+        "hypothesis": "string",
+        "approach": "string",
+        "technical_details": ["string"],
+        "expected_results": ["string"],
+        "assumptions": ["string"],
+        "limitations": ["string"],
+        "references": ["string"],
+        "revision_notes": ["string"],
+    }
+
+
+def _candidate_response_schema() -> dict[str, Any]:
+    string_list = {"type": "array", "items": {"type": "string"}}
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "hypothesis": {"type": "string"},
+            "approach": {"type": "string"},
+            "technical_details": string_list,
+            "expected_results": string_list,
+            "assumptions": string_list,
+            "limitations": string_list,
+            "references": string_list,
+            "revision_notes": string_list,
+        },
+        "required": [
+            "hypothesis",
+            "approach",
+            "technical_details",
+            "expected_results",
+            "assumptions",
+            "limitations",
+            "references",
+            "revision_notes",
+        ],
+    }
+
+
+def _verification_response_contract() -> dict[str, Any]:
+    return {
+        "verdict": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+        "tier1": {
+            "checks": [{"check": "string", "status": "pass|fail|uncertain", "detail": "string"}],
+            "overall": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
+            "flaws": ["string"],
+            "caveats": ["string"],
+        },
+        "tier2": {
+            "analysis_requested": "boolean",
+            "reason": "string",
+            "analysis_spec": "object | null",
+            "results": "object | null",
+            "interpretation": "string | null",
+        },
+        "tier3": [
+            {
+                "claim": "string",
+                "backend": "string",
+                "proof_status": "requested|pending|proved|disproved|timeout|error|unavailable",
+                "details": "string",
+                "lean_code": "string",
+                "proof_time_seconds": "number | null",
+            }
+        ],
+        "flaws": ["string"],
+        "caveats": ["string"],
+        "cannot_verify_reason": "string | null",
+    }
+
+
+def _verification_response_schema() -> dict[str, Any]:
+    check_schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "check": {"type": "string"},
+            "status": {"type": "string", "enum": ["pass", "fail", "uncertain"]},
+            "detail": {"type": "string"},
+        },
+        "required": ["check", "status", "detail"],
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "verdict": {"type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"]},
+            "tier1": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "checks": {"type": "array", "items": check_schema},
+                    "overall": {"type": "string", "enum": ["VERIFIED", "FLAWS_FOUND", "CANNOT_VERIFY"]},
+                    "flaws": {"type": "array", "items": {"type": "string"}},
+                    "caveats": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["checks", "overall", "flaws", "caveats"],
+            },
+            "tier2": {
+                "anyOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "analysis_requested": {"type": "boolean"},
+                            "reason": {"type": "string"},
+                            "analysis_spec": {"type": ["object", "null"]},
+                            "results": {"type": ["object", "null"]},
+                            "interpretation": {"type": ["string", "null"]},
+                        },
+                        "required": ["analysis_requested", "reason"],
+                    },
+                ]
+            },
+            "tier3": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "claim": {"type": "string"},
+                        "backend": {"type": "string"},
+                        "proof_status": {
+                            "type": "string",
+                            "enum": ["requested", "pending", "proved", "disproved", "timeout", "error", "unavailable"],
+                        },
+                        "details": {"type": "string"},
+                        "lean_code": {"type": "string"},
+                        "proof_time_seconds": {"type": ["number", "null"]},
+                    },
+                    "required": ["claim", "backend", "proof_status", "details", "lean_code", "proof_time_seconds"],
+                },
+            },
+            "flaws": {"type": "array", "items": {"type": "string"}},
+            "caveats": {"type": "array", "items": {"type": "string"}},
+            "cannot_verify_reason": {"type": ["string", "null"]},
+        },
+        "required": ["verdict", "tier1", "tier2", "tier3", "flaws", "caveats", "cannot_verify_reason"],
+    }
+
+
+def _codex_effective_route(route: EffectiveModelRoute) -> EffectiveModelRoute:
+    model = route.model
+    notes = list(route.notes)
+    if route.provider == "default" and model == "configured-by-hermes":
+        model = "configured-by-codex"
+        notes.append("Resolved the default backend model to the active Codex default.")
+    return EffectiveModelRoute(
+        provider=route.provider,
+        model=model,
+        routing_mode=route.routing_mode,
+        temperature=route.temperature,
+        notes=notes,
+        fallback_routes=list(route.fallback_routes),
+    )
+
+
+def _codex_route_notes(route: EffectiveModelRoute) -> list[str]:
+    return [
+        f"provider={route.provider}",
+        f"model={route.model}",
+        *list(route.notes),
+    ]
+
+
+def _effective_route_payload(route: EffectiveModelRoute) -> dict[str, Any]:
+    return {
+        "provider": route.provider,
+        "model": route.model,
+        "routing_mode": route.routing_mode.value,
+        "temperature": route.temperature,
+        "notes": list(route.notes),
+        "fallback_routes": [
+            {
+                "provider": fallback.provider,
+                "model": fallback.model,
+                "routing_mode": fallback.routing_mode.value,
+                "temperature": fallback.temperature,
+                "notes": list(fallback.notes),
+            }
+            for fallback in route.fallback_routes
+        ],
+    }
+
+
+def _tier1_result_payload(
+    *,
+    command: str,
+    config_path: Path,
+    result: Any,
+) -> dict[str, Any]:
+    checkpoint = result.checkpoint
+    session_root = result.session_paths.session_dir.parent
+    artifacts = [
+        str((session_root / artifact).resolve()) if not Path(artifact).is_absolute() else str(Path(artifact))
+        for artifact in checkpoint.artifacts
+    ]
+    return {
+        "command": command,
+        "session_id": result.session_id,
+        "status": checkpoint.status,
+        "final_verdict": checkpoint.final_verdict,
+        "result_summary": checkpoint.result_summary,
+        "problem": checkpoint.problem,
+        "domain": checkpoint.domain,
+        "iterations": len(checkpoint.verdict_history),
+        "config_path": str(config_path),
+        "config_created": False,
+        "evidence_log": str(result.session_paths.evidence_log),
+        "checkpoint_file": str(result.session_paths.checkpoint_file),
+        "artifacts_dir": str(result.session_paths.artifacts_dir),
+        "artifacts": artifacts,
+        "capability_evidence": {},
+        "error": None,
+    }
 
 
 def _merge_skills(skills: list[str]) -> list[str]:
@@ -489,31 +943,6 @@ def _build_orchestrator_query(
         "- Only mark `subagent_mcp_inheritance.delegated_mcp_verified=true` when the verifier itself exercised delegated Aristotle MCP access directly.\n"
         "- If a capability is not actually observed, omit it or return the verified flag as false instead of inferring success from config or probe overrides.\n"
         "- If the run cannot complete, still return the JSON summary and populate the `error` field.\n\n"
-        f"Response contract:\n{json.dumps(response_contract, indent=2)}"
-    )
-
-
-def _build_codex_orchestrator_query(
-    *,
-    request_payload: dict[str, Any],
-    response_contract: dict[str, Any],
-) -> str:
-    return (
-        "You are the deep-gvr Codex-local orchestrator backend.\n"
-        "This is a runtime execution request, not a repo-development task.\n\n"
-        f"Runtime request:\n{json.dumps(request_payload, indent=2)}\n\n"
-        "Requirements:\n"
-        "- Execute the generator, verifier, reviser, and any analysis or formal work directly through Codex-local execution.\n"
-        "- Do not call `uv run deep-gvr run` or `uv run deep-gvr resume` because those wrapper commands would recurse back into this backend.\n"
-        "- Do not rely on the Hermes skill, the Codex deep-gvr skill, or the plugin wrapper as the runtime implementation.\n"
-        "- Treat the repository code, prompts, contracts, and docs under `workspace_root` as the implementation authority.\n"
-        "- Do not edit repository source files, tests, docs, or release assets. Only write session evidence, checkpoints, and artifacts under the configured evidence directory plus temporary files needed to complete the run.\n"
-        "- Keep the verifier isolated from the original problem framing as described by the runtime contracts and architecture docs.\n"
-        "- Treat `role_routes` as requested routing intent, not proof of capability closure.\n"
-        "- Only mark `per_subagent_model_routing.distinct_routes_verified=true` when the run can confirm distinct routes were actually exercised.\n"
-        "- Only mark `subagent_mcp_inheritance.delegated_mcp_verified=true` when delegated Aristotle MCP access was actually exercised by the verifier rather than inferred from config.\n"
-        "- If a capability is not actually observed, omit it or return the verified flag as false instead of inferring success.\n"
-        "- Return only one JSON object matching the response contract below, with no markdown fences or prose outside the JSON object.\n\n"
         f"Response contract:\n{json.dumps(response_contract, indent=2)}"
     )
 

@@ -88,19 +88,79 @@ def build_live_routing_plan(
     config: DeepGvrConfig,
     routing_probe: CapabilityProbeResult | None = None,
 ) -> RoutingPlan:
+    return _build_explicit_role_routing_plan(
+        config,
+        routing_probe=routing_probe,
+        route_note=(
+            "Using configured top-level live role routing; the subagent routing probe does not block "
+            "separate Hermes chat calls."
+        ),
+        fallback_note=(
+            "Live top-level role calls can prefer explicit configured provider/model paths even while "
+            "Hermes subagent routing remains fallback-only."
+        ),
+    )
+
+
+def build_native_role_routing_plan(
+    config: DeepGvrConfig,
+    routing_probe: CapabilityProbeResult | None = None,
+) -> RoutingPlan:
+    return _build_explicit_role_routing_plan(
+        config,
+        routing_probe=routing_probe,
+        route_note=(
+            "Using configured top-level native role routing; the delegated subagent probe does not block "
+            "separate Codex role calls."
+        ),
+        fallback_note=(
+            "Native Codex role calls can prefer explicit configured provider/model paths even while "
+            "Hermes delegated subagent routing remains fallback-only."
+        ),
+    )
+
+
+def resolve_routing_probe(mode: str) -> CapabilityProbeResult:
+    normalized = mode.strip().lower()
+    if normalized == "auto":
+        return probe_model_routing()
+    if normalized == "ready":
+        return CapabilityProbeResult(
+            name="per_subagent_model_routing",
+            status=ProbeStatus.READY,
+            summary="Routing probe forced to ready by CLI flag for delegated runtime planning.",
+            preferred_outcome="Route generator and verifier to distinct providers or models.",
+            fallback="If runtime behavior disagrees, revert to prompt separation plus temperature decorrelation.",
+            details={"forced_by": "routing_probe_mode", "mode": normalized},
+        )
+    if normalized == "fallback":
+        return CapabilityProbeResult(
+            name="per_subagent_model_routing",
+            status=ProbeStatus.FALLBACK,
+            summary="Routing probe forced to fallback by CLI flag for delegated runtime planning.",
+            preferred_outcome="Route generator and verifier to distinct providers or models.",
+            fallback="Use prompt separation plus temperature decorrelation and record the limitation.",
+            details={"forced_by": "routing_probe_mode", "mode": normalized},
+        )
+    raise ValueError(f"Unsupported routing probe mode {mode!r}.")
+
+
+def _build_explicit_role_routing_plan(
+    config: DeepGvrConfig,
+    *,
+    routing_probe: CapabilityProbeResult | None,
+    route_note: str,
+    fallback_note: str,
+) -> RoutingPlan:
     probe = routing_probe or probe_model_routing()
     shared_plan = build_routing_plan(config, routing_probe=probe)
-    live_note = (
-        "Using configured top-level live role routing; the subagent routing probe does not block "
-        "separate Hermes chat calls."
-    )
 
     generator_route = shared_plan.generator
     if _selection_has_live_route_intent(config.models.generator):
         generator_route = _live_route(
             _resolve_route("generator", config.models.generator),
             fallback_route=shared_plan.generator,
-            live_note=live_note,
+            live_note=route_note,
         )
 
     verifier_route = shared_plan.verifier
@@ -108,7 +168,7 @@ def build_live_routing_plan(
         verifier_route = _live_route(
             _resolve_route("verifier", config.models.verifier),
             fallback_route=shared_plan.verifier,
-            live_note=live_note,
+            live_note=route_note,
         )
 
     reviser_route = shared_plan.reviser
@@ -126,10 +186,10 @@ def build_live_routing_plan(
         reviser_route = _live_route(
             _resolve_route("reviser", config.models.reviser, generator_route=generator_preference),
             fallback_route=shared_plan.reviser,
-            live_note=live_note,
+            live_note=route_note,
         )
 
-    uses_explicit_live_routes = any(
+    uses_explicit_routes = any(
         not _same_model_path(primary, fallback)
         for primary, fallback in (
             (generator_route, shared_plan.generator),
@@ -138,14 +198,11 @@ def build_live_routing_plan(
         )
     )
     limitations = list(shared_plan.limitations)
-    if uses_explicit_live_routes and probe.status is not ProbeStatus.READY:
-        limitations.append(
-            "Live top-level role calls can prefer explicit configured provider/model paths even while "
-            "Hermes subagent routing remains fallback-only."
-        )
+    if uses_explicit_routes and probe.status is not ProbeStatus.READY:
+        limitations.append(fallback_note)
 
     return RoutingPlan(
-        strategy=RoutingMode.DIRECT if uses_explicit_live_routes else shared_plan.strategy,
+        strategy=RoutingMode.DIRECT if uses_explicit_routes else shared_plan.strategy,
         probe=probe,
         orchestrator=shared_plan.orchestrator,
         generator=generator_route,

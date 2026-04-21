@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SkillCliTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.codex_queries: list[str] = []
+
     def _write_config(self, config_path: Path, evidence_dir: Path) -> None:
         payload = DeepGvrConfig().to_dict()
         payload["evidence"]["directory"] = str(evidence_dir)
@@ -76,38 +79,69 @@ class SkillCliTests(unittest.TestCase):
         schema_path = Path(command[command.index("--output-schema") + 1])
         output_path = Path(command[command.index("--output-last-message") + 1])
         query = command[-1]
+        self.codex_queries.append(query)
         self.assertEqual(cwd, output_path.parent)
         self.assertTrue(schema_path.exists())
-        self.assertIn("Codex-local orchestrator backend", query)
+        self.assertIn("This is a runtime role execution", query)
         self.assertIn("Do not call `uv run deep-gvr run` or `uv run deep-gvr resume`", query)
-        self.assertIn("Do not rely on the Hermes skill", query)
-        payload = {
-            "command": "run" if '"command": "run"' in query else "resume",
-            "session_id": "session_cli_run_codex" if '"command": "run"' in query else "session_cli_resume_codex",
-            "status": "completed",
-            "final_verdict": "VERIFIED",
-            "result_summary": "Codex-local orchestration completed.",
-            "problem": "Explain why the surface code has a threshold.",
-            "domain": "qec",
-            "iterations": 1,
-            "config_path": "/tmp/config.yaml",
-            "config_created": False,
-            "evidence_log": "/tmp/evidence.jsonl",
-            "checkpoint_file": "/tmp/checkpoint.json",
-            "artifacts_dir": "/tmp/artifacts",
-            "artifacts": ["/tmp/artifacts/session_summary.json"],
-            "capability_evidence": {
-                "per_subagent_model_routing": {
-                    "distinct_routes_verified": False,
-                    "route_pairs": {
-                        "generator": {"provider": "openai", "model": "gpt-5.3-codex"},
-                        "verifier": {"provider": "openai", "model": "gpt-5.3-codex"},
-                    },
-                    "evidence_source": "codex_backend_single_route",
-                }
-            },
-            "error": None,
-        }
+        role = next(role_name for role_name in ("generator", "verifier", "reviser") if f"Role: {role_name}" in query)
+        if role == "generator":
+            self.assertIn('-c', command)
+            self.assertIn('model_provider="openrouter"', command)
+            self.assertIn("--model", command)
+            self.assertIn("claude-sonnet-4", command)
+            payload = {
+                "hypothesis": "The surface code exhibits a threshold under standard circuit-level depolarizing noise.",
+                "approach": "Use the established surface-code threshold literature to justify the claim.",
+                "technical_details": ["Threshold behavior follows from established decoder and circuit-noise studies."],
+                "expected_results": ["Below threshold, increasing distance suppresses logical error."],
+                "assumptions": ["Standard circuit-level depolarizing noise."],
+                "limitations": ["This is a literature-grounded explanation, not a fresh simulation campaign."],
+                "references": ["Fowler et al. 2012", "Stephens 2014"],
+                "revision_notes": [],
+            }
+        elif role == "verifier":
+            self.assertIn('-c', command)
+            self.assertIn('model_provider="openrouter"', command)
+            self.assertIn("--model", command)
+            self.assertIn("deepseek-r1", command)
+            payload = {
+                "verdict": "VERIFIED",
+                "tier1": {
+                    "checks": [
+                        {"check": "Logical consistency", "status": "pass", "detail": "The claim stays within the cited threshold literature."},
+                        {"check": "Citation validity", "status": "pass", "detail": "The cited sources are standard threshold references."},
+                        {"check": "Physical plausibility", "status": "pass", "detail": "The explanation matches the accepted surface-code regime."},
+                        {"check": "Completeness", "status": "pass", "detail": "The explanation states the claim, scope, and assumptions."},
+                        {"check": "Overclaiming", "status": "pass", "detail": "The candidate does not assert unsupported new quantitative results."},
+                    ],
+                    "overall": "VERIFIED",
+                    "flaws": [],
+                    "caveats": ["Literature-grounded explanation only."],
+                },
+                "tier2": {
+                    "analysis_requested": False,
+                    "reason": "Tier 1 literature grounding is sufficient for this explanation.",
+                    "analysis_spec": None,
+                    "results": None,
+                    "interpretation": None,
+                },
+                "tier3": [],
+                "flaws": [],
+                "caveats": ["Literature-grounded explanation only."],
+                "cannot_verify_reason": None,
+            }
+        else:
+            payload = {
+                "hypothesis": "Revised hypothesis",
+                "approach": "Revised approach",
+                "technical_details": ["Revised technical detail."],
+                "expected_results": ["Revised expected result."],
+                "assumptions": ["Revised assumption."],
+                "limitations": ["Revised limitation."],
+                "references": ["Revised reference"],
+                "revision_notes": ["Updated from verifier feedback."],
+            }
         output_path.write_text(json.dumps(payload), encoding="utf-8")
         return CommandExecutionResult(
             returncode=0,
@@ -292,12 +326,82 @@ class SkillCliTests(unittest.TestCase):
                 Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
             )
             transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
-            self.assertEqual(transcripts["calls"][0]["backend"], "codex_local")
-            self.assertEqual(transcripts["calls"][0]["skills"], [])
-            self.assertIn("codex", transcripts["calls"][0]["backend_command"][0])
-            self.assertIn("--output-last-message", transcripts["calls"][0]["backend_command"])
-            self.assertNotIn("hermes_command", transcripts["calls"][0])
-            self.assertIn("Codex-local orchestrator backend", transcripts["calls"][0]["query"])
+            self.assertEqual([call["role"] for call in transcripts["calls"]], ["generator", "verifier"])
+            self.assertTrue(all(call["backend"] == "codex_local" for call in transcripts["calls"]))
+            self.assertTrue(all(call["skills"] == [] for call in transcripts["calls"]))
+            self.assertTrue(all("codex" in call["backend_command"][0] for call in transcripts["calls"]))
+            self.assertTrue(all("--output-last-message" in call["backend_command"] for call in transcripts["calls"]))
+            self.assertTrue(all("hermes_command" not in call for call in transcripts["calls"]))
+            self.assertEqual(transcripts["calls"][0]["selected_route"]["provider"], "openrouter")
+            self.assertEqual(transcripts["calls"][0]["selected_route"]["model"], "claude-sonnet-4")
+            self.assertEqual(transcripts["calls"][1]["selected_route"]["provider"], "openrouter")
+            self.assertEqual(transcripts["calls"][1]["selected_route"]["model"], "deepseek-r1")
+            self.assertIn("Generator Prompt", transcripts["calls"][0]["query"])
+            self.assertIn("Compact Verifier Prompt", transcripts["calls"][1]["query"])
+            role_routes = transcripts["calls"][0]["role_routes"]
+            self.assertEqual(role_routes["strategy"], "direct")
+            self.assertEqual(role_routes["generator"]["model"], "claude-sonnet-4")
+            self.assertEqual(role_routes["verifier"]["model"], "deepseek-r1")
+
+    def test_run_session_command_codex_backend_supports_full_verifier_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_codex_backend_full",
+                executor=self._successful_codex_executor,
+                command_timeout_seconds=5,
+                prompt_profile="full",
+            )
+
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            verifier_call = next(call for call in transcripts["calls"] if call["role"] == "verifier")
+            self.assertIn("Verifier Prompt", verifier_call["query"])
+            self.assertNotIn("Compact Verifier Prompt", verifier_call["query"])
+
+    def test_resume_session_command_codex_backend_uses_native_role_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+            store = SessionStore(evidence_dir)
+            store.initialize_session(
+                problem="Resume this session",
+                domain="qec",
+                max_iterations=3,
+                literature_context=["Stored context"],
+                session_id="session_cli_codex_resume",
+            )
+
+            summary = resume_session_command(
+                "session_cli_codex_resume",
+                config_path=config_path,
+                executor=self._successful_codex_executor,
+                command_timeout_seconds=5,
+            )
+
+            self.assertEqual(summary.command, "resume")
+            self.assertEqual(summary.final_verdict, "VERIFIED")
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_resume_orchestrator_transcript.json")
+            )
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertEqual([call["role"] for call in transcripts["calls"]], ["generator", "verifier"])
 
     def test_run_session_command_returns_structured_error_on_role_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

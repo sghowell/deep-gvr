@@ -29,25 +29,57 @@ class CodexSshDevboxRuntimeTests(unittest.TestCase):
         output_path = Path(command[command.index("--output-last-message") + 1])
         query = command[-1]
         self.assertEqual(cwd, output_path.parent)
-        self.assertIn("Codex-local orchestrator backend", query)
-        payload = {
-            "command": "run",
-            "session_id": "session_codex_remote",
-            "status": "completed",
-            "final_verdict": "VERIFIED",
-            "result_summary": "Codex SSH/devbox execution completed.",
-            "problem": "Explain why the surface code has a threshold.",
-            "domain": "qec",
-            "iterations": 1,
-            "config_path": "/tmp/config.yaml",
-            "config_created": False,
-            "evidence_log": "/tmp/evidence.jsonl",
-            "checkpoint_file": "/tmp/checkpoint.json",
-            "artifacts_dir": "/tmp/artifacts",
-            "artifacts": ["/tmp/artifacts/session_summary.json"],
-            "capability_evidence": {},
-            "error": None,
-        }
+        self.assertIn("This is a runtime role execution", query)
+        role = next(role_name for role_name in ("generator", "verifier", "reviser") if f"Role: {role_name}" in query)
+        if role == "generator":
+            payload = {
+                "hypothesis": "The surface code exhibits a threshold under standard circuit-level depolarizing noise.",
+                "approach": "Use the established threshold literature.",
+                "technical_details": ["Threshold behavior is supported by standard decoder and circuit-noise studies."],
+                "expected_results": ["Below threshold, increasing distance suppresses logical error."],
+                "assumptions": ["Standard circuit-level depolarizing noise."],
+                "limitations": ["Literature-grounded explanation only."],
+                "references": ["Fowler et al. 2012", "Stephens 2014"],
+                "revision_notes": [],
+            }
+        elif role == "verifier":
+            payload = {
+                "verdict": "VERIFIED",
+                "tier1": {
+                    "checks": [
+                        {"check": "Logical consistency", "status": "pass", "detail": "The claim stays within the cited literature."},
+                        {"check": "Citation validity", "status": "pass", "detail": "The cited sources are standard threshold references."},
+                        {"check": "Physical plausibility", "status": "pass", "detail": "The explanation matches the accepted regime."},
+                        {"check": "Completeness", "status": "pass", "detail": "The explanation states the main claim and scope."},
+                        {"check": "Overclaiming", "status": "pass", "detail": "The candidate avoids unsupported new quantitative claims."},
+                    ],
+                    "overall": "VERIFIED",
+                    "flaws": [],
+                    "caveats": ["Literature-grounded explanation only."],
+                },
+                "tier2": {
+                    "analysis_requested": False,
+                    "reason": "Tier 1 literature grounding is sufficient for this explanation.",
+                    "analysis_spec": None,
+                    "results": None,
+                    "interpretation": None,
+                },
+                "tier3": [],
+                "flaws": [],
+                "caveats": ["Literature-grounded explanation only."],
+                "cannot_verify_reason": None,
+            }
+        else:
+            payload = {
+                "hypothesis": "Revised hypothesis",
+                "approach": "Revised approach",
+                "technical_details": ["Revised technical detail."],
+                "expected_results": ["Revised expected result."],
+                "assumptions": ["Revised assumption."],
+                "limitations": ["Revised limitation."],
+                "references": ["Revised reference"],
+                "revision_notes": ["Updated from verifier feedback."],
+            }
         output_path.write_text(json.dumps(payload), encoding="utf-8")
         return CommandExecutionResult(returncode=0, stdout='{"event":"completed"}\n', stderr="")
 
