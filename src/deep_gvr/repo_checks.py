@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from .codex_automations import codex_automation_surface_errors
 from .json_schema import SchemaValidationError, validate
 from .release_surface import codex_plugin_surface_errors, publication_manifest_errors, release_metadata_errors
 
@@ -90,6 +91,7 @@ PUBLIC_DOCS = [
     "docs/start-here.md",
     "docs/codex-local.md",
     "docs/codex-plugin.md",
+    "docs/codex-automations.md",
     "docs/quickstart.md",
     "docs/concepts.md",
     "docs/domain-portfolio.md",
@@ -106,6 +108,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "docs/start-here.md",
         "docs/codex-local.md",
         "docs/codex-plugin.md",
+        "docs/codex-automations.md",
         "docs/quickstart.md",
         "docs/concepts.md",
         "docs/domain-portfolio.md",
@@ -119,6 +122,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "index.md",
         "codex-local.md",
         "codex-plugin.md",
+        "codex-automations.md",
         "quickstart.md",
         "concepts.md",
         "domain-portfolio.md",
@@ -275,6 +279,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "verification_report.template.json": "verification_report.schema.json",
         "release_preflight.template.json": "release_preflight.schema.json",
         "release_publication.template.json": "release_publication.schema.json",
+        "codex_automation_catalog.template.json": "codex_automation_catalog.schema.json",
         "codex_plugin.template.json": "codex_plugin.schema.json",
         "codex_plugin_marketplace.template.json": "codex_plugin_marketplace.schema.json",
         "auto_improve_evaluation.template.json": "auto_improve_evaluation.schema.json",
@@ -301,6 +306,7 @@ def check_schemas_and_templates(root: Path) -> list[str]:
         "eval/known_problems.json": "benchmark_suite.schema.json",
         "eval/results/baseline_results.json": "eval_results.schema.json",
         "release/agentskills.publication.json": "release_publication.schema.json",
+        "codex_automations/catalog.json": "codex_automation_catalog.schema.json",
         "plugins/deep-gvr/.codex-plugin/plugin.json": "codex_plugin.schema.json",
         ".agents/plugins/marketplace.json": "codex_plugin_marketplace.schema.json",
     }
@@ -345,6 +351,7 @@ def check_release_surfaces(root: Path) -> list[str]:
     executable_files = [
         root / "scripts" / "install.sh",
         root / "scripts" / "install_codex.sh",
+        root / "scripts" / "export_codex_automations.py",
         root / "scripts" / "setup_mcp.sh",
         root / "scripts" / "codex_preflight.py",
         root / "scripts" / "release_preflight.py",
@@ -365,6 +372,7 @@ def check_release_surfaces(root: Path) -> list[str]:
         root / "docs" / "index.md",
         root / "docs" / "codex-local.md",
         root / "docs" / "codex-plugin.md",
+        root / "docs" / "codex-automations.md",
         root / "docs" / "plugin-privacy.md",
         root / "docs" / "plugin-terms.md",
         root / "docs" / "release-workflow.md",
@@ -381,6 +389,7 @@ def check_release_surfaces(root: Path) -> list[str]:
             errors.append(f"{path.relative_to(root)}: required release-surface asset is missing")
     errors.extend(publication_manifest_errors(root))
     errors.extend(codex_plugin_surface_errors(root))
+    errors.extend(codex_automation_surface_errors(root))
     errors.extend(release_metadata_errors(root))
     docs_workflow_path = root / ".github" / "workflows" / "docs.yml"
     if docs_workflow_path.exists():

@@ -6,11 +6,12 @@ usage() {
 Install the deep-gvr Codex-local skill surface.
 
 Usage:
-  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--copy] [--force] [--skip-hermes-install]
+  scripts/install_codex.sh [--target DIR] [--plugin-root DIR] [--automation-root DIR] [--copy] [--force] [--skip-hermes-install]
 
 Options:
   --target DIR           Target Codex skills directory. Default: ~/.codex/skills
   --plugin-root DIR      Export a standalone local Codex plugin marketplace root at DIR.
+  --automation-root DIR  Export a standalone local Codex automation bundle at DIR.
   --copy                 Copy the Codex skill instead of creating a symlink.
   --force                Replace an existing deep-gvr Codex skill install in the target directory.
   --skip-hermes-install  Do not also install the underlying Hermes skill/runtime surface.
@@ -35,6 +36,7 @@ hermes_install_state="unchanged"
 plugin_root=""
 plugin_export_path=""
 plugin_marketplace_path=""
+automation_root=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,6 +46,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --plugin-root)
       plugin_root="$2"
+      shift 2
+      ;;
+    --automation-root)
+      automation_root="$2"
       shift 2
       ;;
     --copy)
@@ -128,6 +134,19 @@ if [[ -n "${plugin_root}" ]]; then
   cp "${codex_plugin_marketplace_source}" "${plugin_marketplace_path}"
 fi
 
+if [[ -n "${automation_root}" ]]; then
+  automation_args=(
+    python3
+    "${repo_root}/scripts/export_codex_automations.py"
+    --output-root
+    "${automation_root}"
+  )
+  if [[ "${force}" == "true" ]]; then
+    automation_args+=(--force)
+  fi
+  "${automation_args[@]}"
+fi
+
 if [[ "${skip_hermes_install}" != "true" ]]; then
   if [[ "${force}" == "true" ]]; then
     bash "${repo_root}/scripts/install.sh" --force
@@ -148,6 +167,9 @@ if [[ -n "${plugin_root}" ]]; then
   echo "Exported the deep-gvr Codex plugin bundle to ${plugin_export_path}."
   echo "Exported local marketplace metadata to ${plugin_marketplace_path}."
 fi
+if [[ -n "${automation_root}" ]]; then
+  echo "Exported the deep-gvr Codex automation bundle to ${automation_root}."
+fi
 if [[ "${skip_hermes_install}" == "true" ]]; then
   echo "Skipped underlying Hermes install at your request."
 elif [[ "${hermes_install_state}" == "refreshed" ]]; then
@@ -160,4 +182,5 @@ echo "  1. Review ${repo_root}/docs/codex-local.md for the Codex-local operator 
 echo "  2. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --json' to inspect the Codex-local surface."
 echo "  3. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --operator' before live Codex operator use."
 echo "  4. If you want the packaged plugin bundle as well, review ${repo_root}/docs/codex-plugin.md."
-echo "  5. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."
+echo "  5. If you want recurring Codex automation templates as well, review ${repo_root}/docs/codex-automations.md."
+echo "  6. If you also use the Hermes /deep-gvr surface directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml'."

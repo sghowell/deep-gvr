@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 
+from .codex_automations import automation_catalog_path, codex_automation_surface_errors
 from .contracts import (
     DeepGvrConfig,
     ProbeStatus,
@@ -119,13 +120,14 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         name=skill_manifest["name"],
         version=project_version(effective_root),
         description=skill_manifest["description"],
-        package_layout="hermes_skill_and_codex_plugin_bundle",
+        package_layout="hermes_skill_and_codex_surface_bundle",
         distribution_targets=["github", "agentskills.io"],
         skill_manifest_path="SKILL.md",
         codex_skill_manifest_path="codex_skill/SKILL.md",
         codex_plugin_manifest_path="plugins/deep-gvr/.codex-plugin/plugin.json",
         codex_plugin_skill_manifest_path="plugins/deep-gvr/skills/deep-gvr/SKILL.md",
         codex_plugin_marketplace_path=".agents/plugins/marketplace.json",
+        codex_automation_catalog_path="codex_automations/catalog.json",
         readme_path="README.md",
         install_script="scripts/install.sh",
         preflight_script="scripts/release_preflight.py",
@@ -142,6 +144,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         operator_validation_commands=[
             "bash scripts/install.sh",
             "bash scripts/install_codex.sh",
+            "python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
             "uv run python scripts/release_preflight.py --operator --config ~/.hermes/deep-gvr/config.yaml",
             "uv run python scripts/codex_preflight.py --operator",
             "bash scripts/setup_mcp.sh --install --check",
@@ -381,6 +384,7 @@ def collect_release_preflight(
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
     checks.append(_check_publication_manifest(effective_root))
     checks.append(_check_codex_plugin_surface(effective_root))
+    checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_release_metadata(effective_root))
     checks.append(_check_auto_improve_policy(effective_root))
 
@@ -389,6 +393,7 @@ def collect_release_preflight(
         "runtime_config",
         "publication_manifest",
         "codex_plugin_surface",
+        "codex_automation_surface",
         "release_metadata",
         "auto_improve_policy",
     }
@@ -436,6 +441,7 @@ def collect_codex_preflight(
     checks.append(_check_codex_cli())
     checks.append(_check_codex_skill_install(effective_codex_skills_dir, effective_root))
     checks.append(_check_codex_plugin_surface(effective_root))
+    checks.append(_check_codex_automation_surface(effective_root))
     checks.append(_check_skill_install(effective_hermes_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
@@ -445,7 +451,14 @@ def collect_codex_preflight(
     checks.append(_check_tier2_backend(runtime_config))
     checks.append(_check_tier3_transport(runtime_config, effective_hermes_config_path))
 
-    structural_names = {"codex_cli", "codex_skill_install", "codex_plugin_surface", "skill_install", "runtime_config"}
+    structural_names = {
+        "codex_cli",
+        "codex_skill_install",
+        "codex_plugin_surface",
+        "codex_automation_surface",
+        "skill_install",
+        "runtime_config",
+    }
     release_surface_ready = all(
         check.status == ReleaseCheckStatus.READY for check in checks if check.name in structural_names
     )
@@ -921,6 +934,32 @@ def _check_codex_plugin_surface(root: Path) -> ReleaseCheck:
             "marketplace_path": str(marketplace_path),
         },
         guidance="Use bash scripts/install_codex.sh --plugin-root <dir> to export a standalone local plugin marketplace root when needed.",
+    )
+
+
+def _check_codex_automation_surface(root: Path) -> ReleaseCheck:
+    errors = codex_automation_surface_errors(root)
+    catalog_path = automation_catalog_path(root)
+    if errors:
+        return ReleaseCheck(
+            name="codex_automation_surface",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary="The checked-in Codex automation pack is missing or out of sync with the repo surface.",
+            details={"catalog_path": str(catalog_path), "errors": errors},
+            guidance=(
+                "Restore or update the checked-in Codex automation catalog and templates so recurring Codex workflows "
+                "stay reviewable and exportable from the repo."
+            ),
+        )
+    return ReleaseCheck(
+        name="codex_automation_surface",
+        status=ReleaseCheckStatus.READY,
+        summary="The checked-in Codex automation catalog and templates match the repo surface.",
+        details={"catalog_path": str(catalog_path)},
+        guidance=(
+            "Use python scripts/export_codex_automations.py --output-root <dir> or bash scripts/install_codex.sh "
+            "--automation-root <dir> to export a reviewable automation bundle for Codex."
+        ),
     )
 
 

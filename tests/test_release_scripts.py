@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from tests import _path_setup  # noqa: F401
+from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.release_surface import (
     codex_plugin_surface_errors,
     collect_codex_preflight,
@@ -109,6 +110,33 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((plugin_root / "plugins" / "deep-gvr" / ".codex-plugin" / "plugin.json").exists())
             self.assertTrue((plugin_root / "plugins" / "deep-gvr" / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((plugin_root / ".agents" / "plugins" / "marketplace.json").exists())
+
+    def test_install_codex_script_exports_automation_bundle_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            automation_root = Path(tmpdir) / "codex-automation-root"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "install_codex.sh"),
+                    "--automation-root",
+                    str(automation_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((automation_root / "catalog.json").exists())
+            self.assertTrue((automation_root / "automations" / "benchmark_subset_sweep" / "automation.toml").exists())
+            rendered = (automation_root / "automations" / "benchmark_subset_sweep" / "automation.toml").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("__DEEP_GVR_REPO_ROOT__", rendered)
+            self.assertIn(str(ROOT), rendered)
 
     def test_skill_manifest_exposes_required_frontmatter(self) -> None:
         skill_path = ROOT / "SKILL.md"
@@ -478,6 +506,9 @@ class ReleaseScriptTests(unittest.TestCase):
 
     def test_codex_plugin_surface_matches_repo_metadata(self) -> None:
         self.assertEqual(codex_plugin_surface_errors(ROOT), [])
+
+    def test_codex_automation_surface_matches_repo_metadata(self) -> None:
+        self.assertEqual(codex_automation_surface_errors(ROOT), [])
 
     def test_release_preflight_uses_mathcode_transport_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
