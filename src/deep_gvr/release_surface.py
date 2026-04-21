@@ -125,8 +125,9 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
         ],
         auto_improve=False,
         auto_improve_enablement=(
-            "Set auto_improve to true in release/agentskills.publication.json only after human review, "
-            "then republish the same validated release bundle."
+            "Run uv run python scripts/evaluate_auto_improve.py --output /tmp/deep-gvr-auto-improve/report.json, "
+            "review the report, then set auto_improve to true in release/agentskills.publication.json only after "
+            "human review and republish the same validated release bundle."
         ),
     )
 
@@ -782,18 +783,28 @@ def _check_auto_improve_policy(root: Path) -> ReleaseCheck:
             guidance="Fix the publication manifest before release.",
         )
 
+    return evaluate_auto_improve_policy_manifest(manifest)
+
+
+def evaluate_auto_improve_policy_manifest(manifest: ReleasePublicationManifest) -> ReleaseCheck:
     if not manifest.auto_improve:
         return ReleaseCheck(
             name="auto_improve_policy",
             status=ReleaseCheckStatus.READY,
             summary="The published release policy ships with auto_improve disabled by default.",
             details={"auto_improve": manifest.auto_improve},
-            guidance="Only opt in by editing the publication manifest after human review.",
+            guidance=(
+                "Only opt in after running uv run python scripts/evaluate_auto_improve.py "
+                "--output /tmp/deep-gvr-auto-improve/report.json and reviewing the report."
+            ),
         )
     return ReleaseCheck(
         name="auto_improve_policy",
         status=ReleaseCheckStatus.BLOCKED,
         summary="The publication manifest currently enables auto_improve, which violates the documented release default.",
         details={"auto_improve": manifest.auto_improve},
-        guidance="Set auto_improve back to false before cutting a public release.",
+        guidance=(
+            "Set auto_improve back to false before cutting a public release, or complete and review "
+            "the auto-improve evaluation workflow first."
+        ),
     )

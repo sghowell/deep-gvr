@@ -118,7 +118,7 @@
       "details": {
         "auto_improve": false
       },
-      "guidance": "Only opt in by editing the publication manifest after human review."
+      "guidance": "Only opt in after running uv run python scripts/evaluate_auto_improve.py --output /tmp/deep-gvr-auto-improve/report.json and reviewing the report."
     }
   ]
 }
