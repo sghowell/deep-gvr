@@ -386,11 +386,12 @@ def collect_release_preflight(
     effective_hermes_config_path = (hermes_config_path or default_hermes_config_path()).expanduser()
     checks: list[ReleaseCheck] = []
 
-    checks.append(_check_skill_install(effective_skills_dir))
     config_check, runtime_config = _check_runtime_config(effective_config_path)
     checks.append(config_check)
+    checks.append(_check_hermes_skill_install_for_backend(runtime_config, effective_skills_dir))
     checks.append(_check_orchestrator_backend(runtime_config))
-    checks.append(_check_hermes_cli())
+    checks.append(_check_codex_cli_for_backend(runtime_config))
+    checks.append(_check_hermes_cli_for_backend(runtime_config))
     checks.append(_check_provider_credentials(runtime_config))
     checks.append(_check_analysis_adapter_families(runtime_config))
     checks.append(_check_tier2_backend(runtime_config))
@@ -548,6 +549,10 @@ def _check_hermes_skill_install_for_codex(runtime_config: DeepGvrConfig | None, 
     return _check_skill_install(skills_dir)
 
 
+def _check_hermes_skill_install_for_backend(runtime_config: DeepGvrConfig | None, skills_dir: Path) -> ReleaseCheck:
+    return _check_hermes_skill_install_for_codex(runtime_config, skills_dir)
+
+
 def _check_codex_cli() -> ReleaseCheck:
     codex_binary = shutil.which("codex")
     if codex_binary is not None:
@@ -681,15 +686,15 @@ def _check_orchestrator_backend(runtime_config: DeepGvrConfig | None) -> Release
             status=ReleaseCheckStatus.READY,
             summary="The runtime is configured to use the shipped Hermes orchestrator backend.",
             details={"orchestrator_backend": backend.value},
-            guidance="Use Hermes for the delegated execution path or change the backend only after the Codex-native backend lands.",
+            guidance="Use Hermes for the delegated execution path, or switch to codex_local when you want the native Codex backend.",
         )
     if backend is OrchestratorBackend.CODEX_LOCAL:
         return ReleaseCheck(
             name="orchestrator_backend",
-            status=ReleaseCheckStatus.BLOCKED,
-            summary="The runtime config selects the planned Codex-local backend, but that transport is not implemented on the shipped path yet.",
+            status=ReleaseCheckStatus.READY,
+            summary="The runtime is configured to use the Codex-local orchestrator backend.",
             details={"orchestrator_backend": backend.value},
-            guidance="Switch back to runtime.orchestrator_backend=hermes or complete the owning Codex backend slice before operator use.",
+            guidance="Use Codex CLI for the native execution path and keep backend-specific operator checks green.",
         )
     return ReleaseCheck(
         name="orchestrator_backend",
@@ -729,6 +734,22 @@ def _check_hermes_cli_for_codex(runtime_config: DeepGvrConfig | None) -> Release
             guidance="Install Hermes only if you also want the Hermes /deep-gvr surface on this machine.",
         )
     return _check_hermes_cli()
+
+
+def _check_hermes_cli_for_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    return _check_hermes_cli_for_codex(runtime_config)
+
+
+def _check_codex_cli_for_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
+    if runtime_config is not None and runtime_config.runtime.orchestrator_backend is not OrchestratorBackend.CODEX_LOCAL:
+        return ReleaseCheck(
+            name="codex_cli",
+            status=ReleaseCheckStatus.READY,
+            summary="Codex CLI is not required for the selected non-Codex backend.",
+            details={"orchestrator_backend": runtime_config.runtime.orchestrator_backend.value},
+            guidance="Install Codex only if you also want the Codex-native backend or Codex-local operator surfaces on this machine.",
+        )
+    return _check_codex_cli()
 
 
 def _check_provider_credentials(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:

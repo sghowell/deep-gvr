@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from tests import _path_setup  # noqa: F401
+from deep_gvr.contracts import DeepGvrConfig
 from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
 from deep_gvr.codex_subagents import codex_subagent_surface_errors
@@ -90,6 +91,24 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml").exists())
+
+    def test_install_codex_script_supports_skip_hermes_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "custom-codex-home"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            completed = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh"), "--skip-hermes-install"],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertFalse((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
 
     def test_install_codex_script_exports_plugin_marketplace_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -475,12 +494,20 @@ class ReleaseScriptTests(unittest.TestCase):
             payload["verification"]["tier3"]["mathcode"]["run_script"] = str(run_script)
             config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
-            report = collect_codex_preflight(
-                config_path=config_path,
-                codex_skills_dir=codex_target_dir,
-                hermes_skills_dir=hermes_target_dir,
-                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
-            )
+            prior_path = os.environ.get("PATH")
+            os.environ["PATH"] = env["PATH"]
+            try:
+                report = collect_codex_preflight(
+                    config_path=config_path,
+                    codex_skills_dir=codex_target_dir,
+                    hermes_skills_dir=hermes_target_dir,
+                    hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                )
+            finally:
+                if prior_path is None:
+                    del os.environ["PATH"]
+                else:
+                    os.environ["PATH"] = prior_path
 
         tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
         self.assertEqual(tier3_check.status.value, "ready")
@@ -530,6 +557,104 @@ class ReleaseScriptTests(unittest.TestCase):
         remote_check = next(check for check in report.checks if check.name == "ssh_devbox_backend")
         self.assertEqual(remote_check.status.value, "ready")
         self.assertTrue(remote_check.details["ssh_ready"])
+
+    def test_collect_codex_preflight_does_not_require_hermes_for_codex_backend(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            runtime_home = Path(tmpdir) / "deep-gvr-runtime"
+            config_path = runtime_home / "config.yaml"
+            evidence_dir = runtime_home / "sessions"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            codex_path = bin_dir / "codex"
+            codex_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            codex_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh"), "--skip-hermes-install"],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            for role in ("orchestrator", "generator", "verifier", "reviser"):
+                payload["models"][role]["provider"] = "default"
+                payload["models"][role]["model"] = ""
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            report = collect_codex_preflight(
+                config_path=config_path,
+                codex_skills_dir=codex_target_dir,
+                hermes_skills_dir=hermes_target_dir,
+                hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+            )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(checks["orchestrator_backend"].status.value, "ready")
+        self.assertEqual(checks["codex_cli"].status.value, "ready")
+        self.assertEqual(checks["skill_install"].status.value, "ready")
+        self.assertIn("not required", checks["skill_install"].summary)
+        self.assertEqual(checks["hermes_cli"].status.value, "ready")
+        self.assertIn("not required", checks["hermes_cli"].summary)
+
+    def test_collect_release_preflight_uses_codex_backend_requirements_when_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runtime_home = Path(tmpdir) / "deep-gvr-runtime"
+            config_path = runtime_home / "config.yaml"
+            evidence_dir = runtime_home / "sessions"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            codex_path = bin_dir / "codex"
+            codex_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            codex_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            for role in ("orchestrator", "generator", "verifier", "reviser"):
+                payload["models"][role]["provider"] = "default"
+                payload["models"][role]["model"] = ""
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            prior_path = os.environ.get("PATH")
+            os.environ["PATH"] = env["PATH"]
+            try:
+                report = collect_release_preflight(
+                    config_path=config_path,
+                    skills_dir=Path(tmpdir) / ".hermes" / "skills",
+                    hermes_config_path=Path(tmpdir) / ".hermes" / "config.yaml",
+                )
+            finally:
+                if prior_path is None:
+                    del os.environ["PATH"]
+                else:
+                    os.environ["PATH"] = prior_path
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(checks["orchestrator_backend"].status.value, "ready")
+        self.assertEqual(checks["codex_cli"].status.value, "ready")
+        self.assertEqual(checks["skill_install"].status.value, "ready")
+        self.assertIn("not required", checks["skill_install"].summary)
+        self.assertEqual(checks["hermes_cli"].status.value, "ready")
+        self.assertIn("not required", checks["hermes_cli"].summary)
 
     def test_release_metadata_errors_are_empty_for_repo(self) -> None:
         self.assertEqual(release_metadata_errors(ROOT), [])

@@ -17,7 +17,7 @@ Options:
   --ssh-devbox-root DIR  Export a standalone local Codex SSH/devbox prompt bundle at DIR.
   --copy                 Copy the Codex skill instead of creating a symlink.
   --force                Replace an existing deep-gvr Codex skill install in the target directory.
-  --skip-hermes-install  Do not also install the underlying Hermes skill/runtime surface.
+  --skip-hermes-install  Do not also install the Hermes skill/runtime surface. Use this for Codex-native backend machines.
   --help                 Show this help text.
 EOF
 }
@@ -245,11 +245,11 @@ if [[ -n "${ssh_devbox_root}" ]]; then
   echo "Exported the deep-gvr Codex SSH/devbox prompt bundle to ${ssh_devbox_root}."
 fi
 if [[ "${skip_hermes_install}" == "true" ]]; then
-  echo "Skipped underlying Hermes install at your request."
+  echo "Skipped Hermes install at your request."
 elif [[ "${hermes_install_state}" == "refreshed" ]]; then
-  echo "Underlying Hermes skill/runtime install was refreshed."
+  echo "Hermes skill/runtime install was refreshed."
 else
-  echo "Underlying Hermes skill/runtime install was already present and was left in place."
+  echo "Hermes skill/runtime install was already present and was left in place."
 fi
 echo "Next steps:"
 echo "  1. Review ${repo_root}/docs/codex-local.md for the Codex-local operator flow."
@@ -260,4 +260,4 @@ echo "  5. If you want recurring Codex automation templates as well, review ${re
 echo "  6. If you want the Codex review and visual-QA prompt kit as well, review ${repo_root}/docs/codex-review-qa.md."
 echo "  7. If you want the Codex subagent prompt kit as well, review ${repo_root}/docs/codex-subagents.md."
 echo "  8. If you want the Codex SSH/devbox remote-operator kit as well, review ${repo_root}/docs/codex-ssh-devbox.md."
-echo "  9. If you also use the shipped Hermes backend path directly, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config \${DEEP_GVR_HOME:-\${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml'."
+echo "  9. If you also use the Hermes /deep-gvr surface or the Hermes backend, keep using 'uv run python ${repo_root}/scripts/release_preflight.py --operator --config \${DEEP_GVR_HOME:-\${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml'."

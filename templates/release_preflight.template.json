@@ -1,7 +1,7 @@
 {
   "skill_name": "deep-gvr",
   "version": "0.1.0",
-  "generated_at": "2026-04-08T00:00:00Z",
+  "generated_at": "2026-04-20T00:00:00Z",
   "overall_status": "attention",
   "release_surface_ready": true,
   "operator_ready": false,
@@ -9,6 +9,19 @@
   "hermes_config_path": "~/.hermes/config.yaml",
   "publication_manifest_path": "release/agentskills.publication.json",
   "checks": [
+    {
+      "name": "runtime_config",
+      "status": "ready",
+      "summary": "The runtime config exists and validates against the repo schema.",
+      "details": {
+        "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
+        "orchestrator_backend": "hermes",
+        "tier2_backend": "local",
+        "default_adapter_family": "qec_decoder_benchmark",
+        "tier3_enabled": false
+      },
+      "guidance": "Keep the runtime config aligned with the checked-in YAML template."
+    },
     {
       "name": "skill_install",
       "status": "ready",
@@ -20,16 +33,22 @@
       "guidance": "Re-run bash scripts/install.sh if the installed bundle is stale."
     },
     {
-      "name": "runtime_config",
+      "name": "orchestrator_backend",
       "status": "ready",
-      "summary": "The runtime config exists and validates against the repo schema.",
+      "summary": "The runtime is configured to use the shipped Hermes orchestrator backend.",
       "details": {
-        "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
-        "tier2_backend": "local",
-        "default_adapter_family": "qec_decoder_benchmark",
-        "tier3_enabled": false
+        "orchestrator_backend": "hermes"
       },
-      "guidance": "Keep the runtime config aligned with the checked-in YAML template."
+      "guidance": "Use Hermes for the delegated execution path, or switch to codex_local when you want the native Codex backend."
+    },
+    {
+      "name": "codex_cli",
+      "status": "ready",
+      "summary": "Codex CLI is not required for the selected non-Codex backend.",
+      "details": {
+        "orchestrator_backend": "hermes"
+      },
+      "guidance": "Install Codex only if you also want the Codex-native backend or Codex-local operator surfaces on this machine."
     },
     {
       "name": "hermes_cli",
@@ -47,15 +66,24 @@
       "details": {
         "providers": {
           "openrouter": {
-            "roles": ["generator", "verifier"],
-            "required_env_vars": ["OPENROUTER_API_KEY"],
+            "roles": [
+              "generator",
+              "verifier"
+            ],
+            "required_env_vars": [
+              "OPENROUTER_API_KEY"
+            ],
             "present_env_vars": [],
-            "missing_env_vars": ["OPENROUTER_API_KEY"]
+            "missing_env_vars": [
+              "OPENROUTER_API_KEY"
+            ]
           }
         },
-        "blocked_providers": ["openrouter"]
+        "blocked_providers": [
+          "openrouter"
+        ]
       },
-      "guidance": "Export the expected provider API key before using the configured route on the selected orchestrator backend."
+      "guidance": "Export the expected provider API key before using the configured route on the selected backend."
     },
     {
       "name": "analysis_adapter_families",
@@ -67,15 +95,64 @@
         "ready_family_count": 1,
         "total_family_count": 9,
         "families": {
-          "symbolic_math": { "ready": false, "packages": { "sympy": false } },
-          "optimization": { "ready": false, "packages": { "scipy": false, "ortools": false } },
-          "dynamics": { "ready": false, "packages": { "scipy": false, "qutip": false } },
-          "qec_decoder_benchmark": { "ready": true, "packages": { "numpy": true, "stim": true, "pymatching": true } },
-          "mbqc_graph_state": { "ready": false, "packages": { "graphix": false } },
-          "photonic_linear_optics": { "ready": false, "packages": { "perceval": false } },
-          "neutral_atom_control": { "ready": false, "packages": { "pulser": false } },
-          "topological_qec_design": { "ready": false, "packages": { "tqec": false } },
-          "zx_rewrite_verification": { "ready": false, "packages": { "pyzx": false } }
+          "symbolic_math": {
+            "ready": false,
+            "packages": {
+              "sympy": false
+            }
+          },
+          "optimization": {
+            "ready": false,
+            "packages": {
+              "scipy": false,
+              "ortools": false
+            }
+          },
+          "dynamics": {
+            "ready": false,
+            "packages": {
+              "scipy": false,
+              "qutip": false
+            }
+          },
+          "qec_decoder_benchmark": {
+            "ready": true,
+            "packages": {
+              "numpy": true,
+              "stim": true,
+              "pymatching": true
+            }
+          },
+          "mbqc_graph_state": {
+            "ready": false,
+            "packages": {
+              "graphix": false
+            }
+          },
+          "photonic_linear_optics": {
+            "ready": false,
+            "packages": {
+              "perceval": false
+            }
+          },
+          "neutral_atom_control": {
+            "ready": false,
+            "packages": {
+              "pulser": false
+            }
+          },
+          "topological_qec_design": {
+            "ready": false,
+            "packages": {
+              "tqec": false
+            }
+          },
+          "zx_rewrite_verification": {
+            "ready": false,
+            "packages": {
+              "pyzx": false
+            }
+          }
         }
       },
       "guidance": "Install the missing OSS analysis libraries before using those adapter families in live operator runs."
@@ -95,12 +172,12 @@
     {
       "name": "tier3_transport",
       "status": "ready",
-      "summary": "Tier 3 is disabled in the runtime config, so Aristotle transport is not required for operator use.",
+      "summary": "Tier 3 is disabled in the runtime config, so the configured formal backend transport is not required for operator use.",
       "details": {
         "backend": "aristotle",
         "hermes_config_path": "~/.hermes/config.yaml"
       },
-      "guidance": "Run bash scripts/setup_mcp.sh --install --check before enabling Tier 3."
+      "guidance": "Verify the configured formal backend before enabling Tier 3 for operator use."
     },
     {
       "name": "publication_manifest",
@@ -110,6 +187,63 @@
         "manifest_path": "release/agentskills.publication.json"
       },
       "guidance": "Use the manifest as the publication bundle source for GitHub and agentskills.io release work."
+    },
+    {
+      "name": "codex_plugin_surface",
+      "status": "ready",
+      "summary": "The checked-in Codex plugin bundle and local marketplace metadata match the repo surface.",
+      "details": {
+        "manifest_path": "plugins/deep-gvr/.codex-plugin/plugin.json",
+        "marketplace_path": ".agents/plugins/marketplace.json"
+      },
+      "guidance": "Use bash scripts/install_codex.sh --plugin-root <dir> to export a standalone local plugin marketplace root when needed."
+    },
+    {
+      "name": "codex_automation_surface",
+      "status": "ready",
+      "summary": "The checked-in Codex automation catalog and templates match the repo surface.",
+      "details": {
+        "catalog_path": "codex_automations/catalog.json"
+      },
+      "guidance": "Use uv run python scripts/export_codex_automations.py --output-root <dir> or bash scripts/install_codex.sh --automation-root <dir> to export a reviewable automation bundle for Codex."
+    },
+    {
+      "name": "codex_review_qa_surface",
+      "status": "ready",
+      "summary": "The checked-in Codex review/QA catalog and prompt templates match the repo surface.",
+      "details": {
+        "catalog_path": "codex_review_qa/catalog.json"
+      },
+      "guidance": "Use uv run python scripts/export_codex_review_qa.py --output-root <dir> or bash scripts/install_codex.sh --review-qa-root <dir> to export a reviewable Codex review/QA bundle."
+    },
+    {
+      "name": "codex_subagent_surface",
+      "status": "ready",
+      "summary": "The checked-in Codex subagent catalog and prompt templates match the repo surface.",
+      "details": {
+        "catalog_path": "codex_subagents/catalog.json"
+      },
+      "guidance": "Use uv run python scripts/export_codex_subagents.py --output-root <dir> or bash scripts/install_codex.sh --subagents-root <dir> to export a reviewable Codex subagent bundle."
+    },
+    {
+      "name": "codex_ssh_devbox_surface",
+      "status": "ready",
+      "summary": "The checked-in Codex SSH/devbox catalog and prompt templates match the repo surface.",
+      "details": {
+        "catalog_path": "codex_ssh_devbox/catalog.json"
+      },
+      "guidance": "Use uv run python scripts/export_codex_ssh_devbox.py --output-root <dir> or bash scripts/install_codex.sh --ssh-devbox-root <dir> to export a reviewable remote-operator bundle for Codex."
+    },
+    {
+      "name": "release_metadata",
+      "status": "ready",
+      "summary": "The checked-in changelog and release tag policy match the current project version.",
+      "details": {
+        "version": "0.1.0",
+        "expected_tag": "v0.1.0",
+        "changelog_path": "CHANGELOG.md"
+      },
+      "guidance": "Render release notes directly from CHANGELOG.md when cutting a tagged release."
     },
     {
       "name": "auto_improve_policy",
