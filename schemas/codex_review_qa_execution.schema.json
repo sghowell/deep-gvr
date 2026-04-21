@@ -1,0 +1,52 @@
+{
+  "type": "object",
+  "required": [
+    "workflow_id",
+    "generated_at",
+    "repo_root",
+    "output_root",
+    "overall_status",
+    "summary",
+    "artifacts",
+    "steps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "workflow_id": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "repo_root": { "type": "string" },
+    "output_root": { "type": "string" },
+    "overall_status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+    "summary": { "type": "string" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "name", "kind", "path", "summary"],
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "type": "string" },
+          "path": { "type": "string" },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "summary", "details", "guidance"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["ready", "attention", "blocked"] },
+          "summary": { "type": "string" },
+          "details": { "type": "object" },
+          "guidance": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "workflow_id": "public_docs_visual_qa",
+  "generated_at": "2026-04-21T00:00:00Z",
+  "repo_root": "/Users/example/dev/deep-gvr",
+  "output_root": "/tmp/deep-gvr-codex-review-qa-evidence/public-docs",
+  "overall_status": "attention",
+  "summary": "The docs visual-QA evidence bundle is ready, but the built page manifest still needs live visual inspection for layout and typography defects.",
+  "artifacts": [
+    {
+      "artifact_id": "build_log",
+      "name": "MkDocs build log",
+      "kind": "text",
+      "path": "/tmp/deep-gvr-codex-review-qa-evidence/public-docs/build.log",
+      "summary": "Captured stdout and stderr from uv run mkdocs build --strict."
+    },
+    {
+      "artifact_id": "visual_targets",
+      "name": "Visual target manifest",
+      "kind": "json",
+      "path": "/tmp/deep-gvr-codex-review-qa-evidence/public-docs/visual_targets.json",
+      "summary": "Lists the public pages to inspect, their built HTML paths, and the image assets resolved from those pages."
+    }
+  ],
+  "steps": [
+    {
+      "name": "mkdocs_build",
+      "status": "ready",
+      "summary": "The public docs built successfully with uv run mkdocs build --strict.",
+      "details": {
+        "command": ["uv", "run", "mkdocs", "build", "--strict"],
+        "site_dir": "/Users/example/dev/deep-gvr/site",
+        "returncode": 0
+      },
+      "guidance": "If you need a live preview, serve the site directory locally and inspect the listed pages in Codex."
+    },
+    {
+      "name": "page_manifest",
+      "status": "attention",
+      "summary": "The built page and asset manifest is complete, but the public docs still require live visual review for layout issues.",
+      "details": {
+        "target_count": 7,
+        "missing_pages": [],
+        "missing_assets": []
+      },
+      "guidance": "Open the built HTML pages from the manifest in Codex and look for broken images, clipped text, and layout regressions."
+    }
+  ]
+}

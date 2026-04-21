@@ -16,6 +16,7 @@ from deep_gvr.contracts import (
     CodexAutomationCatalog,
     CodexRemoteBootstrapReport,
     CodexReviewQaCatalog,
+    CodexReviewQaExecutionReport,
     DeepGvrConfig,
     EvidenceRecord,
     FormalProofHandle,
@@ -188,6 +189,11 @@ class ContractRoundTripTests(unittest.TestCase):
         model = CodexReviewQaCatalog.from_dict(payload)
         self.assertEqual(model.to_dict(), payload)
 
+    def test_codex_review_qa_execution_round_trip(self) -> None:
+        payload = self._load_json("templates/codex_review_qa_execution.template.json")
+        model = CodexReviewQaExecutionReport.from_dict(payload)
+        self.assertEqual(model.to_dict(), payload)
+
     def test_codex_ssh_devbox_catalog_round_trip(self) -> None:
         payload = self._load_json("templates/codex_ssh_devbox_catalog.template.json")
         model = CodexReviewQaCatalog.from_dict(payload)
@@ -273,6 +279,11 @@ class ContractRoundTripTests(unittest.TestCase):
     def test_codex_review_qa_catalog_fixture_validates(self) -> None:
         schema = self._load_json("schemas/codex_review_qa_catalog.schema.json")
         fixture = self._load_json("templates/codex_review_qa_catalog.template.json")
+        validate(fixture, schema)
+
+    def test_codex_review_qa_execution_fixture_validates(self) -> None:
+        schema = self._load_json("schemas/codex_review_qa_execution.schema.json")
+        fixture = self._load_json("templates/codex_review_qa_execution.template.json")
         validate(fixture, schema)
 
     def test_codex_ssh_devbox_catalog_fixture_validates(self) -> None:

@@ -1270,6 +1270,78 @@ class CodexReviewQaCatalog:
 
 
 @dataclass(slots=True)
+class CodexReviewQaExecutionArtifact:
+    artifact_id: str
+    name: str
+    kind: str
+    path: str
+    summary: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexReviewQaExecutionArtifact":
+        return cls(
+            artifact_id=data["artifact_id"],
+            name=data["name"],
+            kind=data["kind"],
+            path=data["path"],
+            summary=data["summary"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexReviewQaExecutionStep:
+    name: str
+    status: ReleaseCheckStatus
+    summary: str
+    details: dict[str, Any] = field(default_factory=dict)
+    guidance: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexReviewQaExecutionStep":
+        return cls(
+            name=data["name"],
+            status=ReleaseCheckStatus(data["status"]),
+            summary=data["summary"],
+            details=dict(data.get("details", {})),
+            guidance=data.get("guidance", ""),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
+class CodexReviewQaExecutionReport:
+    workflow_id: str
+    generated_at: str
+    repo_root: str
+    output_root: str
+    overall_status: ReleaseCheckStatus
+    summary: str
+    artifacts: list[CodexReviewQaExecutionArtifact]
+    steps: list[CodexReviewQaExecutionStep]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodexReviewQaExecutionReport":
+        return cls(
+            workflow_id=data["workflow_id"],
+            generated_at=data["generated_at"],
+            repo_root=data["repo_root"],
+            output_root=data["output_root"],
+            overall_status=ReleaseCheckStatus(data["overall_status"]),
+            summary=data["summary"],
+            artifacts=[CodexReviewQaExecutionArtifact.from_dict(item) for item in data.get("artifacts", [])],
+            steps=[CodexReviewQaExecutionStep.from_dict(item) for item in data.get("steps", [])],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _serialize(self)
+
+
+@dataclass(slots=True)
 class ReleasePreflightReport:
     skill_name: str
     version: str
