@@ -90,6 +90,7 @@ uv run python scripts/codex_preflight.py --operator
 If you intend to rely on the Codex remote-validator path as part of the operator story, also run:
 
 ```bash
+uv run python scripts/codex_remote_bootstrap.py --json
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
 uv run python scripts/codex_ssh_devbox_run.py run --help
 ```

@@ -76,6 +76,7 @@ uv run python scripts/codex_preflight.py --operator
 Codex `ssh/devbox` remote-operator path:
 
 ```bash
+uv run python scripts/codex_remote_bootstrap.py --json
 uv run python scripts/codex_preflight.py --ssh-devbox --json
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
 ```

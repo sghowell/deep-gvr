@@ -8,6 +8,7 @@ The repo-owned boundary is now:
 
 - the repo ships a checked-in `ssh/devbox` prompt bundle
 - the repo ships export and install helpers for that bundle
+- the repo ships a rerunnable remote-bootstrap helper for the machine state behind that path
 - the repo ships a dedicated Codex preflight mode for the remote-validator path
 - the repo ships a runtime-backed remote execution helper over the native `codex_local` backend
 
@@ -25,6 +26,7 @@ The repo also ships two export paths plus a native remote execution helper:
 
 - `uv run python scripts/export_codex_ssh_devbox.py --output-root <dir>`
 - `bash scripts/install_codex.sh --ssh-devbox-root <dir>`
+- `uv run python scripts/codex_remote_bootstrap.py --json`
 - `uv run python scripts/codex_ssh_devbox_run.py run "<question>"`
 
 ## When to Use This Surface
@@ -59,6 +61,41 @@ Both commands produce an export bundle containing:
 - `catalog.json`
 - `prompts/remote_validator_run.md`
 - `prompts/remote_backend_triage.md`
+
+## Remote Bootstrap
+
+If the remote Codex machine already has the repo checkout but not the right local `deep-gvr` surface yet, use:
+
+```bash
+uv run python scripts/codex_remote_bootstrap.py --json
+```
+
+That helper is repo-owned and rerunnable. It does four concrete things on the remote machine:
+
+- creates or syncs the runtime config
+- normalizes `runtime.orchestrator_backend=codex_local`
+- installs the Codex-local skill surface and optionally exports a standalone plugin root
+- ensures the configured evidence directory exists, then runs the same `--ssh-devbox` preflight checks
+
+If you want the remote machine to start from another validated config:
+
+```bash
+uv run python scripts/codex_remote_bootstrap.py --config-source /path/to/config.yaml --json
+```
+
+If the remote machine already has a local runtime config and you want to replace it from that source:
+
+```bash
+uv run python scripts/codex_remote_bootstrap.py --config-source /path/to/config.yaml --force-config-sync --json
+```
+
+If you also want a standalone local plugin bundle on the remote machine:
+
+```bash
+uv run python scripts/codex_remote_bootstrap.py --plugin-root /tmp/deep-gvr-codex-plugin --json
+```
+
+This still does not provision the Codex SSH/devbox session itself. It only materializes the repo-owned machine state once you are already on the remote machine.
 
 ## Remote Preflight
 

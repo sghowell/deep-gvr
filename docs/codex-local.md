@@ -136,6 +136,12 @@ The Codex-local surface uses the same underlying runtime state as the Hermes and
 
 Codex-local review, subagent fanout, and visual-QA work can also be run from an SSH/devbox-connected Codex session when your validation stack lives on a remote machine. With `runtime.orchestrator_backend=codex_local`, that remote Codex session can also execute the native Codex backend from the stronger environment through `uv run python scripts/codex_ssh_devbox_run.py ...`. For the explicit remote-validator/operator path, use [Codex SSH Devbox](codex-ssh-devbox.md).
 
+If you want the repo to materialize the remote skill/config surface on that machine first, use:
+
+```bash
+uv run python scripts/codex_remote_bootstrap.py --json
+```
+
 ## Current Boundary
 
 Codex local now covers three supported cases:

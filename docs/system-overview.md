@@ -12,6 +12,7 @@
 - `uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa`
 - `uv run deep-gvr run "<question>"`
 - `uv run deep-gvr resume <session_id>`
+- `uv run python scripts/codex_remote_bootstrap.py --json`
 - `uv run python scripts/codex_ssh_devbox_run.py run "<question>"`
 - `uv run python scripts/codex_ssh_devbox_run.py resume <session_id>`
 - `uv run python scripts/codex_preflight.py --json`
@@ -76,6 +77,7 @@ The current public analysis surface includes:
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` surface are supported operator surfaces over that same runtime
 - the native `codex_local` backend now drives Generator, Verifier, and Reviser through separate Codex role executions instead of one opaque backend-summary call
 - the Codex `ssh/devbox` path now uses the same native `codex_local` backend instead of acting only as a prompt/export bundle
+- the repo now ships a rerunnable remote-bootstrap helper that materializes the remote config and Codex surface before the SSH/devbox preflight gate
 - the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth
 - deterministic benchmarks provide a stable regression floor

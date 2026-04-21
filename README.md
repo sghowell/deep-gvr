@@ -120,6 +120,7 @@ bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
 If you want to run the native Codex backend from a remote Codex SSH/devbox session:
 
 ```bash
+uv run python scripts/codex_remote_bootstrap.py --json
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
 uv run python scripts/codex_ssh_devbox_run.py run "Explain why the surface code is understood to have a threshold."
 ```
@@ -174,6 +175,7 @@ Release history:
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
 - The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline; that pack complements the native Codex backend and is not the backend itself.
 - The repo also ships an explicit Codex `ssh/devbox` bundle, readiness path, and runtime-backed remote execution helper over the native `codex_local` backend.
+- The repo also ships a rerunnable `scripts/codex_remote_bootstrap.py` helper that syncs remote config, installs the Codex surface, ensures the evidence directory exists, and then reports the remaining SSH/devbox readiness deltas.
 - Some advanced Hermes-native capabilities, especially true per-subagent routing and delegated MCP inheritance, still depend on upstream Hermes support.
 
 ## What It Is Not

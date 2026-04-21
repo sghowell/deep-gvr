@@ -23,6 +23,7 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `ParallaxEvidenceManifest`: Parallax-compatible manifest derived from the checkpoint, evidence log, and artifact references
 - `CapabilityProbeResult`: result of a readiness probe for a platform assumption
 - `ReleasePreflightReport`: structural and operator-readiness report for the shipped Hermes release surface
+- `CodexRemoteBootstrapReport`: rerunnable remote-machine bootstrap report for the Codex SSH/devbox path, including config-sync, install, and evidence-directory actions plus a nested remote preflight snapshot
 - `ReleasePublicationManifest`: checked-in publication bundle manifest for GitHub and agentskills.io release work
 - `AutoImproveEvaluationReport`: isolated benchmark-and-policy comparison used to justify whether `auto_improve` should remain disabled by default
 
@@ -38,6 +39,8 @@ This document defines the repo-level contract vocabulary shared across prompts, 
 - `domain/*.md`: concise domain context cards
 - `src/deep_gvr/cli.py`: repo-local command runtime for session start/resume
 - `scripts/release_preflight.py`: operator-facing release preflight helper for install, config, provider, backend, and Tier 3 readiness
+- `scripts/codex_remote_bootstrap.py`: operator-facing remote bootstrap helper for Codex SSH/devbox machines
+- `templates/codex_remote_bootstrap.template.json`: canonical sample remote-bootstrap report
 - `eval/known_problems.json`: deterministic release benchmark corpus, including core-science, OSS quantum analysis, and orchestration-required cases
 - `eval/results/baseline_results.json`: committed benchmark evidence for the current repo baseline
 - `eval/results/live/<run_id>/report.json`: live prompt-driven benchmark report
