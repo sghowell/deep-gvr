@@ -1,6 +1,6 @@
 # System Overview
 
-`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime, and the SSH/devbox path can now execute the native Codex backend from a remote machine.
+`deep-gvr` is a typed Python runtime with an explicit orchestrator-backend boundary plus Hermes and Codex-facing operator surfaces. Today the runtime supports both `hermes` and `codex_local` backends; Codex local, the packaged Codex plugin, Codex automation, Codex subagent, Codex review/QA, and Codex `ssh/devbox` remain supported surfaces over that same runtime. The native `codex_local` backend now executes Generator, Verifier, and Reviser as separate Codex role calls over the typed loop, and the SSH/devbox path can execute that same backend from a remote machine.
 
 ## Public Surface
 
@@ -74,6 +74,7 @@ The current public analysis surface includes:
 
 - The runtime selects an explicit orchestrator backend, with Hermes still the default backend in the checked-in config template
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` surface are supported operator surfaces over that same runtime
+- the native `codex_local` backend now drives Generator, Verifier, and Reviser through separate Codex role executions instead of one opaque backend-summary call
 - the Codex `ssh/devbox` path now uses the same native `codex_local` backend instead of acting only as a prompt/export bundle
 - the repo also ships a Codex review/QA prompt pack for pull-request review and public-docs visual QA
 - file-backed artifacts are the ground truth

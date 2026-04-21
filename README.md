@@ -40,6 +40,7 @@ That makes it useful for research-style questions where correctness matters more
 - A domain-agnostic adapter architecture with strong support for math, optimization, dynamics, and open-source quantum tooling
 - Supported local operator surfaces through Hermes, Codex local, the packaged Codex plugin bundle, a checked-in Codex automation pack, and `uv run deep-gvr`
 - An explicit orchestrator-backend boundary in the runtime, with both `hermes` and `codex_local` supported today
+- A native Codex backend path that runs Generator, Verifier, and Reviser as separate Codex role calls over the same typed loop
 
 ## A Typical Question
 
@@ -167,11 +168,11 @@ Release history:
 - Tier 2 and Tier 3 are selective. They are used when the claim warrants them, not on every run.
 - Local operation is the default path. Some optional backends depend on external tools or remote infrastructure.
 - The shipped Tier 3 backends are Aristotle and MathCode. OpenGauss remains an intended backend, but it is not part of the standard release path today.
-- Codex local can now act as a real orchestrator backend when `runtime.orchestrator_backend=codex_local` is selected.
+- Codex local can now act as a real orchestrator backend when `runtime.orchestrator_backend=codex_local` is selected, and that backend now runs Generator, Verifier, and Reviser as separate native Codex role calls over the typed loop.
 - Hermes remains the default backend in the checked-in config template, and the Hermes `/deep-gvr` surface still requires Hermes to be installed.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo also ships an exportable Codex review/QA prompt pack for pull-request review and browser-driven docs QA, including from SSH/devbox sessions when the Codex product supports them.
-- The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline.
+- The repo also ships an exportable Codex subagent prompt pack for safe multi-agent fanout and parallel surface review over the same runtime and git/worktree discipline; that pack complements the native Codex backend and is not the backend itself.
 - The repo also ships an explicit Codex `ssh/devbox` bundle, readiness path, and runtime-backed remote execution helper over the native `codex_local` backend.
 - Some advanced Hermes-native capabilities, especially true per-subagent routing and delegated MCP inheritance, still depend on upstream Hermes support.
 

@@ -2,7 +2,7 @@
 
 This page covers the shipped Codex subagent surface for `deep-gvr`.
 
-The subagent surface is intentionally narrow. The repo ships a reviewable prompt pack and export helpers for Codex multi-agent work; it does not claim to configure Codex's live subagent runtime, delegation settings, or app state for you.
+The subagent surface is intentionally narrow. The repo ships a reviewable prompt pack and export helpers for Codex multi-agent work; it does not claim to configure Codex's live subagent runtime, delegation settings, or app state for you. The prompt pack now sits on top of a real native Codex backend, but it is still an operator coordination layer rather than the backend implementation itself.
 
 ## What the Repo Ships
 
@@ -77,7 +77,7 @@ Both commands produce an export bundle containing:
 
 ## Relationship to Other Codex Surfaces
 
-- [Codex Local](codex-local.md) is the main interactive operator path.
+- [Codex Local](codex-local.md) is the main interactive operator path and now owns the native role-separated Codex backend.
 - [Codex Plugin](codex-plugin.md) packages that path as a reusable local bundle.
 - [Codex Automations](codex-automations.md) covers recurring scheduled work.
 - [Codex Review and Visual QA](codex-review-qa.md) covers single-agent review and browser-driven docs QA.
@@ -95,6 +95,6 @@ The shipped subagent pack is:
 
 It is not:
 
-- a new `deep-gvr` runtime backend
+- the `deep-gvr` runtime backend itself
 - a claim that the repo can manage Codex's internal subagent state
 - permission for subagents to bypass the repo's branch, validation, or merge discipline

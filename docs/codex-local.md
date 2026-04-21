@@ -2,7 +2,7 @@
 
 This guide covers the supported Codex-local surface for `deep-gvr`.
 
-Codex local is a first-class operator surface for the project, and `runtime.orchestrator_backend=codex_local` is now a real native backend option. The Codex-local path writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths, but it no longer needs Hermes underneath when the Codex backend is selected.
+Codex local is a first-class operator surface for the project, and `runtime.orchestrator_backend=codex_local` is now a real native backend option. The Codex-local path writes the same configs, checkpoints, evidence, and artifacts as the Hermes and direct CLI paths, but it no longer needs Hermes underneath when the Codex backend is selected. The native Codex backend now executes Generator, Verifier, and Reviser as separate Codex role calls over the same typed Tier 1 loop rather than routing the whole session through one opaque summary prompt.
 
 If you specifically want the packaged bundle surface, see [Codex Plugin](codex-plugin.md). If you want recurring scheduled work around the same checkout, see [Codex Automations](codex-automations.md). If you want a Codex-native review and visual-QA prompt pack, see [Codex Review and Visual QA](codex-review-qa.md). If you want a multi-agent operating pack, see [Codex Subagents](codex-subagents.md). If you want the explicit remote validator path, see [Codex SSH Devbox](codex-ssh-devbox.md).
 
@@ -112,6 +112,17 @@ Non-interactive CLI path:
 codex exec -C /path/to/deep-gvr "Use the deep-gvr skill to answer: Explain why the surface code is understood to have a threshold."
 ```
 
+## Native Role Backend
+
+When `runtime.orchestrator_backend=codex_local` is selected, `deep-gvr` now uses Codex local for the role loop itself:
+
+- Generator, Verifier, and Reviser run as separate native Codex calls
+- the checked-in role prompts under `prompts/` remain authoritative
+- checkpoints, evidence, branch escalation, Tier 2 analysis, and Tier 3 formal verification remain owned by the typed Python runtime
+- the transcript artifact records the individual Codex role calls instead of only one backend-summary exchange
+
+That is the main architectural difference between the current Codex backend and the earlier thin-wrapper phase.
+
 ## Shared Runtime State
 
 The Codex-local surface uses the same underlying runtime state as the Hermes and direct CLI paths. The runtime home is selected through `DEEP_GVR_HOME` when set and otherwise falls back to the compatibility path under `${HERMES_HOME:-~/.hermes}/deep-gvr`:
@@ -125,14 +136,16 @@ Codex-local review, subagent fanout, and visual-QA work can also be run from an 
 
 ## Current Boundary
 
-Codex local now covers two supported cases:
+Codex local now covers three supported cases:
 
 - Codex as a first-class operator surface over the same typed runtime
 - Codex as the selected native orchestrator backend when `runtime.orchestrator_backend=codex_local`
+- Codex as the same native backend when it is executed from a remote Codex SSH/devbox session
 
 That means:
 
 - `uv run deep-gvr run ...` can execute through Codex natively when the backend is set to `codex_local`
-- `uv run python scripts/codex_ssh_devbox_run.py run ...` can gate and execute the same native backend from a remote Codex SSH/devbox session
+- the Codex backend now runs Generator, Verifier, and Reviser as separate native role executions over the typed loop
+- `uv run python scripts/codex_ssh_devbox_run.py run ...` can gate and execute that same native backend from a remote Codex SSH/devbox session
 - Hermes is only required if you also want the Hermes `/deep-gvr` surface or the `hermes` backend
 - provider, Tier 2, and Tier 3 readiness still depend on the same operator environment
