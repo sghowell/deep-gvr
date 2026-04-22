@@ -71,3 +71,6 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [67-tier2-tier3-completion-roadmap.md](67-tier2-tier3-completion-roadmap.md)
 - [68-tier2-support-completion.md](68-tier2-support-completion.md)
 - [69-tier3-shipped-backends-hardening.md](69-tier3-shipped-backends-hardening.md)
+- [70-tier2-coverage-expansion.md](70-tier2-coverage-expansion.md)
+- [71-tier3-completion-and-opengauss-unblock.md](71-tier3-completion-and-opengauss-unblock.md)
+- [72-codex-hermes-backend-parity.md](72-codex-hermes-backend-parity.md)

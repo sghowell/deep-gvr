@@ -74,6 +74,10 @@ confirm CI/Docs, and delete the feature branch when it is no longer needed.
   `plans/63-codex-native-delegation-evaluation.md`.
 - Future queued slices now also exist as repo-local plan files:
   `plans/64-codex-cloud-surface.md`.
+- A later repo-wide completion bar now also requires explicit Codex-versus-
+  Hermes backend parity over the shared runtime surface. That work is tracked
+  separately in `plans/72-codex-hermes-backend-parity.md` rather than being
+  treated as part of the original phase-2 queue.
 
 ## Context and Orientation
 

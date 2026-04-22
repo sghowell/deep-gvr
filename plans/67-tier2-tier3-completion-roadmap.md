@@ -35,11 +35,15 @@ no longer needed.
 - [x] Add a factual support-matrix reference page that separates runtime
   implementation, deterministic coverage, execution-backend support, and
   reference-environment readiness.
-- [x] Queue the next two completion slices in repo-local plan files.
+- [x] Queue the next completion slices in repo-local plan files.
 - [x] Execute `plans/68-tier2-support-completion.md`.
+- [ ] Execute `plans/70-tier2-coverage-expansion.md`.
 - [ ] Execute `plans/69-tier3-shipped-backends-hardening.md`.
+- [ ] Execute `plans/71-tier3-completion-and-opengauss-unblock.md`.
+- [ ] Execute `plans/72-codex-hermes-backend-parity.md`.
 - [ ] Reassess `plans/66-openai-native-backend.md` only after the shared Tier 2
-  and Tier 3 completion bar is clearer.
+  and Tier 3 completion bar and the Codex-versus-Hermes parity bar are
+  clearer.
 
 ## Surprises & Discoveries
 
@@ -58,6 +62,11 @@ no longer needed.
 - OpenGauss remains honestly blocked external. It should stay out of the
   completion bar for shipped Tier 3 support until upstream installability
   recovers.
+- The stronger completion bar is now broader than this roadmap originally
+  assumed: Tier 2 needs real coverage expansion beyond plan 68, Tier 3 needs an
+  explicit reconnect between shipped-backend hardening and the OpenGauss target,
+  and Codex backend completion now depends on proving parity against the
+  shipped Hermes backend rather than only finishing surface-level Codex slices.
 
 ## Decision Log
 
@@ -71,6 +80,9 @@ no longer needed.
   statement and a validated operator path that matches that statement.
 - Decision: treat Aristotle and MathCode as the shipped Tier 3 completion scope,
   while keeping OpenGauss separately blocked external.
+- Decision: the overall backend-completion bar now also includes Codex-versus-
+  Hermes parity after the shared Tier 2 and Tier 3 work is materially further
+  along.
 
 ## Outcomes & Retrospective
 
@@ -82,7 +94,10 @@ no longer needed.
   architecture docs, probes, and plans.
 - The Tier 2 follow-on is now executed as `plans/68-tier2-support-completion.md`.
 - The next follow-on slices now exist as repo-local plan files:
-  `plans/69-tier3-shipped-backends-hardening.md`.
+  `plans/69-tier3-shipped-backends-hardening.md`,
+  `plans/70-tier2-coverage-expansion.md`,
+  `plans/71-tier3-completion-and-opengauss-unblock.md`, and
+  `plans/72-codex-hermes-backend-parity.md`.
 
 ## Context and Orientation
 
@@ -101,13 +116,16 @@ no longer needed.
 
 ## Plan of Work
 
-1. Make the Tier 2 support boundary explicit and operator-ready.
+1. Make Tier 2 not only explicit but materially broader in real operator
+   coverage.
 2. Harden the shipped Tier 3 backends, Aristotle and MathCode, around live
    validation, operator guidance, and backend-boundary honesty.
-3. Keep OpenGauss clearly blocked external until there is a working upstream
-   install path again.
-4. Return to backend expansion only after the shared Tier 2 and Tier 3 support
-   picture is stronger.
+3. Reconnect Tier 3 hardening to the OpenGauss architecture target with a
+   current unblock decision.
+4. Prove Codex-versus-Hermes backend parity on the full repo-owned backend
+   contract, not only on Tier 2 and Tier 3.
+5. Return to backend expansion only after the shared Tier 2 / Tier 3 support
+   picture and the Codex parity bar are stronger.
 
 ## Concrete Steps
 
@@ -117,14 +135,28 @@ no longer needed.
    - improve operator installability and release-preflight truth
    - validate the shipped Tier 2 families through the runtime, not only unit
      adapter tests
-2. Execute `plans/69-tier3-shipped-backends-hardening.md`:
+2. Execute `plans/70-tier2-coverage-expansion.md`:
+   - materially raise real Tier 2 operator coverage beyond the current `1/9`
+     ready-family reference baseline
+   - decide deliberately whether any families beyond QEC should gain non-local
+     backend support
+   - add stronger backend-matrix validation where shared support claims apply
+3. Execute `plans/69-tier3-shipped-backends-hardening.md`:
    - harden Aristotle and MathCode operator flows
    - strengthen repeated live validation and artifact truth
    - make the Aristotle vs MathCode lifecycle difference explicit in docs and
      preflight
-3. Reassess `plans/66-openai-native-backend.md` only after the support matrix
-   and the two follow-on slices give a better answer to what "fully supported"
-   actually means.
+4. Execute `plans/71-tier3-completion-and-opengauss-unblock.md`:
+   - reconnect shipped Tier 3 hardening with the still-open OpenGauss target
+   - capture a current, evidence-backed integration or blocked-external answer
+5. Execute `plans/72-codex-hermes-backend-parity.md`:
+   - prove that `codex_local` is at least as capable as the shipped `hermes`
+     backend across repo-owned functionality
+   - retain full Hermes support while closing any remaining Codex-behind-Hermes
+     gaps
+6. Reassess `plans/66-openai-native-backend.md` only after the support matrix,
+   Tier 3 completion work, and Codex parity slice give a better answer to what
+   "fully supported" actually means.
 
 ## Validation and Acceptance
 
