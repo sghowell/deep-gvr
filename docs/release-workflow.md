@@ -108,9 +108,21 @@ This verifies the installed skill bundle plus the live runtime path:
 - Codex CLI and Codex-local skill availability
 - config validity
 - provider readiness
-- selected Tier 2 backend readiness
+- selected Tier 2 adapter-family readiness
+- selected Tier 2 backend readiness for the configured default family
 - native remote Codex execution availability when `runtime.orchestrator_backend=codex_local`
 - selected Tier 3 backend readiness
+
+Important Tier 2 boundary:
+
+- only `qec_decoder_benchmark` currently supports non-local Tier 2 backend
+  dispatch through `modal` or `ssh`
+- the other shipped Tier 2 families are local-only today and should keep
+  `verification.tier2.default_backend: local`
+
+Use [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) when you
+change the default adapter family or want to validate a non-default operator
+environment.
 
 ## 5. Enable Tier 3 if Needed
 

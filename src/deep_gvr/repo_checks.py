@@ -75,7 +75,6 @@ REQUIRED_PROMPT_MARKERS = {
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
-    "tier2-support-completion": "68-tier2-support-completion.md",
     "tier3-shipped-backends-hardening": "69-tier3-shipped-backends-hardening.md",
     "openai-native-backend": "66-openai-native-backend.md",
 }

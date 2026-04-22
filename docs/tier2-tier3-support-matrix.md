@@ -83,6 +83,9 @@ For Tier 2, complete support means:
 
 - every shipped family has an explicit execution-backend support statement
 - install and preflight surfaces report missing dependencies precisely
+- release preflight blocks unsupported backend selections for the configured
+  default adapter family instead of pretending every family shares the QEC
+  dispatch contract
 - deterministic coverage is backed by runtime-facing validation, not only unit
   adapter tests
 - the shared Tier 2 surface is validated under the shipped orchestrator

@@ -25,10 +25,10 @@ for Tier 2 stays clear.
 
 ## Progress
 
-- [ ] Define an explicit support statement for every shipped Tier 2 family.
-- [ ] Improve preflight and operator guidance for missing optional dependencies.
-- [ ] Add stronger runtime-level validation for shipped Tier 2 families.
-- [ ] Align docs, contracts, and release surfaces with the Tier 2 support
+- [x] Define an explicit support statement for every shipped Tier 2 family.
+- [x] Improve preflight and operator guidance for missing optional dependencies.
+- [x] Add stronger runtime-level validation for shipped Tier 2 families.
+- [x] Align docs, contracts, and release surfaces with the Tier 2 support
   boundary.
 
 ## Surprises & Discoveries
@@ -52,6 +52,14 @@ for Tier 2 stays clear.
 - This plan exists so the remaining Tier 2 support work is owned by a concrete
   repo slice instead of being left as an implied follow-up from the support
   matrix.
+- Tier 2 support statements now live in one code-owned support matrix instead of
+  being duplicated loosely across probes, release preflight, evaluation
+  subsets, and docs.
+- Release preflight now distinguishes unsupported backend selection for the
+  configured default family from missing package readiness for that family.
+- The evaluation harness now exposes a dedicated `tier2-support` subset so
+  runtime-facing Tier 2 coverage is explicit rather than implicit inside the
+  larger benchmark suite.
 
 ## Non-Goals
 

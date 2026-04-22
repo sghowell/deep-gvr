@@ -62,7 +62,8 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: how should `local`, `modal`, and `ssh` be selected and validated?
 - Implemented baseline: the `qec_decoder_benchmark` analysis family now executes real Stim/PyMatching runs through local, Modal, and SSH backends while preserving the same normalized result contract.
-- Current probe behavior: `scripts/run_capability_probes.py` reports per-environment readiness for all three backends, including local dependency checks, Modal CLI plus stub availability, and SSH/`scp` plus runtime-config readiness.
+- Current support boundary: backend dispatch is a Tier 2 support statement, not a blanket promise across every Tier 2 family. Today only `qec_decoder_benchmark` ships explicit non-local backend support; the other shipped Tier 2 families remain local-only.
+- Current probe behavior: `scripts/run_capability_probes.py` reports per-environment readiness for the QEC dispatch path across all three backends, including local dependency checks, Modal CLI plus stub availability, and SSH/`scp` plus runtime-config readiness.
 - Operator path: use `scripts/run_capability_probes.py --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` after configuring any remote backend so the probe details reflect the actual Modal and SSH settings you intend to use.
 - Preferred outcome: local smoke tests plus environment-sensitive Modal and SSH readiness details.
 
@@ -70,7 +71,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: are the OSS analysis families installed locally and ready for operator use?
 - Implemented baseline: `scripts/run_capability_probes.py` now reports `analysis_adapter_families` across symbolic math, optimization, dynamics, QEC benchmarking, MBQC/Graphix, Perceval photonic, Pulser neutral-atom, tqec, and PyZX families.
-- Current probe behavior: the probe reports `ready` only when every supported family has its expected local Python dependency set. Missing packages produce a structured family-by-family readiness map instead of silent non-support.
+- Current probe behavior: the probe reports `ready` only when every supported family has its expected local Python dependency set. Missing packages produce a structured family-by-family readiness map instead of silent non-support, and each family now also records its explicit supported execution backends plus benchmark-case coverage.
 - Operator path: `scripts/release_preflight.py --operator` now surfaces the same readiness as an `analysis_adapter_families` check, blocking only when the configured default adapter family itself is unavailable and otherwise returning attention-level guidance for the missing optional families.
 - Preferred outcome: operators can see exactly which OSS analysis families are usable before requesting those analyses live.
 

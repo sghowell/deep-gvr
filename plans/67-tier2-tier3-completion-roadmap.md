@@ -36,7 +36,7 @@ no longer needed.
   implementation, deterministic coverage, execution-backend support, and
   reference-environment readiness.
 - [x] Queue the next two completion slices in repo-local plan files.
-- [ ] Execute `plans/68-tier2-support-completion.md`.
+- [x] Execute `plans/68-tier2-support-completion.md`.
 - [ ] Execute `plans/69-tier3-shipped-backends-hardening.md`.
 - [ ] Reassess `plans/66-openai-native-backend.md` only after the shared Tier 2
   and Tier 3 completion bar is clearer.
@@ -80,8 +80,8 @@ no longer needed.
 - The public technical-reference surface now has a support matrix page that
   makes the shipped boundary explicit instead of leaving it implied across
   architecture docs, probes, and plans.
+- The Tier 2 follow-on is now executed as `plans/68-tier2-support-completion.md`.
 - The next follow-on slices now exist as repo-local plan files:
-  `plans/68-tier2-support-completion.md` and
   `plans/69-tier3-shipped-backends-hardening.md`.
 
 ## Context and Orientation

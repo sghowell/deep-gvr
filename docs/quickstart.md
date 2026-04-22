@@ -81,6 +81,16 @@ uv run python scripts/codex_preflight.py --ssh-devbox --json
 uv run python scripts/codex_preflight.py --ssh-devbox --operator
 ```
 
+Important Tier 2 boundary:
+
+- only `qec_decoder_benchmark` currently supports `modal` or `ssh` Tier 2
+  execution
+- the other shipped Tier 2 families are local-only today and should keep
+  `verification.tier2.default_backend: local`
+
+Use [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) before
+changing the default adapter family or Tier 2 backend.
+
 If you intend to use Aristotle as a Tier 3 backend:
 
 ```bash
