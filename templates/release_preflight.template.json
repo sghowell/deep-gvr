@@ -87,75 +87,161 @@
     },
     {
       "name": "analysis_adapter_families",
-      "status": "attention",
-      "summary": "One or more OSS analysis adapter families are missing local Python dependencies.",
+      "status": "ready",
+      "summary": "All configured OSS analysis adapter families have their local Python dependencies available.",
       "details": {
         "default_adapter_family": "qec_decoder_benchmark",
         "default_adapter_family_ready": true,
-        "ready_family_count": 1,
+        "default_required_extras": [],
+        "default_recommended_sync_command": "uv sync",
+        "default_supported_backends": [
+          "local",
+          "modal",
+          "ssh"
+        ],
+        "optional_unready_families": [],
+        "ready_family_count": 9,
         "total_family_count": 9,
+        "portfolio_required_extras": [
+          "analysis",
+          "quantum_oss"
+        ],
+        "full_portfolio_sync_command": "uv sync --all-extras",
         "families": {
           "symbolic_math": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "analysis"
+            ],
+            "recommended_sync_command": "uv sync --extra analysis",
             "packages": {
-              "sympy": false
-            }
+              "sympy": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "optimization": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "analysis"
+            ],
+            "recommended_sync_command": "uv sync --extra analysis",
             "packages": {
-              "scipy": false,
-              "ortools": false
-            }
+              "scipy": true,
+              "ortools": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "dynamics": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "analysis",
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra analysis --extra quantum_oss",
             "packages": {
-              "scipy": false,
-              "qutip": false
-            }
+              "scipy": true,
+              "qutip": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "qec_decoder_benchmark": {
             "ready": true,
+            "required_extras": [],
+            "recommended_sync_command": "uv sync",
             "packages": {
               "numpy": true,
               "stim": true,
               "pymatching": true
-            }
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local",
+              "modal",
+              "ssh"
+            ]
           },
           "mbqc_graph_state": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra quantum_oss",
             "packages": {
-              "graphix": false
-            }
+              "graphix": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "photonic_linear_optics": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra quantum_oss",
             "packages": {
-              "perceval": false
-            }
+              "perceval": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "neutral_atom_control": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra quantum_oss",
             "packages": {
-              "pulser": false
-            }
+              "pulser": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "topological_qec_design": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra quantum_oss",
             "packages": {
-              "tqec": false
-            }
+              "tqec": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           },
           "zx_rewrite_verification": {
-            "ready": false,
+            "ready": true,
+            "required_extras": [
+              "quantum_oss"
+            ],
+            "recommended_sync_command": "uv sync --extra quantum_oss",
             "packages": {
-              "pyzx": false
-            }
+              "pyzx": true
+            },
+            "missing_packages": [],
+            "supported_backends": [
+              "local"
+            ]
           }
         }
       },
-      "guidance": "Install the missing OSS analysis libraries before using those adapter families in live operator runs."
+      "guidance": "The full shipped Tier 2 portfolio is available in this environment. Use 'uv sync --all-extras' to reproduce the validated install surface after environment changes."
     },
     {
       "name": "tier2_backend",

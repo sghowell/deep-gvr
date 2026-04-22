@@ -108,8 +108,13 @@ class ProbeTests(unittest.TestCase):
         self.assertFalse(probe.details["families"]["mbqc_graph_state"]["ready"])
         self.assertFalse(probe.details["families"]["zx_rewrite_verification"]["ready"])
         self.assertEqual(probe.details["families"]["mbqc_graph_state"]["supported_backends"], ["local"])
+        self.assertEqual(probe.details["families"]["mbqc_graph_state"]["required_extras"], ["quantum_oss"])
+        self.assertEqual(probe.details["families"]["dynamics"]["required_extras"], ["analysis", "quantum_oss"])
+        self.assertEqual(probe.details["families"]["dynamics"]["recommended_sync_command"], "uv sync --extra analysis --extra quantum_oss")
         self.assertEqual(probe.details["families"]["qec_decoder_benchmark"]["supported_backends"], ["local", "modal", "ssh"])
         self.assertEqual(probe.details["families"]["mbqc_graph_state"]["missing_packages"], ["graphix"])
+        self.assertEqual(probe.details["portfolio_required_extras"], ["analysis", "quantum_oss"])
+        self.assertEqual(probe.details["full_portfolio_sync_command"], "uv sync --all-extras")
         self.assertEqual(probe.details["ready_family_count"], 7)
 
     def test_mathcode_transport_probe_reports_ready_for_complete_local_checkout(self) -> None:

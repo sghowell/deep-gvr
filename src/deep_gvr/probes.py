@@ -8,7 +8,12 @@ from typing import Any
 
 from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
 from .formal import inspect_aristotle_transport, inspect_mathcode_transport, inspect_opengauss_transport
-from .tier2_support import backend_dispatch_supported_families, tier2_family_support_matrix
+from .tier2_support import (
+    backend_dispatch_supported_families,
+    tier2_family_support_matrix,
+    tier2_full_portfolio_sync_command,
+    tier2_portfolio_required_extras,
+)
 
 
 def probe_model_routing(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
@@ -222,6 +227,8 @@ def probe_analysis_adapter_families() -> CapabilityProbeResult:
         family_readiness[support.adapter_family] = {
             "ready": family_ready,
             "required_packages": list(support.required_packages),
+            "required_extras": list(support.required_extras),
+            "recommended_sync_command": support.recommended_sync_command(),
             "packages": package_state,
             "missing_packages": missing_packages,
             "supported_backends": [backend.value for backend in support.supported_backends],
@@ -242,6 +249,8 @@ def probe_analysis_adapter_families() -> CapabilityProbeResult:
         details={
             "ready_family_count": ready_families,
             "total_family_count": len(support_matrix),
+            "portfolio_required_extras": list(tier2_portfolio_required_extras()),
+            "full_portfolio_sync_command": tier2_full_portfolio_sync_command(),
             "families": family_readiness,
         },
     )

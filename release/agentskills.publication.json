@@ -32,8 +32,10 @@
     "uv run python scripts/codex_ssh_devbox_run.py resume <session_id>"
   ],
   "operator_validation_commands": [
+    "uv sync --all-extras",
     "bash scripts/install.sh",
     "bash scripts/install_codex.sh",
+    "uv run python eval/run_eval.py --subset tier2-support --output /tmp/deep-gvr-tier2-support.json",
     "uv run python scripts/codex_remote_bootstrap.py --json",
     "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
     "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",

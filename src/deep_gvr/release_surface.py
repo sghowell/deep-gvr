@@ -34,7 +34,7 @@ from .probes import (
 )
 from .runtime_config import default_config_path, load_runtime_config
 from .runtime_paths import runtime_home_description
-from .tier2_support import tier2_family_support
+from .tier2_support import tier2_family_support, tier2_full_portfolio_sync_command
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
 _CHANGELOG_PATH = Path("CHANGELOG.md")
@@ -153,8 +153,10 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "uv run python scripts/codex_ssh_devbox_run.py resume <session_id>",
         ],
         operator_validation_commands=[
+            "uv sync --all-extras",
             "bash scripts/install.sh",
             "bash scripts/install_codex.sh",
+            "uv run python eval/run_eval.py --subset tier2-support --output /tmp/deep-gvr-tier2-support.json",
             "uv run python scripts/codex_remote_bootstrap.py --json",
             "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",
             "uv run python scripts/export_codex_review_qa.py --output-root /tmp/deep-gvr-codex-review-qa --force",
@@ -978,6 +980,13 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
     family_details = dict(probe.details.get("families", {}))
     default_family_entry = dict(family_details.get(default_family, {}))
     default_family_ready = bool(default_family_entry.get("ready"))
+    default_required_extras = [str(item) for item in default_family_entry.get("required_extras", [])]
+    default_recommended_sync_command = str(
+        default_family_entry.get("recommended_sync_command", "uv sync")
+    )
+    full_portfolio_sync_command = str(
+        probe.details.get("full_portfolio_sync_command", tier2_full_portfolio_sync_command())
+    )
     optional_unready_families = sorted(
         family
         for family, details in family_details.items()
@@ -990,9 +999,13 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
         else "One or more OSS analysis adapter families are missing local Python dependencies."
     )
     guidance = (
-        "Install the missing OSS analysis libraries before using those adapter families in live operator runs."
+        "Install the missing OSS analysis libraries before using those adapter families in live operator runs. "
+        f"Use {full_portfolio_sync_command!r} when you want the full shipped Tier 2 portfolio available."
         if status is ReleaseCheckStatus.ATTENTION
-        else "Rerun release preflight after changing the local Python environment or adapter-family defaults."
+        else (
+            "The full shipped Tier 2 portfolio is available in this environment. "
+            f"Use {full_portfolio_sync_command!r} to reproduce the validated install surface after environment changes."
+        )
     )
     if not default_family_ready:
         missing_packages = default_family_entry.get("missing_packages", [])
@@ -1001,10 +1014,14 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
             f"The configured default analysis adapter family ({default_family}) is not ready in this environment."
         )
         guidance = (
-            "Install the missing dependencies for the configured default adapter family or change the default to a ready family."
+            "Install the missing dependencies for the configured default adapter family or change the default to a ready family. "
+            f"Recommended sync for {default_family}: {default_recommended_sync_command!r}."
         )
         if missing_packages:
             guidance += f" Missing packages: {', '.join(str(item) for item in missing_packages)}."
+        if default_required_extras:
+            guidance += f" Required extras: {', '.join(default_required_extras)}."
+        guidance += f" Full-portfolio path: {full_portfolio_sync_command!r}."
     elif optional_unready_families:
         summary = (
             f"The configured default analysis adapter family ({default_family}) is ready, but some optional Tier 2 families "
@@ -1012,7 +1029,8 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
         )
         guidance = (
             "Install the missing dependencies for any optional families you plan to use in live runs. "
-            f"Currently unavailable optional families: {', '.join(optional_unready_families)}."
+            f"Currently unavailable optional families: {', '.join(optional_unready_families)}. "
+            f"Use {full_portfolio_sync_command!r} to materialize the full shipped Tier 2 portfolio."
         )
     return ReleaseCheck(
         name="analysis_adapter_families",
@@ -1021,6 +1039,8 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
         details={
             "default_adapter_family": default_family,
             "default_adapter_family_ready": default_family_ready,
+            "default_required_extras": default_required_extras,
+            "default_recommended_sync_command": default_recommended_sync_command,
             "default_supported_backends": default_family_entry.get("supported_backends", []),
             "optional_unready_families": optional_unready_families,
             **probe.details,

@@ -69,27 +69,39 @@ class ReleaseScriptTests(unittest.TestCase):
                         "qec_decoder_benchmark": {
                             "ready": True,
                             "supported_backends": ["local", "modal", "ssh"],
+                            "required_extras": [],
+                            "recommended_sync_command": "uv sync",
                             "missing_packages": [],
                         },
                         "symbolic_math": {
                             "ready": True,
                             "supported_backends": ["local"],
+                            "required_extras": ["analysis"],
+                            "recommended_sync_command": "uv sync --extra analysis",
                             "missing_packages": [],
                         },
                         "zx_rewrite_verification": {
                             "ready": False,
                             "supported_backends": ["local"],
+                            "required_extras": ["quantum_oss"],
+                            "recommended_sync_command": "uv sync --extra quantum_oss",
                             "missing_packages": ["pyzx"],
                         },
                     },
+                    "portfolio_required_extras": ["analysis", "quantum_oss"],
+                    "full_portfolio_sync_command": "uv sync --all-extras",
                 },
             )
             check = _check_analysis_adapter_families(config)
 
         self.assertEqual(check.status.value, "attention")
         self.assertEqual(check.details["default_supported_backends"], ["local", "modal", "ssh"])
+        self.assertEqual(check.details["default_required_extras"], [])
+        self.assertEqual(check.details["default_recommended_sync_command"], "uv sync")
         self.assertEqual(check.details["optional_unready_families"], ["zx_rewrite_verification"])
+        self.assertEqual(check.details["full_portfolio_sync_command"], "uv sync --all-extras")
         self.assertIn("zx_rewrite_verification", check.guidance)
+        self.assertIn("uv sync --all-extras", check.guidance)
 
     def test_check_analysis_adapter_families_blocks_missing_default_family_with_package_list(self) -> None:
         config = DeepGvrConfig()
@@ -108,15 +120,21 @@ class ReleaseScriptTests(unittest.TestCase):
                         "symbolic_math": {
                             "ready": False,
                             "supported_backends": ["local"],
+                            "required_extras": ["analysis"],
+                            "recommended_sync_command": "uv sync --extra analysis",
                             "missing_packages": ["sympy"],
                         },
                     },
+                    "portfolio_required_extras": ["analysis", "quantum_oss"],
+                    "full_portfolio_sync_command": "uv sync --all-extras",
                 },
             )
             check = _check_analysis_adapter_families(config)
 
         self.assertEqual(check.status.value, "blocked")
         self.assertIn("sympy", check.guidance)
+        self.assertIn("uv sync --extra analysis", check.guidance)
+        self.assertIn("uv sync --all-extras", check.guidance)
 
     def test_install_script_creates_indexable_symlink_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
