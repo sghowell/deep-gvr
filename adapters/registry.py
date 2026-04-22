@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from deep_gvr.contracts import Tier2Config
+from deep_gvr.tier2_support import supported_tier2_families
 
 from adapters.dynamics_adapter import DynamicsAdapter
 from adapters.mbqc_graph_state_adapter import MbqcGraphStateAdapter
@@ -32,14 +33,4 @@ def build_analysis_adapter(adapter_family: str, *, tier2_config: Tier2Config | N
 
 
 def supported_analysis_families() -> list[str]:
-    return [
-        "symbolic_math",
-        "optimization",
-        "dynamics",
-        "qec_decoder_benchmark",
-        "mbqc_graph_state",
-        "photonic_linear_optics",
-        "neutral_atom_control",
-        "topological_qec_design",
-        "zx_rewrite_verification",
-    ]
+    return supported_tier2_families()

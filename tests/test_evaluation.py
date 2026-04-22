@@ -301,6 +301,7 @@ class EvaluationTests(unittest.TestCase):
         subsets = available_benchmark_subsets()
         self.assertIn("core-science", subsets)
         self.assertIn("photonic-mbqc", subsets)
+        self.assertIn("tier2-support", subsets)
         self.assertIn("quantum-oss", subsets)
         self.assertIn("analysis-full", subsets)
         self.assertIn("live-analytical-breadth", subsets)
@@ -322,6 +323,23 @@ class EvaluationTests(unittest.TestCase):
                 "mbqc-verified-graphix-pattern",
                 "photonic-verified-basic-state",
                 "neutral-atom-verified-register",
+            ),
+        )
+        self.assertEqual(
+            subsets["tier2-support"],
+            (
+                "symbolic-verified-equivalence",
+                "symbolic-rejected-derivative",
+                "optimization-verified-linear-program",
+                "optimization-rejected-assignment",
+                "dynamics-verified-decay",
+                "simulation-verified-distance5",
+                "simulation-rejected-distance7",
+                "mbqc-verified-graphix-pattern",
+                "photonic-verified-basic-state",
+                "neutral-atom-verified-register",
+                "tqec-verified-gallery-block-graph",
+                "zx-verified-qasm-rewrite",
             ),
         )
         self.assertIn("zx-verified-qasm-rewrite", subsets["quantum-oss"])
@@ -367,6 +385,16 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(
             [item.id for item in cases],
             list(available_benchmark_subsets()["core-science"]),
+        )
+
+    def test_load_benchmark_suite_filters_tier2_support_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="tier2-support",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["tier2-support"]),
         )
 
     def test_load_benchmark_suite_filters_escalation_breadth_subset(self) -> None:
@@ -487,6 +515,17 @@ class EvaluationTests(unittest.TestCase):
         self.assertTrue(case.passed)
         self.assertEqual(case.actual_verdict, VerificationVerdict.VERIFIED)
         self.assertEqual(case.actual_tiers, [1, 3])
+
+    def test_run_benchmark_suite_matches_expected_baseline_for_tier2_support_subset(self) -> None:
+        report = run_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+            subset="tier2-support",
+        )
+
+        self.assertEqual(report.summary.total_cases, len(available_benchmark_subsets()["tier2-support"]))
+        self.assertEqual(report.summary.failed_cases, 0)
+        self.assertEqual(report.summary.false_positive_rate, 0.0)
 
     def test_eval_cli_writes_results_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

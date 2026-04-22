@@ -11,12 +11,14 @@ from unittest.mock import patch
 import yaml
 
 from tests import _path_setup  # noqa: F401
-from deep_gvr.contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
+from deep_gvr.contracts import Backend, CapabilityProbeResult, DeepGvrConfig, ProbeStatus
 from deep_gvr.codex_automations import codex_automation_surface_errors
 from deep_gvr.codex_review_qa import codex_review_qa_surface_errors
 from deep_gvr.codex_subagents import codex_subagent_surface_errors
 from deep_gvr.codex_ssh_devbox import codex_ssh_devbox_surface_errors
 from deep_gvr.release_surface import (
+    _check_analysis_adapter_families,
+    _check_tier2_backend,
     codex_plugin_surface_errors,
     collect_codex_preflight,
     collect_release_preflight,
@@ -31,6 +33,91 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseScriptTests(unittest.TestCase):
+    def test_check_tier2_backend_blocks_unsupported_backend_for_local_only_family(self) -> None:
+        config = DeepGvrConfig()
+        config.verification.tier2.default_adapter_family = "symbolic_math"
+        config.verification.tier2.default_backend = Backend.MODAL
+
+        check = _check_tier2_backend(config)
+
+        self.assertEqual(check.status.value, "blocked")
+        self.assertIn("does not support", check.summary)
+        self.assertEqual(check.details["supported_backends"], ["local"])
+
+    def test_check_tier2_backend_accepts_local_backend_for_local_only_family(self) -> None:
+        config = DeepGvrConfig()
+        config.verification.tier2.default_adapter_family = "symbolic_math"
+
+        check = _check_tier2_backend(config)
+
+        self.assertEqual(check.status.value, "ready")
+        self.assertEqual(check.details["supported_backends"], ["local"])
+
+    def test_check_analysis_adapter_families_reports_optional_unready_families_precisely(self) -> None:
+        config = DeepGvrConfig()
+        with patch("deep_gvr.release_surface.probe_analysis_adapter_families") as probe_mock:
+            probe_mock.return_value = CapabilityProbeResult(
+                name="analysis_adapter_families",
+                status=ProbeStatus.FALLBACK,
+                summary="One or more OSS analysis adapter families are configured structurally but missing local Python dependencies.",
+                preferred_outcome="Expose the full OSS analysis portfolio through explicit local adapter readiness.",
+                fallback="Install the missing OSS libraries or restrict runs to the ready adapter families.",
+                details={
+                    "ready_family_count": 8,
+                    "total_family_count": 9,
+                    "families": {
+                        "qec_decoder_benchmark": {
+                            "ready": True,
+                            "supported_backends": ["local", "modal", "ssh"],
+                            "missing_packages": [],
+                        },
+                        "symbolic_math": {
+                            "ready": True,
+                            "supported_backends": ["local"],
+                            "missing_packages": [],
+                        },
+                        "zx_rewrite_verification": {
+                            "ready": False,
+                            "supported_backends": ["local"],
+                            "missing_packages": ["pyzx"],
+                        },
+                    },
+                },
+            )
+            check = _check_analysis_adapter_families(config)
+
+        self.assertEqual(check.status.value, "attention")
+        self.assertEqual(check.details["default_supported_backends"], ["local", "modal", "ssh"])
+        self.assertEqual(check.details["optional_unready_families"], ["zx_rewrite_verification"])
+        self.assertIn("zx_rewrite_verification", check.guidance)
+
+    def test_check_analysis_adapter_families_blocks_missing_default_family_with_package_list(self) -> None:
+        config = DeepGvrConfig()
+        config.verification.tier2.default_adapter_family = "symbolic_math"
+        with patch("deep_gvr.release_surface.probe_analysis_adapter_families") as probe_mock:
+            probe_mock.return_value = CapabilityProbeResult(
+                name="analysis_adapter_families",
+                status=ProbeStatus.FALLBACK,
+                summary="One or more OSS analysis adapter families are configured structurally but missing local Python dependencies.",
+                preferred_outcome="Expose the full OSS analysis portfolio through explicit local adapter readiness.",
+                fallback="Install the missing OSS libraries or restrict runs to the ready adapter families.",
+                details={
+                    "ready_family_count": 8,
+                    "total_family_count": 9,
+                    "families": {
+                        "symbolic_math": {
+                            "ready": False,
+                            "supported_backends": ["local"],
+                            "missing_packages": ["sympy"],
+                        },
+                    },
+                },
+            )
+            check = _check_analysis_adapter_families(config)
+
+        self.assertEqual(check.status.value, "blocked")
+        self.assertIn("sympy", check.guidance)
+
     def test_install_script_creates_indexable_symlink_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             target_dir = Path(tmpdir) / "skills"

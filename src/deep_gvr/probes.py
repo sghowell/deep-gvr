@@ -8,6 +8,7 @@ from typing import Any
 
 from .contracts import CapabilityProbeResult, DeepGvrConfig, ProbeStatus
 from .formal import inspect_aristotle_transport, inspect_mathcode_transport, inspect_opengauss_transport
+from .tier2_support import backend_dispatch_supported_families, tier2_family_support_matrix
 
 
 def probe_model_routing(runtime_evidence: dict[str, Any] | None = None) -> CapabilityProbeResult:
@@ -209,29 +210,24 @@ def _package_available(name: str) -> bool:
 
 
 def probe_analysis_adapter_families() -> CapabilityProbeResult:
-    family_packages = {
-        "symbolic_math": ["sympy"],
-        "optimization": ["scipy", "ortools"],
-        "dynamics": ["scipy", "qutip"],
-        "qec_decoder_benchmark": ["numpy", "stim", "pymatching"],
-        "mbqc_graph_state": ["graphix"],
-        "photonic_linear_optics": ["perceval"],
-        "neutral_atom_control": ["pulser"],
-        "topological_qec_design": ["tqec"],
-        "zx_rewrite_verification": ["pyzx"],
-    }
     family_readiness: dict[str, dict[str, object]] = {}
     ready_families = 0
-    for family, packages in family_packages.items():
-        package_state = {package: _package_available(package) for package in packages}
+    support_matrix = tier2_family_support_matrix()
+    for support in support_matrix:
+        package_state = {package: _package_available(package) for package in support.required_packages}
+        missing_packages = [package for package, available in package_state.items() if not available]
         family_ready = all(package_state.values())
         if family_ready:
             ready_families += 1
-        family_readiness[family] = {
+        family_readiness[support.adapter_family] = {
             "ready": family_ready,
+            "required_packages": list(support.required_packages),
             "packages": package_state,
+            "missing_packages": missing_packages,
+            "supported_backends": [backend.value for backend in support.supported_backends],
+            "benchmark_cases": list(support.benchmark_cases),
         }
-    status = ProbeStatus.READY if ready_families == len(family_packages) else ProbeStatus.FALLBACK
+    status = ProbeStatus.READY if ready_families == len(support_matrix) else ProbeStatus.FALLBACK
     summary = (
         "All OSS analysis adapter families have their local Python dependencies available."
         if status is ProbeStatus.READY
@@ -245,7 +241,7 @@ def probe_analysis_adapter_families() -> CapabilityProbeResult:
         fallback="Install the missing OSS libraries or restrict runs to the ready adapter families.",
         details={
             "ready_family_count": ready_families,
-            "total_family_count": len(family_packages),
+            "total_family_count": len(support_matrix),
             "families": family_readiness,
         },
     )
@@ -292,6 +288,7 @@ def probe_backend_dispatch(runtime_config: DeepGvrConfig | None = None) -> Capab
                 "stim": _package_available("stim"),
                 "pymatching": _package_available("pymatching"),
             },
+            "supported_families": list(backend_dispatch_supported_families()),
             "modal_ready": modal_ready,
             "modal_cli": modal_config.cli_bin,
             "modal_cli_available": modal_binary is not None,

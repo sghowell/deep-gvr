@@ -34,6 +34,7 @@ from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
 from .routing import EffectiveModelRoute, build_live_routing_plan
 from .runtime_config import load_runtime_config
+from .tier2_support import tier2_support_case_ids
 from .tier1 import (
     AnalysisRequest,
     GenerationRequest,
@@ -78,6 +79,7 @@ _PHOTONIC_MBQC_CASES: tuple[str, ...] = (
     "photonic-verified-basic-state",
     "neutral-atom-verified-register",
 )
+_TIER2_SUPPORT_CASES: tuple[str, ...] = tier2_support_case_ids()
 _QUANTUM_OSS_CASES: tuple[str, ...] = (
     "simulation-verified-distance5",
     "simulation-rejected-distance7",
@@ -91,6 +93,7 @@ _QUANTUM_OSS_CASES: tuple[str, ...] = (
 _BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
     "core-science": _CORE_SCIENCE_CASES,
     "photonic-mbqc": _PHOTONIC_MBQC_CASES,
+    "tier2-support": _TIER2_SUPPORT_CASES,
     "quantum-oss": _QUANTUM_OSS_CASES,
     "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "formal-mathcode-nat-add-zero", "orchestration-fanout-threshold"),
     "live-analytical-breadth": _LIVE_ANALYTICAL_BREADTH_CASES,

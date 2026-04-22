@@ -107,6 +107,9 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(probe.status, ProbeStatus.FALLBACK)
         self.assertFalse(probe.details["families"]["mbqc_graph_state"]["ready"])
         self.assertFalse(probe.details["families"]["zx_rewrite_verification"]["ready"])
+        self.assertEqual(probe.details["families"]["mbqc_graph_state"]["supported_backends"], ["local"])
+        self.assertEqual(probe.details["families"]["qec_decoder_benchmark"]["supported_backends"], ["local", "modal", "ssh"])
+        self.assertEqual(probe.details["families"]["mbqc_graph_state"]["missing_packages"], ["graphix"])
         self.assertEqual(probe.details["ready_family_count"], 7)
 
     def test_mathcode_transport_probe_reports_ready_for_complete_local_checkout(self) -> None:
@@ -154,6 +157,16 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertTrue(probe.details["gauss_available"])
         self.assertTrue(probe.details["gauss_config_exists"])
+
+    def test_backend_dispatch_probe_reports_qec_only_scope(self) -> None:
+        with (
+            patch("deep_gvr.probes.shutil.which") as which_mock,
+            patch("deep_gvr.probes._package_available", return_value=True),
+        ):
+            which_mock.side_effect = lambda name: f"/usr/local/bin/{name}" if name in {"python3", "modal", "ssh", "scp"} else None
+            probe = probe_backend_dispatch(DeepGvrConfig())
+
+        self.assertEqual(probe.details["supported_families"], ["qec_decoder_benchmark"])
 
     def test_load_capability_evidence_reads_top_level_json_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

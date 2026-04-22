@@ -34,6 +34,7 @@ from .probes import (
 )
 from .runtime_config import default_config_path, load_runtime_config
 from .runtime_paths import runtime_home_description
+from .tier2_support import tier2_family_support
 
 _PUBLICATION_MANIFEST_PATH = Path("release/agentskills.publication.json")
 _CHANGELOG_PATH = Path("CHANGELOG.md")
@@ -870,24 +871,86 @@ def _check_tier2_backend(runtime_config: DeepGvrConfig | None) -> ReleaseCheck:
             guidance="Enable Tier 2 only after the chosen backend is configured and ready.",
         )
 
-    probe = probe_backend_dispatch(runtime_config)
+    default_family = tier2.default_adapter_family
     selected_backend = tier2.default_backend.value
+    support = tier2_family_support(default_family)
+    if support is None:
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary=f"The configured default analysis adapter family ({default_family}) is not recognized by the shipped Tier 2 support matrix.",
+            details={"default_adapter_family": default_family, "selected_backend": selected_backend},
+            guidance="Select a supported analysis adapter family in the runtime config, then rerun release preflight.",
+        )
+    supported_backends = [backend.value for backend in support.supported_backends]
+    if selected_backend not in supported_backends:
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.BLOCKED,
+            summary=(
+                f"The configured default analysis adapter family ({default_family}) does not support the selected "
+                f"Tier 2 backend ({selected_backend})."
+            ),
+            details={
+                "default_adapter_family": default_family,
+                "selected_backend": selected_backend,
+                "supported_backends": supported_backends,
+            },
+            guidance=(
+                "Change verification.tier2.default_backend to a backend supported by the configured default adapter "
+                "family, or switch the default adapter family to one that supports the desired backend."
+            ),
+        )
+    if selected_backend == "local":
+        return ReleaseCheck(
+            name="tier2_backend",
+            status=ReleaseCheckStatus.READY,
+            summary=(
+                f"The configured default analysis adapter family ({default_family}) supports the selected local Tier 2 backend."
+            ),
+            details={
+                "default_adapter_family": default_family,
+                "selected_backend": selected_backend,
+                "supported_backends": supported_backends,
+            },
+            guidance=(
+                "Local Tier 2 execution is supported for the configured default family. Keep the adapter-family "
+                "dependencies installed and rerun release preflight after changing the local Python environment."
+            ),
+        )
+    probe = probe_backend_dispatch(runtime_config)
     selected_key = f"{selected_backend}_ready"
     selected_ready = bool(probe.details.get(selected_key))
     if selected_ready:
         return ReleaseCheck(
             name="tier2_backend",
             status=ReleaseCheckStatus.READY,
-            summary=f"The selected Tier 2 backend ({selected_backend}) is ready in this environment.",
-            details={"selected_backend": selected_backend, **probe.details},
+            summary=(
+                f"The configured default analysis adapter family ({default_family}) supports the selected Tier 2 backend "
+                f"({selected_backend}), and that backend is ready in this environment."
+            ),
+            details={
+                "default_adapter_family": default_family,
+                "supported_backends": supported_backends,
+                "selected_backend": selected_backend,
+                **probe.details,
+            },
             guidance=f"Use scripts/run_capability_probes.py --config {runtime_home_description()}/config.yaml when backend settings change.",
         )
     return ReleaseCheck(
         name="tier2_backend",
         status=ReleaseCheckStatus.BLOCKED,
-        summary=f"The selected Tier 2 backend ({selected_backend}) is not ready in this environment.",
-        details={"selected_backend": selected_backend, **probe.details},
-        guidance="Install or configure the selected backend prerequisites, or switch the default backend to one that is ready.",
+        summary=(
+            f"The configured default analysis adapter family ({default_family}) supports the selected Tier 2 backend "
+            f"({selected_backend}), but that backend is not ready in this environment."
+        ),
+        details={
+            "default_adapter_family": default_family,
+            "supported_backends": supported_backends,
+            "selected_backend": selected_backend,
+            **probe.details,
+        },
+        guidance="Install or configure the selected backend prerequisites, or switch the default backend to one that is ready for this family.",
     )
 
 
@@ -913,7 +976,13 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
     probe = probe_analysis_adapter_families()
     default_family = tier2.default_adapter_family
     family_details = dict(probe.details.get("families", {}))
-    default_family_ready = bool(family_details.get(default_family, {}).get("ready"))
+    default_family_entry = dict(family_details.get(default_family, {}))
+    default_family_ready = bool(default_family_entry.get("ready"))
+    optional_unready_families = sorted(
+        family
+        for family, details in family_details.items()
+        if family != default_family and not bool(details.get("ready"))
+    )
     status = ReleaseCheckStatus.READY if probe.status is ProbeStatus.READY else ReleaseCheckStatus.ATTENTION
     summary = (
         "All configured OSS analysis adapter families have their local Python dependencies available."
@@ -926,12 +995,24 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
         else "Rerun release preflight after changing the local Python environment or adapter-family defaults."
     )
     if not default_family_ready:
+        missing_packages = default_family_entry.get("missing_packages", [])
         status = ReleaseCheckStatus.BLOCKED
         summary = (
             f"The configured default analysis adapter family ({default_family}) is not ready in this environment."
         )
         guidance = (
             "Install the missing dependencies for the configured default adapter family or change the default to a ready family."
+        )
+        if missing_packages:
+            guidance += f" Missing packages: {', '.join(str(item) for item in missing_packages)}."
+    elif optional_unready_families:
+        summary = (
+            f"The configured default analysis adapter family ({default_family}) is ready, but some optional Tier 2 families "
+            "are not installed in this environment."
+        )
+        guidance = (
+            "Install the missing dependencies for any optional families you plan to use in live runs. "
+            f"Currently unavailable optional families: {', '.join(optional_unready_families)}."
         )
     return ReleaseCheck(
         name="analysis_adapter_families",
@@ -940,6 +1021,8 @@ def _check_analysis_adapter_families(runtime_config: DeepGvrConfig | None) -> Re
         details={
             "default_adapter_family": default_family,
             "default_adapter_family_ready": default_family_ready,
+            "default_supported_backends": default_family_entry.get("supported_backends", []),
+            "optional_unready_families": optional_unready_families,
             **probe.details,
         },
         guidance=guidance,
