@@ -643,6 +643,9 @@ class ReleaseScriptTests(unittest.TestCase):
         tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
         self.assertEqual(tier3_check.status.value, "ready")
         self.assertIn("MathCode", tier3_check.summary)
+        self.assertFalse(tier3_check.details["lifecycle_support"])
+        self.assertEqual(tier3_check.details["transport_shape"], "bounded_local_cli")
+        self.assertIn("does not ship a submission, polling, or resume lifecycle", tier3_check.guidance)
 
     def test_collect_codex_preflight_reports_ready_ssh_devbox_backend_when_configured(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1078,6 +1081,9 @@ class ReleaseScriptTests(unittest.TestCase):
         tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
         self.assertEqual(tier3_check.status.value, "ready")
         self.assertIn("MathCode", tier3_check.summary)
+        self.assertFalse(tier3_check.details["lifecycle_support"])
+        self.assertEqual(tier3_check.details["transport_shape"], "bounded_local_cli")
+        self.assertIn("bounded local CLI path", tier3_check.guidance)
 
     def test_release_preflight_blocks_opengauss_backend_with_diagnostics_guidance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

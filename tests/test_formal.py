@@ -468,6 +468,74 @@ class MathCodeFormalVerifierTests(unittest.TestCase):
         self.assertEqual(result_set.results[0].proof_time_seconds, 1.25)
         self.assertEqual(result_set.transport_artifact["transport"], "mathcode_cli")
 
+    def test_transport_records_new_generated_lean_file(self) -> None:
+        request = _request(backend="mathcode")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+            generated_dir = mathcode_root / "LeanFormalizations" / "session_formal"
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                del command
+                self.assertEqual(cwd, mathcode_root)
+                generated_dir.mkdir(parents=True, exist_ok=True)
+                generated_file = generated_dir / "Proof.lean"
+                generated_file.write_text("theorem zero_add_nat (n : Nat) : 0 + n = n := by simp\n", encoding="utf-8")
+                payload = {
+                    "results": [
+                        {
+                            "claim": request.claims[0].claim,
+                            "proof_status": "proved",
+                            "details": "MathCode completed the proof.",
+                            "lean_code": "theorem zero_add_nat (n : Nat) : 0 + n = n := by simp",
+                            "proof_time_seconds": 1.25,
+                        }
+                    ]
+                }
+                return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
+
+            result_set = MathCodeFormalVerifier(
+                command_executor=command_executor,
+                mathcode_root=mathcode_root,
+                run_script=mathcode_root / "run",
+            )(request)
+
+        generated = result_set.transport_artifact["generated_lean_file"]
+        self.assertEqual(generated["relative_path"], "LeanFormalizations/session_formal/Proof.lean")
+        self.assertEqual(generated["change"], "created")
+
+    def test_transport_does_not_attribute_stale_preexisting_lean_file(self) -> None:
+        request = _request(backend="mathcode")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mathcode_root = _write_mathcode_root(tmpdir)
+            generated_dir = mathcode_root / "LeanFormalizations" / "session_formal"
+            generated_dir.mkdir(parents=True, exist_ok=True)
+            stale_file = generated_dir / "Proof.lean"
+            stale_file.write_text("theorem stale : True := by trivial\n", encoding="utf-8")
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                del command
+                self.assertEqual(cwd, mathcode_root)
+                payload = {
+                    "results": [
+                        {
+                            "claim": request.claims[0].claim,
+                            "proof_status": "proved",
+                            "details": "MathCode completed the proof.",
+                            "lean_code": "theorem zero_add_nat (n : Nat) : 0 + n = n := by simp",
+                            "proof_time_seconds": 1.25,
+                        }
+                    ]
+                }
+                return CommandExecutionResult(returncode=0, stdout=json.dumps(payload), stderr="")
+
+            result_set = MathCodeFormalVerifier(
+                command_executor=command_executor,
+                mathcode_root=mathcode_root,
+                run_script=mathcode_root / "run",
+            )(request)
+
+        self.assertNotIn("generated_lean_file", result_set.transport_artifact)
+
     def test_transport_timeout_maps_to_timeout_status(self) -> None:
         request = _request(backend="mathcode")
         with tempfile.TemporaryDirectory() as tmpdir:

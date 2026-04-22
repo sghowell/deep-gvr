@@ -1074,16 +1074,16 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
             return ReleaseCheck(
                 name="tier3_transport",
                 status=ReleaseCheckStatus.READY,
-                summary="The configured Tier 3 transport is ready for local MathCode proof dispatch.",
+                summary="The configured Tier 3 transport is ready for local MathCode proof dispatch on the shipped bounded CLI path.",
                 details=probe.details,
-                guidance="Tier 3 proof attempts will use the configured MathCode root and run script on the shipped harness path.",
+                guidance="Tier 3 proof attempts will use the configured MathCode root and run script on the shipped bounded local CLI path; MathCode does not ship a submission, polling, or resume lifecycle.",
             )
         return ReleaseCheck(
             name="tier3_transport",
             status=ReleaseCheckStatus.BLOCKED,
             summary="Tier 3 is enabled, but the configured MathCode transport is not ready in this environment.",
             details=probe.details,
-            guidance="Install or fix the local MathCode checkout and verify AUTOLEAN, lean-workspace, and the run script path before enabling Tier 3 live use.",
+            guidance="Install or fix the local MathCode checkout and verify AUTOLEAN, lean-workspace, and the run script path before enabling Tier 3 live use; MathCode remains a bounded local CLI path even when ready.",
         )
     if tier3.backend == "opengauss":
         probe = probe_opengauss_transport()
@@ -1108,16 +1108,16 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
         return ReleaseCheck(
             name="tier3_transport",
             status=ReleaseCheckStatus.READY,
-            summary="The configured Tier 3 transport is ready for Aristotle proof dispatch.",
+            summary="The configured Tier 3 transport is ready for Aristotle proof dispatch on the shipped lifecycle path.",
             details=probe.details,
-            guidance="Proof polling and resume will use the configured Aristotle transport on the shipped harness path.",
+            guidance="Proof submission, polling, and resume will use the configured Aristotle transport on the shipped Hermes MCP primary path with direct CLI fallback.",
         )
     return ReleaseCheck(
         name="tier3_transport",
         status=ReleaseCheckStatus.BLOCKED,
         summary="Tier 3 is enabled, but Aristotle transport is not ready in this environment.",
         details=probe.details,
-        guidance="Run bash scripts/setup_mcp.sh --install --check and verify ARISTOTLE_API_KEY before enabling Tier 3 live use.",
+        guidance="Run bash scripts/setup_mcp.sh --install --check and verify ARISTOTLE_API_KEY before enabling Tier 3 live use; Aristotle remains the shipped submission, polling, and resume path.",
     )
 
 

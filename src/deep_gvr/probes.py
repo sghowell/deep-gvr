@@ -113,6 +113,11 @@ def probe_aristotle_transport() -> CapabilityProbeResult:
             "mcp_server_name": transport.mcp_server_name,
             "mcp_server_configured": transport.mcp_server_configured,
             "configured_mcp_servers": transport.configured_mcp_servers,
+            "transport_shape": "submission_poll_resume",
+            "lifecycle_support": True,
+            "hermes_shaped_transport": True,
+            "mcp_primary_path": True,
+            "cli_fallback_supported": True,
         },
     )
 
@@ -144,6 +149,11 @@ def probe_mathcode_transport(runtime_config: DeepGvrConfig | None = None) -> Cap
             "run_script_executable": transport.run_script_executable,
             "autolean_exists": transport.autolean_exists,
             "lean_workspace_exists": transport.lean_workspace_exists,
+            "transport_shape": "bounded_local_cli",
+            "lifecycle_support": False,
+            "hermes_shaped_transport": False,
+            "cli_fallback_supported": False,
+            "generated_artifact_tracking": "new_or_modified_lean_formalization_only",
         },
     )
 

@@ -11,6 +11,7 @@ from tests import _path_setup  # noqa: F401
 from deep_gvr.contracts import DeepGvrConfig, ProbeStatus
 from deep_gvr.probes import (
     probe_analysis_adapter_families,
+    probe_aristotle_transport,
     probe_backend_dispatch,
     probe_mathcode_transport,
     probe_mcp_inheritance,
@@ -133,6 +134,34 @@ class ProbeTests(unittest.TestCase):
 
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertTrue(probe.details["run_script_executable"])
+        self.assertEqual(probe.details["transport_shape"], "bounded_local_cli")
+        self.assertFalse(probe.details["lifecycle_support"])
+        self.assertEqual(probe.details["generated_artifact_tracking"], "new_or_modified_lean_formalization_only")
+
+    def test_aristotle_transport_probe_surfaces_lifecycle_boundary(self) -> None:
+        with patch(
+            "deep_gvr.probes.inspect_aristotle_transport",
+            return_value=type(
+                "AristotleTransportStub",
+                (),
+                {
+                    "hermes_available": True,
+                    "aristotle_key_present": True,
+                    "hermes_config_path": "/tmp/.hermes/config.yaml",
+                    "hermes_config_exists": True,
+                    "mcp_server_name": "aristotle",
+                    "mcp_server_configured": True,
+                    "configured_mcp_servers": ["aristotle"],
+                    "ready": True,
+                },
+            )(),
+        ):
+            probe = probe_aristotle_transport()
+
+        self.assertEqual(probe.status, ProbeStatus.READY)
+        self.assertEqual(probe.details["transport_shape"], "submission_poll_resume")
+        self.assertTrue(probe.details["lifecycle_support"])
+        self.assertTrue(probe.details["cli_fallback_supported"])
 
     def test_opengauss_transport_probe_reports_ready_for_installed_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

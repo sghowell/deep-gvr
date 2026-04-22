@@ -1082,6 +1082,7 @@ class MathCodeFormalVerifier:
             json.dumps(self._output_schema(), separators=(",", ":")),
             query,
         ]
+        before_formalizations = _snapshot_mathcode_formalizations(Path(transport.mathcode_root))
         executor = self.command_executor or (
             lambda current_command, current_cwd: _default_executor(
                 current_command,
@@ -1091,7 +1092,10 @@ class MathCodeFormalVerifier:
             )
         )
         command_result = executor(command, Path(transport.mathcode_root))
-        generated_file = _find_latest_mathcode_formalization(Path(transport.mathcode_root))
+        generated_file = _find_generated_mathcode_formalization(
+            Path(transport.mathcode_root),
+            previous_snapshot=before_formalizations,
+        )
         transport_artifact: dict[str, Any] = {
             "transport": "mathcode_cli",
             "status": "completed",
@@ -1418,18 +1422,47 @@ def _normalize_formal_results(
     return results
 
 
-def _find_latest_mathcode_formalization(mathcode_root: Path) -> dict[str, Any] | None:
+def _snapshot_mathcode_formalizations(mathcode_root: Path) -> dict[Path, tuple[int, int]]:
+    formalizations_root = mathcode_root / "LeanFormalizations"
+    if not formalizations_root.exists():
+        return {}
+    snapshot: dict[Path, tuple[int, int]] = {}
+    for path in formalizations_root.rglob("*.lean"):
+        if not path.is_file():
+            continue
+        stat = path.stat()
+        snapshot[path] = (stat.st_mtime_ns, stat.st_size)
+    return snapshot
+
+
+def _find_generated_mathcode_formalization(
+    mathcode_root: Path,
+    *,
+    previous_snapshot: dict[Path, tuple[int, int]] | None = None,
+) -> dict[str, Any] | None:
     formalizations_root = mathcode_root / "LeanFormalizations"
     if not formalizations_root.exists():
         return None
+    previous = previous_snapshot or {}
     candidates = [path for path in formalizations_root.rglob("*.lean") if path.is_file()]
     if not candidates:
         return None
-    latest = max(candidates, key=lambda path: path.stat().st_mtime)
+    changed_candidates: list[tuple[Path, os.stat_result]] = []
+    for path in candidates:
+        stat = path.stat()
+        previous_state = previous.get(path)
+        current_state = (stat.st_mtime_ns, stat.st_size)
+        if previous_state is None or previous_state != current_state:
+            changed_candidates.append((path, stat))
+    if not changed_candidates:
+        return None
+    latest, latest_stat = max(changed_candidates, key=lambda item: (item[1].st_mtime_ns, str(item[0])))
+    change = "created" if latest not in previous else "modified"
     return {
         "path": str(latest),
         "relative_path": str(latest.relative_to(mathcode_root)),
-        "size_bytes": latest.stat().st_size,
+        "size_bytes": latest_stat.st_size,
+        "change": change,
     }
 
 
