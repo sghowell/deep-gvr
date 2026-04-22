@@ -163,6 +163,7 @@ The tagged `Release` workflow will:
 - validate the repo, release surface, and hosted docs build
 - sync the full validated environment with `uv sync --all-extras`
 - run the dedicated `tier2-support` evaluation subset
+- run the dedicated `tier3-support` evaluation subset
 - verify that the tag matches the repo version
 - render release notes from `CHANGELOG.md`
 - publish a GitHub Release

@@ -73,8 +73,10 @@ reference probe baseline.
 
 ## Tier 3 Formal Backends
 
-- Aristotle: MCP-backed proof transport
-- MathCode: local CLI-backed proof transport
+- Aristotle: submission/poll/resume lifecycle over Hermes MCP primary transport
+  with direct CLI fallback
+- MathCode: bounded local CLI-backed proof transport with no shipped
+  submission/poll/resume lifecycle
 - OpenGauss: intended backend, not part of the standard release path today
 
 See [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) for the

@@ -27,7 +27,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: can the orchestrator dispatch Aristotle proof attempts through the locally configured Hermes MCP transport?
 - Default until proven otherwise: assume Tier 3 falls back unless Hermes, `ARISTOTLE_API_KEY`, and `mcp_servers.aristotle` are all present.
-- Current baseline: the formal verifier checks the Hermes config, uses persisted Aristotle proof handles for submission/polling on the shipped harness path, and still records Hermes MCP transport details when that boundary is used.
+- Current baseline: the formal verifier checks the Hermes config, uses persisted Aristotle proof handles for submission/polling on the shipped harness path, and still records Hermes MCP transport details when that boundary is used. The probe now exposes the shipped lifecycle boundary explicitly as `transport_shape=submission_poll_resume`, `lifecycle_support=true`, and `cli_fallback_supported=true`.
 - Operator path: use `scripts/setup_mcp.sh --install --check` to install the Aristotle MCP stanza into `~/.hermes/config.yaml` and confirm the transport preflight before live Tier 3 runs.
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results.
 - Implemented baseline: Tier 3 now persists `formal_request`, `formal_lifecycle`, `formal_transport`, and `formal_results` artifacts so proof polling can resume without starting over.
@@ -36,10 +36,10 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: can the orchestrator dispatch local MathCode proof attempts through the configured repo-local CLI?
 - Default until proven otherwise: assume MathCode is unavailable unless the configured local checkout exposes an executable run script plus `AUTOLEAN/` and `lean-workspace/`.
-- Current baseline: `scripts/run_capability_probes.py` now reports `mathcode_transport` separately from Aristotle, using the Tier 3 runtime config to inspect the configured MathCode root and run script.
+- Current baseline: `scripts/run_capability_probes.py` now reports `mathcode_transport` separately from Aristotle, using the Tier 3 runtime config to inspect the configured MathCode root and run script. The probe now also exposes the shipped boundary explicitly as `transport_shape=bounded_local_cli`, `lifecycle_support=false`, and `generated_artifact_tracking=new_or_modified_lean_formalization_only`.
 - Operator path: set `verification.tier3.backend: mathcode`, then point `verification.tier3.mathcode.root` and `verification.tier3.mathcode.run_script` at the local checkout before running `scripts/release_preflight.py --operator`.
 - Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results from the local MathCode CLI.
-- Implemented baseline: the shipped harness now maps MathCode CLI output into the same `formal_request`, `formal_transport`, and `formal_results` artifact family as Aristotle-backed proof attempts.
+- Implemented baseline: the shipped harness now maps MathCode CLI output into the same `formal_request`, `formal_transport`, and `formal_results` artifact family as Aristotle-backed proof attempts, while only attributing generated Lean formalizations that were created or modified by the current run.
 
 ### OpenGauss transport
 

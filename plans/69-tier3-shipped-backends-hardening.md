@@ -24,11 +24,11 @@ focused.
 
 ## Progress
 
-- [ ] Strengthen Aristotle operator and lifecycle validation.
-- [ ] Strengthen MathCode operator validation and artifact truth.
-- [ ] Make the Aristotle vs MathCode lifecycle and transport boundary clearer in
+- [x] Strengthen Aristotle operator and lifecycle validation.
+- [x] Strengthen MathCode operator validation and artifact truth.
+- [x] Make the Aristotle vs MathCode lifecycle and transport boundary clearer in
   docs and preflight.
-- [ ] Keep OpenGauss explicitly blocked external.
+- [x] Keep OpenGauss explicitly blocked external.
 
 ## Surprises & Discoveries
 
@@ -48,9 +48,14 @@ focused.
 
 ## Outcomes & Retrospective
 
-- This plan captures the next Tier 3 hardening step explicitly instead of
-  leaving it as a vague follow-on from the support matrix and architecture
-  ledger.
+- Aristotle and MathCode now have a dedicated shipped-backend validation subset
+  (`tier3-support`) that runs in CI and release instead of relying on indirect
+  coverage inside broader benchmark groups.
+- MathCode artifact truth is tighter: the formal transport now attributes a
+  generated Lean file only when the current run created or modified it.
+- Probes, preflight, and operator docs now expose the Aristotle versus
+  MathCode lifecycle boundary explicitly while leaving OpenGauss on its
+  separate blocked-external path.
 
 ## Non-Goals
 

@@ -100,6 +100,18 @@ If you intend to use Aristotle as a Tier 3 backend:
 bash scripts/setup_mcp.sh --install --check
 ```
 
+Important Tier 3 boundary:
+
+- Aristotle is the shipped submission, polling, and resume path, using Hermes
+  MCP as the primary transport with direct CLI fallback
+- MathCode is the shipped bounded local CLI path and does not provide a
+  submission, polling, or resume lifecycle
+- OpenGauss is still outside the standard release path and remains blocked
+  external
+
+Use [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) before
+switching Tier 3 backends for operator use.
+
 ## Start a First Run
 
 CLI path:
