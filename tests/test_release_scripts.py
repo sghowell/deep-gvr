@@ -1104,6 +1104,48 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertIn("opengauss", tier3_check.summary)
         self.assertIn("diagnose_opengauss.py", tier3_check.guidance)
 
+    def test_release_preflight_treats_ready_opengauss_runtime_as_repo_owned_gap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            payload = yaml.safe_load((ROOT / "templates" / "config.template.yaml").read_text(encoding="utf-8"))
+            payload["verification"]["tier3"]["enabled"] = True
+            payload["verification"]["tier3"]["backend"] = "opengauss"
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            with patch("deep_gvr.release_surface.probe_opengauss_transport") as probe_mock:
+                probe_mock.return_value = CapabilityProbeResult(
+                    name="opengauss_transport",
+                    status=ProbeStatus.READY,
+                    summary="Installed OpenGauss runtime and config are present for local interactive-proof diagnostics.",
+                    preferred_outcome="",
+                    fallback="",
+                    details={
+                        "opengauss_root": "/tmp/OpenGauss",
+                        "opengauss_root_exists": True,
+                        "install_script": "/tmp/OpenGauss/scripts/install.sh",
+                        "install_script_exists": True,
+                        "local_launcher": "/tmp/OpenGauss/gauss",
+                        "local_launcher_exists": True,
+                        "runner_venv": "/tmp/OpenGauss/.opengauss-installer-venv",
+                        "runner_venv_exists": True,
+                        "gauss_binary": "/tmp/bin/gauss",
+                        "gauss_available": True,
+                        "gauss_config_path": "/tmp/.gauss/config.yaml",
+                        "gauss_config_exists": True,
+                    },
+                )
+                report = collect_release_preflight(
+                    config_path=config_path,
+                    skills_dir=Path(tmpdir) / "skills",
+                    hermes_config_path=Path(tmpdir) / "hermes-config.yaml",
+                )
+
+        tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
+        self.assertEqual(tier3_check.status.value, "blocked")
+        self.assertTrue(tier3_check.details["local_runtime_ready"])
+        self.assertIn("not yet implemented on the shipped harness path", tier3_check.summary)
+        self.assertIn("repo-owned backend-selection and transport work", tier3_check.guidance)
+
     def test_opengauss_diagnostics_script_reports_ready_for_fake_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             opengauss_root = Path(tmpdir) / "OpenGauss"
@@ -1146,6 +1188,52 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn('"overall_status": "ready"', completed.stdout)
         self.assertIn('"gauss_available": true', completed.stdout)
+
+    def test_opengauss_diagnostics_prefers_installed_runtime_over_broken_raw_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            opengauss_root = Path(tmpdir) / "OpenGauss"
+            (opengauss_root / "scripts").mkdir(parents=True, exist_ok=True)
+            (opengauss_root / "scripts" / "install.sh").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            launcher = opengauss_root / "gauss"
+            launcher.write_text("#!/usr/bin/env bash\necho raw-checkout-broken >&2\nexit 1\n", encoding="utf-8")
+            launcher.chmod(0o755)
+
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            gauss_binary = bin_dir / "gauss"
+            gauss_binary.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            gauss_binary.chmod(0o755)
+
+            gauss_config = Path(tmpdir) / ".gauss" / "config.yaml"
+            gauss_config.parent.mkdir(parents=True, exist_ok=True)
+            gauss_config.write_text("model:\n  default: test\n", encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "diagnose_opengauss.py"),
+                    "--json",
+                    "--skip-morph",
+                    "--opengauss-root",
+                    str(opengauss_root),
+                    "--gauss-binary",
+                    str(gauss_binary),
+                    "--gauss-config",
+                    str(gauss_config),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["overall_status"], "ready")
+        self.assertEqual(payload["doctor_check"]["mode"], "installed_binary")
+        self.assertTrue(payload["doctor_check"]["ready"])
+        self.assertEqual(payload["raw_checkout_doctor_check"]["mode"], "raw_checkout")
+        self.assertFalse(payload["raw_checkout_doctor_check"]["ready"])
 
 
 if __name__ == "__main__":

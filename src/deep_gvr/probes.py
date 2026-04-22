@@ -184,7 +184,7 @@ def probe_opengauss_transport(
         status=status,
         summary=summary,
         preferred_outcome="Have a working local gauss runtime and config available before enabling OpenGauss-backed Tier 3 work.",
-        fallback="Use scripts/diagnose_opengauss.py and another supported Tier 3 backend until OpenGauss installability is restored.",
+        fallback="Use scripts/diagnose_opengauss.py and another supported Tier 3 backend until the local runtime is ready and plan 31 lands.",
         details={
             "opengauss_root": transport.opengauss_root,
             "opengauss_root_exists": transport.opengauss_root_exists,

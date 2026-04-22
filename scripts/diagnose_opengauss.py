@@ -23,24 +23,17 @@ def _isoformat_now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _run_doctor(
+def _run_doctor_command(
     *,
-    root: Path,
-    local_launcher: Path,
-    gauss_binary: str,
+    command: list[str],
+    cwd: Path,
+    mode: str,
     timeout_seconds: int,
 ) -> dict[str, Any]:
-    if local_launcher.exists():
-        command = [str(local_launcher), "doctor"]
-        mode = "raw_checkout"
-    else:
-        command = [gauss_binary, "doctor"]
-        mode = "installed_binary"
-
     try:
         completed = subprocess.run(
             command,
-            cwd=root if mode == "raw_checkout" else REPO_ROOT,
+            cwd=cwd,
             check=False,
             capture_output=True,
             text=True,
@@ -158,20 +151,38 @@ def collect_opengauss_diagnostics(
     blocked = not transport.ready
 
     if check_doctor:
-        doctor = _run_doctor(
-            root=Path(transport.opengauss_root),
-            local_launcher=Path(transport.local_launcher),
-            gauss_binary=transport.gauss_binary,
-            timeout_seconds=timeout_seconds,
-        )
+        doctor: dict[str, Any]
+        root_path = Path(transport.opengauss_root)
+        local_launcher = Path(transport.local_launcher)
+        if transport.gauss_available:
+            doctor = _run_doctor_command(
+                command=[transport.gauss_binary, "doctor"],
+                cwd=REPO_ROOT,
+                mode="installed_binary",
+                timeout_seconds=timeout_seconds,
+            )
+            if local_launcher.exists():
+                report["raw_checkout_doctor_check"] = _run_doctor_command(
+                    command=[str(local_launcher), "doctor"],
+                    cwd=root_path,
+                    mode="raw_checkout",
+                    timeout_seconds=timeout_seconds,
+                )
+        else:
+            doctor = _run_doctor_command(
+                command=[str(local_launcher), "doctor"],
+                cwd=root_path,
+                mode="raw_checkout",
+                timeout_seconds=timeout_seconds,
+            )
         report["doctor_check"] = doctor
-        blocked = blocked or not bool(doctor.get("ready"))
+        if doctor.get("mode") == "installed_binary" and transport.ready:
+            blocked = blocked or not bool(doctor.get("ready"))
 
     if check_morph:
         targets = morph_targets or ["opengauss", "opengauss-0-2-2"]
         morph_checks = [_probe_morph_target(target, timeout_seconds=timeout_seconds) for target in targets]
         report["morph_targets"] = morph_checks
-        blocked = blocked or not all(bool(item.get("ready")) for item in morph_checks)
 
     report["overall_status"] = "blocked" if blocked else "ready"
     return report
@@ -198,6 +209,19 @@ def _print_human_report(report: dict[str, Any]) -> None:
         if stdout:
             print(f"  stdout: {stdout.strip()}")
         stderr = doctor.get("stderr")
+        if stderr:
+            print(f"  stderr: {stderr.strip()}")
+    raw_checkout_doctor = report.get("raw_checkout_doctor_check")
+    if isinstance(raw_checkout_doctor, dict):
+        print(f"- raw_checkout_doctor_check: {raw_checkout_doctor['status']}")
+        print(f"  command: {' '.join(raw_checkout_doctor.get('command', []))}")
+        error = raw_checkout_doctor.get("error")
+        if error:
+            print(f"  error: {error}")
+        stdout = raw_checkout_doctor.get("stdout")
+        if stdout:
+            print(f"  stdout: {stdout.strip()}")
+        stderr = raw_checkout_doctor.get("stderr")
         if stderr:
             print(f"  stderr: {stderr.strip()}")
     morph_checks = report.get("morph_targets")

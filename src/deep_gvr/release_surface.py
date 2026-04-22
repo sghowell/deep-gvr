@@ -1087,12 +1087,24 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
         )
     if tier3.backend == "opengauss":
         probe = probe_opengauss_transport()
+        local_runtime_ready = probe.status.value == "ready"
+        summary = (
+            "The configured Tier 3 backend (opengauss) is not yet implemented on the shipped harness path, "
+            "although the local gauss runtime appears ready."
+            if local_runtime_ready
+            else "The configured Tier 3 backend (opengauss) is not implemented on the shipped harness path and the local gauss runtime is not yet ready."
+        )
+        guidance = (
+            "Run uv run python scripts/diagnose_opengauss.py --json to capture installed-runtime, raw-checkout, and Morph-target state, then continue plan 31 for the remaining repo-owned backend-selection and transport work; until then keep Tier 3 on Aristotle or MathCode."
+            if local_runtime_ready
+            else "Run uv run python scripts/diagnose_opengauss.py --json to separate installed-runtime, raw-checkout, and Morph-target failures, then keep Tier 3 on Aristotle or MathCode until the local runtime is healthy and plan 31 lands."
+        )
         return ReleaseCheck(
             name="tier3_transport",
             status=ReleaseCheckStatus.BLOCKED,
-            summary="The configured Tier 3 backend (opengauss) is still blocked on upstream installability and is not implemented on the shipped harness path.",
-            details=probe.details,
-            guidance="Run uv run python scripts/diagnose_opengauss.py --json to separate local checkout issues from upstream installer failures, then keep Tier 3 on Aristotle or MathCode until plan 31 resumes.",
+            summary=summary,
+            details={**probe.details, "local_runtime_ready": local_runtime_ready},
+            guidance=guidance,
         )
     if tier3.backend != "aristotle":
         return ReleaseCheck(
