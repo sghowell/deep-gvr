@@ -302,6 +302,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn("core-science", subsets)
         self.assertIn("photonic-mbqc", subsets)
         self.assertIn("tier2-support", subsets)
+        self.assertIn("tier3-support", subsets)
         self.assertIn("quantum-oss", subsets)
         self.assertIn("analysis-full", subsets)
         self.assertIn("live-analytical-breadth", subsets)
@@ -340,6 +341,14 @@ class EvaluationTests(unittest.TestCase):
                 "neutral-atom-verified-register",
                 "tqec-verified-gallery-block-graph",
                 "zx-verified-qasm-rewrite",
+            ),
+        )
+        self.assertEqual(
+            subsets["tier3-support"],
+            (
+                "formal-proved-repetition-majority",
+                "formal-unavailable-repetition-scaling",
+                "formal-mathcode-nat-add-zero",
             ),
         )
         self.assertIn("zx-verified-qasm-rewrite", subsets["quantum-oss"])
@@ -395,6 +404,16 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(
             [item.id for item in cases],
             list(available_benchmark_subsets()["tier2-support"]),
+        )
+
+    def test_load_benchmark_suite_filters_tier3_support_subset(self) -> None:
+        cases = load_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            subset="tier3-support",
+        )
+        self.assertEqual(
+            [item.id for item in cases],
+            list(available_benchmark_subsets()["tier3-support"]),
         )
 
     def test_load_benchmark_suite_filters_escalation_breadth_subset(self) -> None:
@@ -524,6 +543,17 @@ class EvaluationTests(unittest.TestCase):
         )
 
         self.assertEqual(report.summary.total_cases, len(available_benchmark_subsets()["tier2-support"]))
+        self.assertEqual(report.summary.failed_cases, 0)
+        self.assertEqual(report.summary.false_positive_rate, 0.0)
+
+    def test_run_benchmark_suite_matches_expected_baseline_for_tier3_support_subset(self) -> None:
+        report = run_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+            subset="tier3-support",
+        )
+
+        self.assertEqual(report.summary.total_cases, len(available_benchmark_subsets()["tier3-support"]))
         self.assertEqual(report.summary.failed_cases, 0)
         self.assertEqual(report.summary.false_positive_rate, 0.0)
 

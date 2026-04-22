@@ -80,6 +80,11 @@ _PHOTONIC_MBQC_CASES: tuple[str, ...] = (
     "neutral-atom-verified-register",
 )
 _TIER2_SUPPORT_CASES: tuple[str, ...] = tier2_support_case_ids()
+_TIER3_SUPPORT_CASES: tuple[str, ...] = (
+    "formal-proved-repetition-majority",
+    "formal-unavailable-repetition-scaling",
+    "formal-mathcode-nat-add-zero",
+)
 _QUANTUM_OSS_CASES: tuple[str, ...] = (
     "simulation-verified-distance5",
     "simulation-rejected-distance7",
@@ -94,6 +99,7 @@ _BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
     "core-science": _CORE_SCIENCE_CASES,
     "photonic-mbqc": _PHOTONIC_MBQC_CASES,
     "tier2-support": _TIER2_SUPPORT_CASES,
+    "tier3-support": _TIER3_SUPPORT_CASES,
     "quantum-oss": _QUANTUM_OSS_CASES,
     "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "formal-mathcode-nat-add-zero", "orchestration-fanout-threshold"),
     "live-analytical-breadth": _LIVE_ANALYTICAL_BREADTH_CASES,

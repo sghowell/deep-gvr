@@ -50,6 +50,9 @@ jobs:
       - name: Tier 2 support eval
         run: uv run python eval/run_eval.py --subset tier2-support --output /tmp/deep-gvr-tier2-support.json
 
+      - name: Tier 3 support eval
+        run: uv run python eval/run_eval.py --subset tier3-support --output /tmp/deep-gvr-tier3-support.json
+
       - name: Build hosted docs
         run: uv run mkdocs build --strict
 
