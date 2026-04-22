@@ -71,8 +71,8 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: are the OSS analysis families installed locally and ready for operator use?
 - Implemented baseline: `scripts/run_capability_probes.py` now reports `analysis_adapter_families` across symbolic math, optimization, dynamics, QEC benchmarking, MBQC/Graphix, Perceval photonic, Pulser neutral-atom, tqec, and PyZX families.
-- Current probe behavior: the probe reports `ready` only when every supported family has its expected local Python dependency set. Missing packages produce a structured family-by-family readiness map instead of silent non-support, and each family now also records its explicit supported execution backends plus benchmark-case coverage.
-- Operator path: `scripts/release_preflight.py --operator` now surfaces the same readiness as an `analysis_adapter_families` check, blocking only when the configured default adapter family itself is unavailable and otherwise returning attention-level guidance for the missing optional families.
+- Current probe behavior: the probe reports `ready` only when every supported family has its expected local Python dependency set. Missing packages produce a structured family-by-family readiness map instead of silent non-support, and each family now also records its explicit supported execution backends, benchmark-case coverage, required extras, and recommended `uv sync` command.
+- Operator path: `scripts/release_preflight.py --operator` now surfaces the same readiness as an `analysis_adapter_families` check, blocking only when the configured default adapter family itself is unavailable and otherwise returning attention-level guidance for the missing optional families plus the validated full-portfolio path `uv sync --all-extras`.
 - Preferred outcome: operators can see exactly which OSS analysis families are usable before requesting those analyses live.
 
 ## Repository Support

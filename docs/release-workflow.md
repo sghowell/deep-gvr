@@ -29,9 +29,12 @@ The release checklist lives at [release/release-checklist.md](https://github.com
 ## 2. Install the Supported Local Surfaces
 
 ```bash
+uv sync --all-extras
 bash scripts/install.sh
 bash scripts/install_codex.sh
 ```
+
+`uv sync --all-extras` is the validated full-portfolio path for the shipped Tier 2 families plus docs/dev tooling. Use lighter `uv sync` commands only when you intentionally want a narrower local surface.
 
 If you want an isolated install tree for packaging or smoke testing, set `DEEP_GVR_HOME`, `HERMES_HOME`, and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of the default runtime and operator homes.
 
@@ -119,6 +122,8 @@ Important Tier 2 boundary:
   dispatch through `modal` or `ssh`
 - the other shipped Tier 2 families are local-only today and should keep
   `verification.tier2.default_backend: local`
+- the repo’s validated full-portfolio operator environment now uses
+  `uv sync --all-extras`
 
 Use [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) when you
 change the default adapter family or want to validate a non-default operator
@@ -156,6 +161,8 @@ git push origin v0.1.0
 The tagged `Release` workflow will:
 
 - validate the repo, release surface, and hosted docs build
+- sync the full validated environment with `uv sync --all-extras`
+- run the dedicated `tier2-support` evaluation subset
 - verify that the tag matches the repo version
 - render release notes from `CHANGELOG.md`
 - publish a GitHub Release

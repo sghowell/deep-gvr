@@ -37,7 +37,7 @@ no longer needed.
   reference-environment readiness.
 - [x] Queue the next completion slices in repo-local plan files.
 - [x] Execute `plans/68-tier2-support-completion.md`.
-- [ ] Execute `plans/70-tier2-coverage-expansion.md`.
+- [x] Execute `plans/70-tier2-coverage-expansion.md`.
 - [ ] Execute `plans/69-tier3-shipped-backends-hardening.md`.
 - [ ] Execute `plans/71-tier3-completion-and-opengauss-unblock.md`.
 - [ ] Execute `plans/72-codex-hermes-backend-parity.md`.
@@ -93,9 +93,10 @@ no longer needed.
   makes the shipped boundary explicit instead of leaving it implied across
   architecture docs, probes, and plans.
 - The Tier 2 follow-on is now executed as `plans/68-tier2-support-completion.md`.
+- The broader Tier 2 coverage slice is now executed as
+  `plans/70-tier2-coverage-expansion.md`.
 - The next follow-on slices now exist as repo-local plan files:
   `plans/69-tier3-shipped-backends-hardening.md`,
-  `plans/70-tier2-coverage-expansion.md`,
   `plans/71-tier3-completion-and-opengauss-unblock.md`, and
   `plans/72-codex-hermes-backend-parity.md`.
 

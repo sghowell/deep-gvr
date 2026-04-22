@@ -13,15 +13,18 @@ This guide gets a new operator from a local checkout to a first successful `deep
 
 Optional extras:
 
-- `uv sync --extra analysis` for the broader scientific analysis families
-- `uv sync --extra quantum_oss` for the broader OSS quantum families
+- `uv sync --all-extras` for the validated full-portfolio environment
+- `uv sync --extra analysis` for the broader scientific analysis families only
+- `uv sync --extra quantum_oss` for the broader OSS quantum families only
 
 ## Install the Project Environment
 
 ```bash
 uv sync
-uv sync --extra analysis --extra quantum_oss
+uv sync --all-extras
 ```
+
+`uv sync` is the minimal path. `uv sync --all-extras` is the recommended path when you want the full shipped Tier 2 portfolio available on the same machine and want to match the repo’s validated CI/release environment.
 
 ## Install a Supported Surface
 

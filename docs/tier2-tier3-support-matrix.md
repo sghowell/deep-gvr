@@ -23,7 +23,8 @@ the machine you plan to use.
 - Execution backend support: local-only unless a broader backend is stated
   explicitly.
 - Reference probe baseline: the probe state observed in the reference repo
-  environment on April 21, 2026.
+  environment on April 22, 2026 after syncing the validated full-portfolio
+  environment with `uv sync --all-extras`.
 
 ## Tier 2 Analysis Families
 
@@ -33,20 +34,21 @@ an operator path that matches that statement.
 
 | Family | Runtime support | Deterministic coverage | Execution backend support | Reference probe baseline | Remaining support gap |
 |---|---|---|---|---|---|
-| `symbolic_math` | Shipped adapter | `symbolic-verified-equivalence`, `symbolic-rejected-derivative` | `local` | blocked in the reference environment because `sympy` is missing | installability, preflight truth, and shared-runtime signoff |
-| `optimization` | Shipped adapter | `optimization-verified-linear-program`, `optimization-rejected-assignment` | `local` | blocked in the reference environment because `ortools` is missing | installability, preflight truth, and shared-runtime signoff |
-| `dynamics` | Shipped adapter | `dynamics-verified-decay` | `local` | blocked in the reference environment because `qutip` is missing | installability, preflight truth, and shared-runtime signoff |
+| `symbolic_math` | Shipped adapter | `symbolic-verified-equivalence`, `symbolic-rejected-derivative` | `local` | ready in the reference environment | keep install guidance and shared-runtime signoff aligned |
+| `optimization` | Shipped adapter | `optimization-verified-linear-program`, `optimization-rejected-assignment` | `local` | ready in the reference environment | keep install guidance and shared-runtime signoff aligned |
+| `dynamics` | Shipped adapter | `dynamics-verified-decay` | `local` | ready in the reference environment | keep install guidance and shared-runtime signoff aligned |
 | `qec_decoder_benchmark` | Shipped adapter | `simulation-verified-distance5`, `simulation-rejected-distance7` | `local`, `modal`, `ssh` | ready in the reference environment | repeated operator signoff across the claimed execution backends |
-| `mbqc_graph_state` | Shipped adapter | `mbqc-verified-graphix-pattern` | `local` | blocked in the reference environment because `graphix` is missing | installability, preflight truth, and local-runtime signoff |
-| `photonic_linear_optics` | Shipped adapter | `photonic-verified-basic-state` | `local` | blocked in the reference environment because `perceval` is missing | installability, preflight truth, and local-runtime signoff |
-| `neutral_atom_control` | Shipped adapter | `neutral-atom-verified-register` | `local` | blocked in the reference environment because `pulser` is missing | installability, preflight truth, and local-runtime signoff |
-| `topological_qec_design` | Shipped adapter | `tqec-verified-gallery-block-graph` | `local` | blocked in the reference environment because `tqec` is missing | installability, preflight truth, and local-runtime signoff |
-| `zx_rewrite_verification` | Shipped adapter | `zx-verified-qasm-rewrite` | `local` | blocked in the reference environment because `pyzx` is missing | installability, preflight truth, and local-runtime signoff |
+| `mbqc_graph_state` | Shipped adapter | `mbqc-verified-graphix-pattern` | `local` | ready in the reference environment | keep install guidance and local-runtime signoff aligned |
+| `photonic_linear_optics` | Shipped adapter | `photonic-verified-basic-state` | `local` | ready in the reference environment | keep install guidance and local-runtime signoff aligned |
+| `neutral_atom_control` | Shipped adapter | `neutral-atom-verified-register` | `local` | ready in the reference environment | keep install guidance and local-runtime signoff aligned |
+| `topological_qec_design` | Shipped adapter | `tqec-verified-gallery-block-graph` | `local` | ready in the reference environment | keep install guidance and local-runtime signoff aligned |
+| `zx_rewrite_verification` | Shipped adapter | `zx-verified-qasm-rewrite` | `local` | ready in the reference environment | keep install guidance and local-runtime signoff aligned |
 
 Current Tier 2 facts:
 
 - All nine Tier 2 families have real runtime adapters.
 - All nine Tier 2 families have deterministic benchmark coverage in the repo.
+- The validated full-portfolio install path is `uv sync --all-extras`.
 - Only `qec_decoder_benchmark` currently ships explicit `local` / `modal` /
   `ssh` execution-backend support.
 - The other eight Tier 2 families are local-only today.
@@ -65,9 +67,10 @@ standard shipped path today.
 
 ## Reference Readiness Baseline
 
-The latest reference-environment capability probe on April 21, 2026 reported:
+The latest reference-environment capability probe on April 22, 2026, after
+`uv sync --all-extras`, reported:
 
-- `analysis_adapter_families`: `1/9` ready families
+- `analysis_adapter_families`: `9/9` ready families
 - `backend_dispatch`: `local_ready=true`, `modal_ready=false`,
   `ssh_ready=false`
 - `aristotle_transport`: `ready`
@@ -83,6 +86,8 @@ For Tier 2, complete support means:
 
 - every shipped family has an explicit execution-backend support statement
 - install and preflight surfaces report missing dependencies precisely
+- the repo provides a single validated full-portfolio install path instead of
+  leaving the broader families as ad hoc extras
 - release preflight blocks unsupported backend selections for the configured
   default adapter family instead of pretending every family shares the QEC
   dispatch contract

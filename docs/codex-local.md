@@ -26,8 +26,9 @@ It is not the same thing as Codex Cloud. The standard shipped path today is loca
 
 Optional extras:
 
-- `uv sync --extra analysis`
-- `uv sync --extra quantum_oss`
+- `uv sync --all-extras` for the validated full-portfolio environment
+- `uv sync --extra analysis` for the broader scientific analysis families only
+- `uv sync --extra quantum_oss` for the broader OSS quantum families only
 
 ## Install the Codex Surface
 
@@ -35,9 +36,11 @@ From the repository root:
 
 ```bash
 uv sync
-uv sync --extra analysis --extra quantum_oss
+uv sync --all-extras
 bash scripts/install_codex.sh
 ```
+
+`uv sync` is the minimal local path. `uv sync --all-extras` is the recommended path when you want the full shipped Tier 2 portfolio available on the Codex machine and want to match the repo’s validated CI/release environment.
 
 This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr` and, by default, also refreshes the Hermes skill/runtime surface so both backend paths remain available on the same machine.
 

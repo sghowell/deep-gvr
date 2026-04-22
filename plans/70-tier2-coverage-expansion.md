@@ -34,12 +34,12 @@ feature branch when it is no longer needed.
 ## Progress
 
 - [x] Add this plan and index it from `plans/README.md`.
-- [ ] Increase Tier 2 operator-ready family coverage materially beyond the
+- [x] Increase Tier 2 operator-ready family coverage materially beyond the
   current `1/9` reference-environment baseline.
-- [ ] Strengthen runtime-facing validation across the shipped Tier 2 families.
-- [ ] Decide explicitly whether any families beyond
+- [x] Strengthen runtime-facing validation across the shipped Tier 2 families.
+- [x] Decide explicitly whether any families beyond
   `qec_decoder_benchmark` should gain non-local backend support.
-- [ ] Align docs, probes, and release surfaces with the broader Tier 2 support
+- [x] Align docs, probes, and release surfaces with the broader Tier 2 support
   reality.
 
 ## Surprises & Discoveries
@@ -58,6 +58,11 @@ feature branch when it is no longer needed.
   just more support-matrix detail.
 - Decision: do not assume every Tier 2 family should support every execution
   backend.
+- Decision: keep non-QEC Tier 2 families explicitly local-only in this slice;
+  broaden installability and validation first instead of inflating remote
+  backend claims.
+- Decision: treat `uv sync --all-extras` as the validated full-portfolio
+  environment for shipped Tier 2 coverage.
 - Decision: if a support claim is shared across `hermes` and `codex_local`,
   backend-parity validation should be added rather than inferred.
 
@@ -66,6 +71,12 @@ feature branch when it is no longer needed.
 - This plan exists so the remaining "make Tier 2 actually broad and usable"
   work is owned explicitly in-repo instead of being left implied by the support
   matrix.
+- The repo now has a code-owned full-portfolio Tier 2 install story, exact
+  per-family extras surfaced in probes and preflight, and continuous CI/release
+  runtime validation through the dedicated `tier2-support` benchmark subset.
+- This slice intentionally kept the non-QEC families local-only. Remote
+  backend breadth still belongs to explicit future parity work, not accidental
+  expansion-by-docs.
 
 ## Context and Orientation
 

@@ -68,11 +68,13 @@ A successful run typically:
 
 ```bash
 uv sync
-uv sync --extra analysis --extra quantum_oss
+uv sync --all-extras
 bash scripts/install.sh
 uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 uv run deep-gvr run "Explain why the surface code is understood to have a threshold."
 ```
+
+`uv sync` is the minimal local path. `uv sync --all-extras` is the validated full-portfolio path for the shipped Tier 2 families plus docs/dev tooling. If you only want a narrower Tier 2 subset, you can still use targeted extras such as `uv sync --extra analysis` or `uv sync --extra quantum_oss`.
 
 If you want the Codex-local surface as well:
 
