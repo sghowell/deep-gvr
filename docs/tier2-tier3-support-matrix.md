@@ -63,7 +63,7 @@ standard shipped path today.
 |---|---|---|---|---|---|---|
 | Aristotle | Shipped backend | Hermes MCP primary, direct Aristotle CLI fallback | submission, polling, and checkpointed resume | dedicated `tier3-support` subset plus `formal-proved-repetition-majority` and `formal-unavailable-repetition-scaling` | ready in the reference environment | stronger backend-parity signoff and continued honesty about the Hermes-shaped transport boundary |
 | MathCode | Shipped backend | local CLI | bounded single-shot execution; no shipped submission/poll/resume lifecycle | dedicated `tier3-support` subset plus `formal-mathcode-nat-add-zero` | ready in the reference environment | backend-parity signoff and the separate OpenGauss completion decision in the remaining Tier 3 completion work |
-| OpenGauss | not part of the shipped path | diagnostics only; no integrated transport | none | none | blocked in the reference environment | upstream installability and a working `gauss` runtime before honest integration can resume |
+| OpenGauss | not part of the shipped path | diagnostics only; no integrated transport | none | none | ready for local runtime diagnostics in the reference environment | repo-owned backend selection, transport, operator workflow, and benchmark coverage in the owning OpenGauss backend slice |
 
 ## Reference Readiness Baseline
 
@@ -75,7 +75,7 @@ The latest reference-environment capability probe on April 22, 2026, after
   `ssh_ready=false`
 - `aristotle_transport`: `ready`
 - `mathcode_transport`: `ready`
-- `opengauss_transport`: `blocked`
+- `opengauss_transport`: `ready`
 - dedicated `tier3-support` evaluation subset: `3/3` passing on the shipped
   Aristotle and MathCode cases
 
@@ -105,4 +105,4 @@ For Tier 3, complete support means:
   documented exactly as they behave in probes, preflight, and operator docs
 - Aristotle remains honestly described as Hermes-shaped until that dependency is
   actually retired
-- OpenGauss stays blocked external until upstream installability exists again
+- OpenGauss local runtime readiness is no longer the blocker; complete support now requires the repo-owned backend-selection, transport, operator-flow, and benchmark work in the owning OpenGauss backend slice

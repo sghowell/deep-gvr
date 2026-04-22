@@ -39,7 +39,7 @@ no longer needed.
 - [x] Execute `plans/68-tier2-support-completion.md`.
 - [x] Execute `plans/70-tier2-coverage-expansion.md`.
 - [x] Execute `plans/69-tier3-shipped-backends-hardening.md`.
-- [ ] Execute `plans/71-tier3-completion-and-opengauss-unblock.md`.
+- [x] Execute `plans/71-tier3-completion-and-opengauss-unblock.md`.
 - [ ] Execute `plans/72-codex-hermes-backend-parity.md`.
 - [ ] Reassess `plans/66-openai-native-backend.md` only after the shared Tier 2
   and Tier 3 completion bar and the Codex-versus-Hermes parity bar are
@@ -59,9 +59,9 @@ no longer needed.
     Hermes-shaped transport boundary.
   - MathCode is a bounded local CLI path and does not ship the same lifecycle
     semantics.
-- OpenGauss remains honestly blocked external. It should stay out of the
-  completion bar for shipped Tier 3 support until upstream installability
-  recovers.
+- OpenGauss no longer appears blocked on upstream installability in the
+  reference environment. The remaining work is repo-owned backend integration
+  under plan 31, while the shipped Tier 3 path remains Aristotle plus MathCode.
 - The stronger completion bar is now broader than this roadmap originally
   assumed: Tier 2 needs real coverage expansion beyond plan 68, Tier 3 needs an
   explicit reconnect between shipped-backend hardening and the OpenGauss target,
@@ -79,7 +79,8 @@ no longer needed.
   backend. Completion means every shipped family has an explicit support
   statement and a validated operator path that matches that statement.
 - Decision: treat Aristotle and MathCode as the shipped Tier 3 completion scope,
-  while keeping OpenGauss separately blocked external.
+  while keeping OpenGauss as a separate planned backend-integration target
+  rather than an implied shipped backend.
 - Decision: the overall backend-completion bar now also includes Codex-versus-
   Hermes parity after the shared Tier 2 and Tier 3 work is materially further
   along.
@@ -150,7 +151,8 @@ no longer needed.
      preflight
 4. Execute `plans/71-tier3-completion-and-opengauss-unblock.md`:
    - reconnect shipped Tier 3 hardening with the still-open OpenGauss target
-   - capture a current, evidence-backed integration or blocked-external answer
+   - capture a current, evidence-backed answer about whether OpenGauss can
+     advance repo-side
 5. Execute `plans/72-codex-hermes-backend-parity.md`:
    - prove that `codex_local` is at least as capable as the shipped `hermes`
      backend across repo-owned functionality
@@ -202,5 +204,6 @@ uv run python -m unittest discover -s tests -v
   surfaces already shipped in the repo.
 - Depends on the existing Aristotle lifecycle and MathCode local transport
   surfaces.
-- Depends on OpenGauss continuing to be treated as blocked external until the
-  upstream install story is healthy again.
+- Depends on the diagnostics and architecture ledger continuing to distinguish
+  OpenGauss local runtime readiness from the still-unimplemented repo backend
+  work.

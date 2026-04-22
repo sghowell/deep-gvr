@@ -26,25 +26,22 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 - OpenGauss is a distinct operator flow from Aristotle, so this slice needs backend-specific setup and lifecycle docs, not just another enum value.
 - The benchmark suite should include at least one case that benefits from interactive/project-scoped proof work.
-- On this machine, the problem is currently earlier than Lean tooling: `./gauss doctor` from the raw checkout fails before real Gauss validation because required Python dependencies are missing. The exact missing module can vary by partial local environment state; the latest diagnostics run hit `prompt_toolkit`.
-- The upstream local installer is currently broken for both the script default target and the README-pinned target:
-  - `./scripts/install.sh --plain --skip-setup --noninteractive` still follows through to a `404 Not Found` final Morph target
-  - `OPEN_GAUSS_INSTALL_TARGET=opengauss-0-2-2 ./scripts/install.sh --plain --skip-setup --noninteractive` also still follows through to a `404 Not Found` final Morph target
-- There is still no `~/.gauss/config.yaml`, no `gauss` on `PATH`, and no local `lean` / `lake` on this machine, so plan 31 is blocked on a valid upstream installation path before repo integration work can proceed honestly.
+- The upstream install path is no longer the blocker on this machine: the official installer now completes, the published Morph targets resolve, `gauss` is on `PATH`, and `~/.gauss/config.yaml` exists.
+- The remaining ambiguity is narrower and repo-owned: the raw checkout launcher can still fail `./gauss doctor` if the checkout-local Python dependencies are not bootstrapped, but the installed runtime is healthy enough to support real backend integration work.
 
 ## Decision Log
 
 - Aristotle remains the primary default formal backend unless a case or config selects OpenGauss explicitly.
 - OpenGauss must reuse the same Tier 3 result contracts where possible.
 - Backend choice must be explicit in evidence and benchmark artifacts.
-- If the upstream OpenGauss installer/distribution path is broken, this slice stays blocked rather than weakening the target or pretending the local environment is ready.
+- Keep the raw-checkout diagnostics separate from the installed-runtime contract. Once the installed runtime is healthy, the remaining gap is repo-owned backend work rather than an external blocker.
 - A separate MathCode integration slice may proceed in parallel, but it does not retire the OpenGauss architecture target.
 
 ## Outcomes & Retrospective
 
 - Repo implementation is still pending.
-- As of April 9, 2026, this slice is blocked externally on the OpenGauss installation path rather than on deep-gvr runtime code. The installer wrapper is pointing at Morph targets that currently return `404`, so the local environment cannot yet produce a supported `gauss` installation to integrate against.
-- Plan 37 now provides a dedicated blocked-state diagnostics surface (`uv run python scripts/diagnose_opengauss.py --json`) so this slice can stay honestly blocked while still producing reproducible operator evidence.
+- The former external blocker has been cleared. As of April 22, 2026, the official installer can produce a working local `gauss` runtime and config again, so this slice is now a planned repo-owned backend integration task rather than a blocked one.
+- Plan 37 remains useful as the diagnostics surface (`uv run python scripts/diagnose_opengauss.py --json`), but slice 71 showed that the diagnostics output must distinguish a healthy installed runtime from a broken raw checkout launcher.
 
 ## Context and Orientation
 
@@ -110,4 +107,4 @@ Acceptance evidence:
 
 - Depends on the completed formal lifecycle work from plan 27.
 - Touches formal backend contracts, transport code, docs, and benchmark cases.
-- Requires a valid upstream OpenGauss installation path, a working local `gauss` runtime, and operator setup.
+- Requires a working local `gauss` runtime, backend contracts, transport code, benchmark coverage, and operator setup.

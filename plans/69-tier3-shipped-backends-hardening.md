@@ -6,9 +6,9 @@ Harden the shipped Tier 3 backends, Aristotle and MathCode, so their operator
 flows, evidence surfaces, and backend boundaries are clearer and more
 repeatedly validated.
 
-This is not an OpenGauss slice. OpenGauss remains blocked external until there
-is a healthy upstream install path and working `gauss` runtime again. The goal
-here is to strengthen the Tier 3 backends the repo already ships.
+This was not an OpenGauss slice. At plan creation time, OpenGauss was still
+treated as blocked external. The goal here was to strengthen the Tier 3
+backends the repo already ships.
 
 ## Branch Strategy
 
@@ -28,7 +28,7 @@ focused.
 - [x] Strengthen MathCode operator validation and artifact truth.
 - [x] Make the Aristotle vs MathCode lifecycle and transport boundary clearer in
   docs and preflight.
-- [x] Keep OpenGauss explicitly blocked external.
+- [x] Keep OpenGauss explicitly out of the shipped Tier 3 path.
 
 ## Surprises & Discoveries
 
@@ -36,13 +36,13 @@ focused.
   equivalent surfaces: Aristotle has a real submission/poll/resume lifecycle,
   while MathCode is currently a bounded local CLI path.
 - The biggest Tier 3 risk is not missing runtime code. It is overstating the
-  parity of the shipped backends or blurring the still-blocked OpenGauss target
-  into the standard support story.
+  parity of the shipped backends or blurring the separate OpenGauss target into
+  the standard support story.
 
 ## Decision Log
 
 - Decision: harden Aristotle and MathCode first, and keep OpenGauss out of the
-  shipped Tier 3 completion bar until upstream installability is healthy again.
+  shipped Tier 3 completion bar until a later slice resolves its exact status.
 - Decision: preserve the explicit Aristotle transport boundary until it is
   actually no longer Hermes-shaped.
 
@@ -55,7 +55,8 @@ focused.
   generated Lean file only when the current run created or modified it.
 - Probes, preflight, and operator docs now expose the Aristotle versus
   MathCode lifecycle boundary explicitly while leaving OpenGauss on its
-  separate blocked-external path.
+  separate non-shipped path. Plan 71 later reclassified OpenGauss from
+  `blocked_external` to planned repo-owned backend work.
 
 ## Non-Goals
 
@@ -87,7 +88,7 @@ focused.
    parsing, timeout handling, and generated-artifact truth.
 3. Make the lifecycle difference between Aristotle and MathCode explicit
    everywhere the operator will see it.
-4. Leave OpenGauss on its separate blocked-external path.
+4. Leave OpenGauss on its separate non-shipped path.
 
 ## Concrete Steps
 
@@ -116,8 +117,8 @@ This slice is complete when:
   guidance
 - the lifecycle difference between Aristotle and MathCode is explicit
 - Tier 3 docs and preflight surfaces are aligned with the real shipped boundary
-- OpenGauss remains honestly blocked external rather than being blurred into the
-  shipped support story
+- OpenGauss remains explicitly outside the shipped support story rather than
+  being blurred into it
 
 Required validation:
 
@@ -143,12 +144,12 @@ Add narrower Tier 3-specific validation as needed in the branch.
 
 - Keep the Tier 3 support boundary truthful. Do not imply Aristotle and
   MathCode have the same lifecycle or transport semantics when they do not.
-- Keep OpenGauss explicitly blocked external until the repo can honestly ship a
-  working operator path again.
+- Keep OpenGauss explicitly outside the shipped Tier 3 path until the repo can
+  honestly ship a working operator path.
 
 ## Interfaces and Dependencies
 
 - Depends on the existing Aristotle lifecycle, MathCode transport, and formal
   result contracts already shipped in the repo.
-- Depends on OpenGauss remaining a separate blocked-external item until upstream
-  installability is restored.
+- Depends on OpenGauss remaining a separate non-shipped item until its backend
+  integration slice lands.

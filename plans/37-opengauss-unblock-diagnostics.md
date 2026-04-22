@@ -40,7 +40,8 @@ Start from `main` and implement this slice on `codex/opengauss-unblock-diagnosti
 
 - Added a blocked-state `opengauss_transport` capability probe so the missing local runtime is visible in the standard readiness surface.
 - Added `scripts/diagnose_opengauss.py`, which records local checkout state, optional `./gauss doctor` output, and the final Morph target status in one report.
-- Confirmed on this machine that the raw checkout still fails before real Gauss validation and that both the default and README-pinned Morph targets still end in `404` after redirects.
+- At the time of this slice, the raw checkout still failed before real Gauss validation and both the default and README-pinned Morph targets still ended in `404` after redirects.
+- Plan 71 later superseded that external-blocker conclusion: the official installer and published Morph targets are healthy again, and the diagnostics surface now needs to keep installed-runtime readiness distinct from raw-checkout failures.
 
 ## Context and Orientation
 
@@ -86,7 +87,7 @@ Acceptance evidence:
 
 - `scripts/run_capability_probes.py` reports a dedicated OpenGauss blocked-state probe instead of silently omitting OpenGauss.
 - `scripts/diagnose_opengauss.py` reports the local checkout and installed-runtime state in a machine-readable way.
-- The docs explain that plan 31 remains blocked externally, but the unblock path is now explicit and reproducible.
+- The docs explain the current OpenGauss state precisely, and the unblock path is explicit and reproducible.
 
 ## Merge, Push, and Cleanup
 

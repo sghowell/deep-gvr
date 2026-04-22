@@ -67,7 +67,8 @@ the feature branch.
 - The integration reuses the existing Tier 3 artifact family instead of adding
   MathCode-only artifacts, which keeps session evidence coherent across formal
   backends.
-- OpenGauss remains blocked external and unchanged by this slice.
+- OpenGauss remained out of scope and unchanged by this slice; plan 71 later
+  reclassified it from `blocked_external` to planned repo-owned backend work.
 
 ## Context and Orientation
 

@@ -45,10 +45,10 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 - Question: is there a healthy local OpenGauss install path and installed `gauss` runtime to unblock the later backend slice?
 - Default until proven otherwise: assume OpenGauss is blocked until there is an installed `gauss` binary plus `~/.gauss/config.yaml`, and use explicit diagnostics to distinguish that state from raw-checkout or upstream installer failures.
-- Current baseline: `scripts/run_capability_probes.py` now reports `opengauss_transport` as a blocked-state probe with local checkout, launcher, installer-script, installer-venv, installed-binary, and config details.
-- Operator path: run `uv run python scripts/diagnose_opengauss.py --json` to capture the local checkout state, an optional `./gauss doctor` result, and the current Morph target status in one report.
-- Preferred outcome: a working installed `gauss` runtime exists locally, so plan 31 can resume from a known-good operator baseline instead of a speculative installer story.
-- Current blocked state: on this machine the raw checkout still fails `./gauss doctor` before real Gauss validation because required Python dependencies are missing (latest local run: `prompt_toolkit`), and the published Morph targets still end in `404` after redirects.
+- Current baseline: in the current reference environment, `scripts/run_capability_probes.py` reports `opengauss_transport` as `ready` because an installed `gauss` binary and `~/.gauss/config.yaml` are both present.
+- Operator path: run `uv run python scripts/diagnose_opengauss.py --json` to capture installed-runtime doctor output first, plus supplementary raw-checkout and Morph-target state in one report.
+- Preferred outcome: a working installed `gauss` runtime exists locally, so the owning OpenGauss backend slice can resume from a known-good operator baseline instead of a speculative installer story.
+- Current state: on this machine the installed runtime is healthy enough for diagnostics, the published Morph targets resolve successfully, and the remaining ambiguity is repo-owned integration work. The raw checkout launcher can still fail separately if its checkout-local Python dependencies are not bootstrapped.
 
 ### Session checkpoint and resume
 
@@ -81,7 +81,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
 - `src/deep_gvr/formal.py` contains the Tier 3 transport boundaries and config preflight helpers for Aristotle, MathCode, and OpenGauss readiness inspection.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
-- `scripts/diagnose_opengauss.py` captures blocked-state OpenGauss diagnostics without pretending the backend is already integrated.
+- `scripts/diagnose_opengauss.py` captures installed-runtime, raw-checkout, and Morph-target OpenGauss diagnostics without pretending the backend is already integrated.
 - `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
 - `src/deep_gvr/release_surface.py` lifts analysis-adapter readiness into the release preflight report so missing dependencies are visible at install/operator time.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.

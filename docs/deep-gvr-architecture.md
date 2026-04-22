@@ -92,7 +92,7 @@ The release surface supports:
 OpenGauss remains part of the intended backend family, but it is not yet on the standard shipped path.
 
 The current shipped Tier 3 boundary, including the Aristotle lifecycle path,
-the MathCode local CLI path, and the still-blocked OpenGauss status, is
+the MathCode local CLI path, and the current OpenGauss integration gap, is
 summarized in [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md).
 
 ## 5. Analysis Adapter Portfolio

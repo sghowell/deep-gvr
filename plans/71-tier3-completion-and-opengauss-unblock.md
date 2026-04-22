@@ -32,13 +32,13 @@ delete the feature branch when it is no longer needed.
 ## Progress
 
 - [x] Add this plan and index it from `plans/README.md`.
-- [ ] Execute the shipped-backend hardening from
+- [x] Execute the shipped-backend hardening from
   `plans/69-tier3-shipped-backends-hardening.md`.
-- [ ] Re-run a current OpenGauss unblock attempt and record the exact failure
+- [x] Re-run a current OpenGauss unblock attempt and record the exact failure
   mode or integration outcome.
-- [ ] Decide whether OpenGauss can advance repo-side or remains honestly
-  `blocked_external`.
-- [ ] Align Tier 3 docs, probes, and architecture status with the resulting
+- [x] Decide whether OpenGauss can advance repo-side or remains honestly
+  repo-owned follow-on work.
+- [x] Align Tier 3 docs, probes, and architecture status with the resulting
   full Tier 3 state.
 
 ## Surprises & Discoveries
@@ -48,9 +48,10 @@ delete the feature branch when it is no longer needed.
 - Aristotle and MathCode differ structurally: Aristotle has a real
   submission/poll/resume lifecycle while MathCode is currently a bounded local
   CLI path.
-- OpenGauss is blocked earlier than deep-gvr runtime code today: the latest
-  evidence still points to an unhealthy upstream install path and missing local
-  runtime output.
+- The current OpenGauss ambiguity was narrower than the older docs claimed:
+  the installed runtime and published Morph targets are healthy again, while
+  the raw checkout launcher can still fail separately because its checkout-local
+  Python dependencies are not bootstrapped.
 
 ## Decision Log
 
@@ -58,15 +59,19 @@ delete the feature branch when it is no longer needed.
   shipped-backend hardening plus an explicit OpenGauss unblock decision.
 - Decision: do not imply OpenGauss is part of the shipped path unless a working
   `gauss` runtime and repo-owned integration actually exist.
-- Decision: if OpenGauss remains externally blocked after the current unblock
-  attempt, capture that with precise evidence rather than weakening the
-  architecture target.
+- Decision: now that the installed `gauss` runtime is healthy again, reclassify
+  OpenGauss from `blocked_external` to planned repo-owned backend work under
+  plan 31.
 
 ## Outcomes & Retrospective
 
 - This plan exists so Tier 3 completion is owned as a concrete repo program
   instead of being split between a hardening plan and an older blocked plan
   with no explicit reconnecting step.
+- The reconnecting step is now complete. OpenGauss can advance repo-side: the
+  installed runtime is healthy, the published Morph targets resolve, and the
+  remaining gap is the unimplemented deep-gvr backend-selection, transport,
+  operator-flow, and benchmark work in plan 31.
 
 ## Context and Orientation
 
@@ -94,8 +99,7 @@ delete the feature branch when it is no longer needed.
    validated and operator-solid.
 2. Re-run the OpenGauss unblock sequence with current upstream state and local
    diagnostics.
-3. Decide whether OpenGauss can advance into repo-owned integration work or
-   remains honestly blocked external.
+3. Decide whether OpenGauss can advance into repo-owned integration work.
 4. Make the full Tier 3 state explicit in docs, probes, and the architecture
    ledger.
 
@@ -113,11 +117,12 @@ delete the feature branch when it is no longer needed.
 3. If OpenGauss becomes runnable:
    - continue with the backend-selection, transport, docs, and benchmark work
      from `plans/31-opengauss-formal-backend.md`
-4. If OpenGauss remains blocked:
+4. If OpenGauss can advance repo-side without being shipped yet:
    - update `plans/31-opengauss-formal-backend.md` and
-     `docs/architecture-status.md` with the current exact blocker
+     `docs/architecture-status.md` to make the remaining repo-owned gap exact
    - ensure Tier 3 docs describe Aristotle and MathCode as the shipped path and
-     OpenGauss as an explicit blocked target, not an implied near-term option
+     OpenGauss as an explicit planned integration target, not an implied
+     near-term shipped option
 5. Align parity and support claims:
    - make the final Tier 3 state usable by the later Codex-versus-Hermes
      backend parity slice
@@ -130,8 +135,8 @@ This slice is complete when:
   guidance
 - the lifecycle and transport difference between Aristotle and MathCode is
   explicit everywhere the repo claims Tier 3 support
-- OpenGauss is either integrated honestly or reduced to a precise current
-  external blocker with no repo-owned ambiguity
+- OpenGauss is reduced to a precise current repo-owned integration gap with no
+  stale external-blocker ambiguity
 - the architecture ledger and Tier 3 docs match that result exactly
 
 Required validation:
@@ -162,8 +167,9 @@ branch when the environment allows them honestly.
 
 - Keep the Tier 3 support boundary truthful. Do not imply OpenGauss is part of
   the shipped path until a working runtime and repo-owned integration exist.
-- If the current OpenGauss unblock attempt still fails upstream, preserve the
-  exact evidence and stop there rather than weakening the completion bar.
+- If the current OpenGauss unblock attempt succeeds locally but the backend is
+  still unimplemented, preserve that distinction explicitly rather than
+  collapsing it back into a fake external blocker.
 - Keep Aristotle and MathCode lifecycle claims exact. Do not blur them into one
   generic Tier 3 story.
 

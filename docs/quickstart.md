@@ -106,8 +106,8 @@ Important Tier 3 boundary:
   MCP as the primary transport with direct CLI fallback
 - MathCode is the shipped bounded local CLI path and does not provide a
   submission, polling, or resume lifecycle
-- OpenGauss is still outside the standard release path and remains blocked
-  external
+- OpenGauss is still outside the standard release path; a healthy local
+  `gauss` runtime does not yet imply shipped deep-gvr transport support
 
 Use [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) before
 switching Tier 3 backends for operator use.
