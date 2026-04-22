@@ -75,6 +75,8 @@ REQUIRED_PROMPT_MARKERS = {
 OPEN_ARCHITECTURE_ITEMS = {
     "subagent-capability-closure": "26-subagent-capability-closure.md",
     "opengauss-formal-backend": "31-opengauss-formal-backend.md",
+    "tier2-support-completion": "68-tier2-support-completion.md",
+    "tier3-shipped-backends-hardening": "69-tier3-shipped-backends-hardening.md",
     "openai-native-backend": "66-openai-native-backend.md",
 }
 
@@ -105,6 +107,7 @@ PUBLIC_DOCS = [
     "docs/examples.md",
     "docs/faq.md",
     "docs/system-overview.md",
+    "docs/tier2-tier3-support-matrix.md",
     "docs/release-workflow.md",
     "docs/deep-gvr-architecture.md",
 ]
@@ -125,6 +128,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "docs/examples.md",
         "docs/faq.md",
         "docs/system-overview.md",
+        "docs/tier2-tier3-support-matrix.md",
         "docs/release-workflow.md",
         "docs/deep-gvr-architecture.md",
     ],
@@ -142,6 +146,7 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "examples.md",
         "faq.md",
         "system-overview.md",
+        "tier2-tier3-support-matrix.md",
         "release-workflow.md",
         "deep-gvr-architecture.md",
     ],
