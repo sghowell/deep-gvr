@@ -32,6 +32,7 @@ Use these in order:
 - [Codex Subagents](codex-subagents.md)
 - [Codex SSH Devbox](codex-ssh-devbox.md)
 - [Quickstart](quickstart.md)
+- [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md)
 - [Release Workflow](release-workflow.md)
 - [FAQ](faq.md)
 
@@ -43,6 +44,7 @@ Start here:
 
 - [Concepts](concepts.md)
 - [System Overview](system-overview.md)
+- [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md)
 - [Architecture and Design](deep-gvr-architecture.md)
 
 This path is for readers who want the design model without dropping into harness-internal material.

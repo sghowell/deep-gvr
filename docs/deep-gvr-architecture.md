@@ -76,6 +76,10 @@ Examples:
 
 The important architectural point is that Tier 2 is an **analysis boundary**, not a single simulator hook.
 
+The current shipped support boundary, including which families are local-only
+and which have broader execution-backend support, is summarized in
+[Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md).
+
 ### Tier 3: Formal Verification
 
 Tier 3 is used when the answer contains formalizable theorem-like content.
@@ -86,6 +90,10 @@ The release surface supports:
 - MathCode
 
 OpenGauss remains part of the intended backend family, but it is not yet on the standard shipped path.
+
+The current shipped Tier 3 boundary, including the Aristotle lifecycle path,
+the MathCode local CLI path, and the still-blocked OpenGauss status, is
+summarized in [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md).
 
 ## 5. Analysis Adapter Portfolio
 

@@ -68,3 +68,6 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [64-codex-cloud-surface.md](64-codex-cloud-surface.md)
 - [65-openai-native-backend-evaluation.md](65-openai-native-backend-evaluation.md)
 - [66-openai-native-backend.md](66-openai-native-backend.md)
+- [67-tier2-tier3-completion-roadmap.md](67-tier2-tier3-completion-roadmap.md)
+- [68-tier2-support-completion.md](68-tier2-support-completion.md)
+- [69-tier3-shipped-backends-hardening.md](69-tier3-shipped-backends-hardening.md)

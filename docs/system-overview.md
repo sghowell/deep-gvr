@@ -67,11 +67,19 @@ The current public analysis surface includes:
 - topological-QEC design
 - ZX rewrite and equivalence checking
 
+See [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) for the
+current shipped support boundary, execution-backend support statements, and the
+reference probe baseline.
+
 ## Tier 3 Formal Backends
 
 - Aristotle: MCP-backed proof transport
 - MathCode: local CLI-backed proof transport
 - OpenGauss: intended backend, not part of the standard release path today
+
+See [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) for the
+current Tier 3 transport boundary, lifecycle differences, and reference probe
+baseline.
 
 ## Operational Defaults
 

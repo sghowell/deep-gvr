@@ -162,6 +162,7 @@ Start here:
 Technical reference:
 
 - [System Overview](docs/system-overview.md)
+- [Tier 2 and Tier 3 Support Matrix](docs/tier2-tier3-support-matrix.md)
 - [Architecture and Design](docs/deep-gvr-architecture.md)
 - [Release Workflow](docs/release-workflow.md)
 
@@ -176,6 +177,7 @@ Release history:
 - Tier 2 and Tier 3 are selective. They are used when the claim warrants them, not on every run.
 - Local operation is the default path. Some optional backends depend on external tools or remote infrastructure.
 - The shipped Tier 3 backends are Aristotle and MathCode. OpenGauss remains an intended backend, but it is not part of the standard release path today.
+- The current shipped support boundary for Tier 2 families and Tier 3 backends is summarized in [Tier 2 and Tier 3 Support Matrix](docs/tier2-tier3-support-matrix.md).
 - Codex local can now act as a real orchestrator backend when `runtime.orchestrator_backend=codex_local` is selected, and that backend now runs Generator, Verifier, and Reviser as separate native Codex role calls over the typed loop.
 - Hermes remains the default backend in the checked-in config template, and the Hermes `/deep-gvr` surface still requires Hermes to be installed.
 - The repo ships Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
