@@ -175,3 +175,9 @@ That means:
 - deeper live Codex delegation remains intentionally outside the runtime contract; use the exported subagent operator pack for supervised multi-agent work instead of treating Codex app-state control as a supported backend surface
 - Hermes is only required if you also want the Hermes `/deep-gvr` surface or the `hermes` backend
 - provider, Tier 2, and Tier 3 readiness still depend on the same operator environment
+
+For the explicit shipped-backend comparison, see
+[Backend Parity Matrix](backend-parity-matrix.md). `codex_local` is now at
+least as capable as the shipped `hermes` backend across the repo-owned backend
+contract, while remaining stronger on transcript granularity and the
+repo-owned SSH/devbox execution path.

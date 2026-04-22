@@ -164,6 +164,7 @@ Start here:
 Technical reference:
 
 - [System Overview](docs/system-overview.md)
+- [Backend Parity Matrix](docs/backend-parity-matrix.md)
 - [Tier 2 and Tier 3 Support Matrix](docs/tier2-tier3-support-matrix.md)
 - [Architecture and Design](docs/deep-gvr-architecture.md)
 - [Release Workflow](docs/release-workflow.md)

@@ -174,6 +174,7 @@ The current release surface is strong, but it is not magic.
 - Codex local, the packaged Codex plugin, the checked-in Codex automation pack, the Codex subagent pack, and the explicit Codex `ssh/devbox` path are supported surfaces over the same runtime, and the runtime now supports both `hermes` and `codex_local` backends.
 - The native `codex_local` backend now runs Generator, Verifier, and Reviser as separate Codex role executions over `Tier1LoopRunner` rather than using one opaque backend-summary prompt.
 - Native Codex runs now preserve structured per-role response and failure data in the standard transcript artifact and emit a Codex-specific runtime evidence record without claiming Hermes delegated-capability closure.
+- The shipped `hermes` and `codex_local` backends are now at parity across the repo-owned backend contract; see [Backend Parity Matrix](backend-parity-matrix.md) for the explicit surface-by-surface result.
 - The repo ships reviewable Codex automation templates and export helpers, not direct registration into Codex's live automation runtime state.
 - The repo ships a reviewable Codex subagent prompt pack for safe multi-agent coordination, not direct control of Codex's internal delegation state and not the runtime backend itself.
 - The repo now also ships an explicit Codex-native delegation evaluation report path that records why deeper live Codex delegation stays operator-pack or product-managed rather than becoming a runtime contract today.
@@ -181,9 +182,9 @@ The current release surface is strong, but it is not magic.
 - The repo ships an explicit Codex `ssh/devbox` remote-operator bundle, readiness path, native remote execution helper, and a rerunnable remote-bootstrap helper that syncs config plus Codex surface state on the remote machine, but it still does not provision Codex remote sessions itself.
 - A separate `openai_native` backend is now planned. If it lands, it should target OpenAI's official API or harness primitives rather than trying to turn deeper Codex product-managed state into a repo-owned backend contract.
 - There are still real backend asymmetries:
-  - Hermes remains the only backend with a blocked delegated-capability closure plan for real per-subagent route proof and delegated verifier-side Aristotle MCP access.
-  - Codex local is stronger on native role execution, transcript granularity, and repo-owned SSH/devbox execution.
-  - Aristotle transport is still Hermes-shaped even when `codex_local` is the selected backend.
+  - Hermes remains the backend with the blocked delegated-capability closure plan for real per-subagent route proof and delegated verifier-side Aristotle MCP access, but that capability is not part of the shipped backend floor today.
+  - Codex local is stronger on transcript granularity and repo-owned SSH/devbox execution.
+  - Aristotle transport is still Hermes-shaped even when `codex_local` is the selected backend, but that shared transport no longer leaves Codex behind Hermes.
 - Some advanced Hermes-native capabilities still depend on upstream Hermes support.
 - Some optional backends depend on local or remote operator setup.
 - Live behavior depends on real provider routes and external systems.

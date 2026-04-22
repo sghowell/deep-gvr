@@ -35,12 +35,12 @@ the feature branch when it is no longer needed.
 ## Progress
 
 - [x] Add this plan and index it from `plans/README.md`.
-- [ ] Define the explicit Codex-versus-Hermes parity matrix for repo-owned
+- [x] Define the explicit Codex-versus-Hermes parity matrix for repo-owned
   backend capabilities.
-- [ ] Close any remaining `codex_local` gaps behind the shipped Hermes backend
+- [x] Close any remaining `codex_local` gaps behind the shipped Hermes backend
   where parity is supposed to hold.
-- [ ] Keep Hermes support green and explicit while Codex parity improves.
-- [ ] Align docs, probes, release surfaces, and architecture status with the
+- [x] Keep Hermes support green and explicit while Codex parity improves.
+- [x] Align docs, probes, release surfaces, and architecture status with the
   final parity result.
 
 ## Surprises & Discoveries
@@ -49,10 +49,12 @@ the feature branch when it is no longer needed.
   backend parity across the full repo-owned backend contract.
 - Parity must be judged against the repo-owned Hermes support that actually
   ships today, not against blocked-external aspirations such as plan 26.
-- Some current gaps are shared-runtime gaps first and Codex gaps second:
-  Aristotle transport is still Hermes-shaped, Tier 2 breadth is still narrow in
-  the reference environment, and Tier 3 full completion still depends on the
-  OpenGauss question.
+- The concrete Codex-behind-Hermes gaps were narrower than the surrounding docs
+  implied: the real repo-owned misses were live benchmark backend selection and
+  invalid-route fallback on the native Codex role path.
+- Aristotle remains Hermes-shaped as a shared transport, but that shape no
+  longer leaves Codex behind Hermes once the broader Tier 2 and Tier 3 work is
+  complete.
 
 ## Decision Log
 
@@ -67,8 +69,14 @@ the feature branch when it is no longer needed.
 
 ## Outcomes & Retrospective
 
-- This plan exists so the new completion bar for Codex is tracked explicitly
-  instead of being inferred from older phase-2 work.
+- The repo now has an explicit public backend parity matrix instead of an
+  implied parity claim spread across chat history and architecture notes.
+- Live benchmark execution now follows `runtime.orchestrator_backend` instead
+  of forcing the Hermes prompt harness.
+- The native Codex backend now falls back from invalid explicit role routes the
+  same way the shipped Hermes live harness does.
+- `codex-hermes-backend-parity` can now move from the open architecture ledger
+  into the realized baseline.
 
 ## Context and Orientation
 

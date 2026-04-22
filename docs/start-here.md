@@ -44,6 +44,7 @@ Start here:
 
 - [Concepts](concepts.md)
 - [System Overview](system-overview.md)
+- [Backend Parity Matrix](backend-parity-matrix.md)
 - [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md)
 - [Architecture and Design](deep-gvr-architecture.md)
 

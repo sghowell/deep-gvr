@@ -95,11 +95,20 @@ baseline.
 - deterministic benchmarks provide a stable regression floor
 - live runs expose real provider, backend, and proof-transport behavior
 
-## Current Backend Gaps
+## Backend Parity
 
-| Area | Hermes backend today | Codex backend today | Current gap |
-|---|---|---|---|
-| Core orchestrator execution | Delegated Hermes skill wrapper | Native role-separated `codex exec` loop | Hermes does not yet expose the same repo-owned per-role transcript and parsed-response surface |
-| Live delegated subagent closure | Intended target, but still blocked in the delegated-capability closure slice | Intentionally stays outside the runtime contract and remains product-managed/operator-pack territory | No backend currently ships repo-owned live delegated subagent closure |
-| Aristotle Tier 3 transport | Primary shipped path via Hermes MCP with CLI fallback | Uses the same shared formal layer | `codex_local` still depends on Hermes-shaped Aristotle transport when Aristotle is selected |
-| Remote stronger-machine execution | No backend-specific orchestrator remote bootstrap path | Repo-owned SSH/devbox bootstrap and runtime-backed execution helper | Codex has a stronger repo-owned remote execution surface today |
+The shipped `hermes` and `codex_local` backends are now at parity across the
+repo-owned backend contract. Codex is stronger on transcript granularity and
+remote stronger-machine execution, but no current shipped Hermes capability
+leaves Codex behind.
+
+See [Backend Parity Matrix](backend-parity-matrix.md) for the explicit
+surface-by-surface result.
+
+## Remaining Shared Open Items
+
+| Area | Current state |
+|---|---|
+| Live delegated subagent closure | Neither backend ships repo-owned live delegated subagent closure today. Hermes still tracks the blocked delegated-capability closure slice, and Codex keeps deeper live delegation intentionally outside the runtime contract. |
+| Aristotle transport shape | Aristotle remains a shared Hermes-shaped formal transport with Hermes MCP primary transport plus CLI fallback, but that shape no longer leaves Codex behind Hermes. |
+| OpenGauss backend | OpenGauss is now a planned repo-owned backend implementation gap rather than an external install blocker. It is not part of the shipped backend-parity floor because neither backend exposes it yet. |

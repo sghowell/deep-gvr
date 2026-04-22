@@ -26,6 +26,7 @@ This documentation set is the public entrypoint for the project. It is designed 
 ## Technical Reference
 
 - [System Overview](system-overview.md)
+- [Backend Parity Matrix](backend-parity-matrix.md)
 - [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md)
 - [Architecture and Design](deep-gvr-architecture.md)
 - [Release Workflow](release-workflow.md)
