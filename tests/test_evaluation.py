@@ -48,6 +48,7 @@ class EvaluationTests(unittest.TestCase):
         config_path: Path,
         evidence_dir: Path,
         *,
+        orchestrator_backend: str = "hermes",
         provider: str = "default",
         model: str = "",
         generator_provider: str | None = None,
@@ -61,6 +62,7 @@ class EvaluationTests(unittest.TestCase):
     ) -> None:
         payload = DeepGvrConfig().to_dict()
         payload["evidence"]["directory"] = str(evidence_dir)
+        payload["runtime"]["orchestrator_backend"] = orchestrator_backend
         payload["models"]["orchestrator"]["provider"] = provider
         payload["models"]["orchestrator"]["model"] = model
         if generator_provider is not None:
@@ -253,6 +255,85 @@ class EvaluationTests(unittest.TestCase):
                 stderr="",
             )
         return CommandExecutionResult(returncode=1, stdout="", stderr=f"Unexpected command: {command}")
+
+    def _successful_codex_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        self.assertEqual(command[:2], ["codex", "exec"])
+        self.assertIn("--output-schema", command)
+        self.assertIn("--output-last-message", command)
+        output_path = Path(command[command.index("--output-last-message") + 1])
+        query = command[-1]
+        self.assertEqual(cwd, output_path.parent)
+        role = next(role_name for role_name in ("generator", "verifier", "reviser") if f"Role: {role_name}" in query)
+        if role == "generator":
+            if "-c" in command:
+                self.assertIn('model_provider="openrouter"', command)
+                self.assertIn("--model", command)
+                self.assertIn("claude-sonnet-4", command)
+            payload = {
+                "hypothesis": "The surface code has a threshold under standard depolarizing noise assumptions.",
+                "approach": "State the well-known threshold claim directly.",
+                "technical_details": ["Threshold behavior follows from the benchmark fixture context."],
+                "expected_results": ["The verifier should accept the claim at Tier 1."],
+                "assumptions": ["Standard depolarizing noise assumptions apply."],
+                "limitations": ["This is a test executor response."],
+                "references": ["Dennis et al. 2002"],
+                "revision_notes": [],
+            }
+        elif role == "verifier":
+            if "-c" in command:
+                self.assertIn('model_provider="openrouter"', command)
+                self.assertIn("--model", command)
+                self.assertIn("deepseek-r1", command)
+            payload = {
+                "verdict": "VERIFIED",
+                "tier1": {
+                    "checks": [
+                        {
+                            "check": "benchmark_ground_truth",
+                            "status": "pass",
+                            "detail": "The claim matches the benchmark ground truth.",
+                        }
+                    ],
+                    "overall": "VERIFIED",
+                    "flaws": [],
+                    "caveats": [],
+                },
+                "tier2": None,
+                "tier3": [],
+                "flaws": [],
+                "caveats": [],
+                "cannot_verify_reason": None,
+            }
+        else:
+            payload = {
+                "hypothesis": "Revised hypothesis",
+                "approach": "Revised approach",
+                "technical_details": ["Revised technical detail."],
+                "expected_results": ["Revised expected result."],
+                "assumptions": ["Revised assumption."],
+                "limitations": ["Revised limitation."],
+                "references": ["Revised reference"],
+                "revision_notes": ["Updated from verifier feedback."],
+            }
+        output_path.write_text(json.dumps(payload), encoding="utf-8")
+        return CommandExecutionResult(returncode=0, stdout='{"event":"completed"}\n', stderr="")
+
+    def _route_fallback_codex_live_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        provider = "default"
+        if "-c" in command:
+            provider_arg = command[command.index("-c") + 1]
+            if provider_arg.startswith('model_provider="') and provider_arg.endswith('"'):
+                provider = provider_arg[len('model_provider="') : -1]
+        model = command[command.index("--model") + 1] if "--model" in command else "configured-by-codex"
+        output_path = Path(command[command.index("--output-last-message") + 1])
+        if provider == "openrouter" and model.startswith("broken-"):
+            output_path.write_text("", encoding="utf-8")
+            return CommandExecutionResult(
+                returncode=1,
+                stdout="",
+                stderr="BadRequestError\nError code: 400\nProvider: openrouter\nModel rejected.",
+            )
+        return self._successful_codex_live_executor(command, cwd)
 
     def test_load_benchmark_suite_reads_expected_cases(self) -> None:
         cases = load_benchmark_suite(ROOT / "eval" / "known_problems.json")
@@ -713,6 +794,95 @@ class EvaluationTests(unittest.TestCase):
             self.assertIn("Response budget:", transcripts["calls"][0]["query"])
             self.assertIn("--toolsets", transcripts["calls"][0]["command"])
             self.assertIn("clarify", transcripts["calls"][0]["command"])
+
+    def test_live_mode_records_artifacts_and_metadata_for_codex_backend(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            self._write_config(
+                config_path,
+                evidence_dir,
+                orchestrator_backend="codex_local",
+            )
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._successful_codex_live_executor,
+            )
+
+            self.assertEqual(report.mode, "live")
+            self.assertEqual(report.runner_backend, "codex_native_role_harness")
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertEqual(case.provider, "openrouter")
+            self.assertEqual(case.model_used, "deepseek-r1")
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(len(transcripts["calls"]), 2)
+            self.assertTrue(all(call["backend"] == "codex_local" for call in transcripts["calls"]))
+            self.assertTrue(all("codex" in call["command"][0] for call in transcripts["calls"]))
+            self.assertTrue(all("--output-last-message" in call["command"] for call in transcripts["calls"]))
+            self.assertEqual(transcripts["calls"][0]["selected_route"]["model"], "claude-sonnet-4")
+            self.assertEqual(transcripts["calls"][1]["selected_route"]["model"], "deepseek-r1")
+            self.assertIn("response_object", transcripts["calls"][0])
+            self.assertIn("response_object", transcripts["calls"][1])
+
+    def test_live_mode_codex_backend_falls_back_from_invalid_explicit_role_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "live-results"
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "configured-sessions"
+            self._write_config(
+                config_path,
+                evidence_dir,
+                orchestrator_backend="codex_local",
+                provider="default",
+                model="",
+                generator_provider="openrouter",
+                generator_model="broken-generator",
+                verifier_provider="openrouter",
+                verifier_model="broken-verifier",
+            )
+
+            report = run_benchmark_suite(
+                ROOT / "eval" / "known_problems.json",
+                routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+                mode="live",
+                config_path=config_path,
+                output_root=output_root,
+                case_ids=["known-correct-surface-threshold"],
+                live_config=LiveEvalConfig(),
+                executor=self._route_fallback_codex_live_executor,
+            )
+
+            case = report.cases[0]
+            self.assertTrue(case.passed)
+            self.assertEqual(case.provider, "default")
+            self.assertEqual(case.model_used, "configured-by-codex")
+            transcripts = json.loads(
+                (output_root / "cases" / case.id / "role_transcripts.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(len(transcripts["calls"]), 4)
+            self.assertIn("broken-generator", transcripts["calls"][0]["command"])
+            self.assertNotIn("-c", transcripts["calls"][1]["command"])
+            self.assertIn("broken-verifier", transcripts["calls"][2]["command"])
+            self.assertNotIn("-c", transcripts["calls"][3]["command"])
+            evidence_log = Path(next(path for path in case.artifacts if path.endswith(".jsonl")))
+            evidence_records = [json.loads(line) for line in evidence_log.read_text(encoding="utf-8").splitlines()]
+            verify_record = next(record for record in evidence_records if record["phase"] == "verify")
+            self.assertEqual(verify_record["provider"], "default")
+            self.assertEqual(verify_record["model_used"], "configured-by-codex")
+            self.assertTrue(
+                any("fell back from openrouter/broken-verifier" in note.lower() for note in verify_record["routing_notes"])
+            )
 
     def test_format_benchmark_report_overview_includes_case_root_and_note(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

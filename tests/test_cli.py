@@ -114,10 +114,10 @@ class SkillCliTests(unittest.TestCase):
         self.assertIn("Do not call `uv run deep-gvr run` or `uv run deep-gvr resume`", query)
         role = next(role_name for role_name in ("generator", "verifier", "reviser") if f"Role: {role_name}" in query)
         if role == "generator":
-            self.assertIn('-c', command)
-            self.assertIn('model_provider="openrouter"', command)
-            self.assertIn("--model", command)
-            self.assertIn("claude-sonnet-4", command)
+            if "-c" in command:
+                self.assertIn('model_provider="openrouter"', command)
+                self.assertIn("--model", command)
+                self.assertIn("claude-sonnet-4", command)
             payload = {
                 "hypothesis": "The surface code exhibits a threshold under standard circuit-level depolarizing noise.",
                 "approach": "Use the established surface-code threshold literature to justify the claim.",
@@ -129,10 +129,10 @@ class SkillCliTests(unittest.TestCase):
                 "revision_notes": [],
             }
         elif role == "verifier":
-            self.assertIn('-c', command)
-            self.assertIn('model_provider="openrouter"', command)
-            self.assertIn("--model", command)
-            self.assertIn("deepseek-r1", command)
+            if "-c" in command:
+                self.assertIn('model_provider="openrouter"', command)
+                self.assertIn("--model", command)
+                self.assertIn("deepseek-r1", command)
             payload = {
                 "verdict": "VERIFIED",
                 "tier1": {
@@ -176,6 +176,23 @@ class SkillCliTests(unittest.TestCase):
             stdout='{"event":"completed"}\n',
             stderr="",
         )
+
+    def _route_fallback_codex_executor(self, command: list[str], cwd: Path) -> CommandExecutionResult:
+        provider = "default"
+        if "-c" in command:
+            provider_arg = command[command.index("-c") + 1]
+            if provider_arg.startswith('model_provider="') and provider_arg.endswith('"'):
+                provider = provider_arg[len('model_provider="') : -1]
+        model = command[command.index("--model") + 1] if "--model" in command else "configured-by-codex"
+        output_path = Path(command[command.index("--output-last-message") + 1])
+        if provider == "openrouter" and model.startswith("broken-"):
+            output_path.write_text("", encoding="utf-8")
+            return CommandExecutionResult(
+                returncode=1,
+                stdout="",
+                stderr="BadRequestError\nError code: 400\nProvider: openrouter\nModel rejected.",
+            )
+        return self._successful_codex_executor(command, cwd)
 
     def test_load_runtime_config_creates_default_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -419,6 +436,55 @@ class SkillCliTests(unittest.TestCase):
             verifier_call = next(call for call in transcripts["calls"] if call["role"] == "verifier")
             self.assertIn("Verifier Prompt", verifier_call["query"])
             self.assertNotIn("Compact Verifier Prompt", verifier_call["query"])
+
+    def test_run_session_command_codex_backend_falls_back_from_invalid_explicit_role_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.yaml"
+            evidence_dir = Path(tmpdir) / "sessions"
+            payload = DeepGvrConfig().to_dict()
+            payload["runtime"]["orchestrator_backend"] = "codex_local"
+            payload["evidence"]["directory"] = str(evidence_dir)
+            payload["models"]["orchestrator"]["provider"] = "default"
+            payload["models"]["orchestrator"]["model"] = ""
+            payload["models"]["generator"]["provider"] = "openrouter"
+            payload["models"]["generator"]["model"] = "broken-generator"
+            payload["models"]["verifier"]["provider"] = "openrouter"
+            payload["models"]["verifier"]["model"] = "broken-verifier"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+            summary = run_session_command(
+                "Explain why the surface code has a threshold.",
+                config_path=config_path,
+                session_id="session_cli_codex_route_fallback",
+                executor=self._route_fallback_codex_executor,
+                command_timeout_seconds=5,
+            )
+
+            self.assertEqual(summary.command, "run")
+            self.assertEqual(summary.final_verdict, "VERIFIED")
+            transcript_path = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_orchestrator_transcript.json")
+            )
+            transcripts = json.loads(transcript_path.read_text(encoding="utf-8"))
+            self.assertEqual(len(transcripts["calls"]), 4)
+            self.assertIn("broken-generator", transcripts["calls"][0]["backend_command"])
+            self.assertNotIn("-c", transcripts["calls"][1]["backend_command"])
+            self.assertIn("broken-verifier", transcripts["calls"][2]["backend_command"])
+            self.assertNotIn("-c", transcripts["calls"][3]["backend_command"])
+            self.assertEqual(transcripts["calls"][1]["selected_route"]["model"], "configured-by-codex")
+            self.assertEqual(transcripts["calls"][3]["selected_route"]["model"], "configured-by-codex")
+            self.assertTrue(
+                any("fell back from openrouter/broken-verifier" in note.lower() for note in transcripts["calls"][3]["selected_route"]["notes"])
+            )
+            capability_artifact = next(
+                Path(path) for path in summary.artifacts if path.endswith("_run_capability_evidence.json")
+            )
+            capability_payload = json.loads(capability_artifact.read_text(encoding="utf-8"))
+            self.assertEqual(
+                capability_payload["capability_evidence"]["codex_native_role_execution"]["route_pairs"]["verifier"]["model"],
+                "configured-by-codex",
+            )
 
     def test_resume_session_command_codex_backend_uses_native_role_loop(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

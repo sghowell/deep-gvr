@@ -541,71 +541,85 @@ class CodexLocalOrchestratorRunner:
         session_id: str,
         question: str | None = None,
     ) -> dict[str, Any]:
-        effective_route = _codex_effective_route(route)
-        query = build_live_role_query(
-            role=role,
-            prompt_text=_runtime_role_prompt(prompt_root, role, self.config.prompt_profile),
-            payload=payload,
-            response_contract=response_contract,
-            route_notes=_codex_route_notes(effective_route),
-            route_temperature=effective_route.temperature,
-            prompt_profile=self.config.prompt_profile,
-        )
-        try:
-            codex_command, response_text = self._run_codex_command(
-                query=query,
-                response_schema=response_schema,
-                route=effective_route,
+        prompt_text = _runtime_role_prompt(prompt_root, role, self.config.prompt_profile)
+        candidates = [route, *route.fallback_routes]
+        prior_route: EffectiveModelRoute | None = None
+        for index, base_candidate in enumerate(candidates):
+            effective_route = _codex_effective_route(base_candidate)
+            if index > 0 and prior_route is not None:
+                effective_route = _route_with_fallback_note(effective_route, prior_route)
+            query = build_live_role_query(
+                role=role,
+                prompt_text=prompt_text,
+                payload=payload,
+                response_contract=response_contract,
+                route_notes=_codex_route_notes(effective_route),
+                route_temperature=effective_route.temperature,
+                prompt_profile=self.config.prompt_profile,
             )
-        except CodexRoleExecutionError as exc:
-            self.transcripts.append(
-                OrchestratorTranscript(
-                    backend=OrchestratorBackend.CODEX_LOCAL.value,
-                    command=command,
-                    session_id=session_id,
-                    config_path=str(config_path),
-                    prompt_root=str(prompt_root),
-                    prompt_profile=self.config.prompt_profile,
-                    routing_probe=routing_probe_mode,
-                    role_routes=dict(role_routes or self.config.role_routes),
-                    skills=[],
-                    backend_command=list(exc.backend_command),
+            try:
+                codex_command, response_text = self._run_codex_command(
                     query=query,
-                    response=exc.response_text,
-                    question=question,
-                    role=role,
-                    selected_route=_effective_route_payload(effective_route),
-                    error=str(exc),
+                    response_schema=response_schema,
+                    route=effective_route,
                 )
+            except CodexRoleExecutionError as exc:
+                self.transcripts.append(
+                    OrchestratorTranscript(
+                        backend=OrchestratorBackend.CODEX_LOCAL.value,
+                        command=command,
+                        session_id=session_id,
+                        config_path=str(config_path),
+                        prompt_root=str(prompt_root),
+                        prompt_profile=self.config.prompt_profile,
+                        routing_probe=routing_probe_mode,
+                        role_routes=dict(role_routes or self.config.role_routes),
+                        skills=[],
+                        backend_command=list(exc.backend_command),
+                        query=query,
+                        response=exc.response_text,
+                        question=question,
+                        role=role,
+                        selected_route=_effective_route_payload(effective_route),
+                        error=str(exc),
+                    )
+                )
+                if index + 1 < len(candidates) and _looks_like_route_configuration_error(
+                    exc.response_text or str(exc)
+                ):
+                    prior_route = effective_route
+                    continue
+                raise
+            transcript = OrchestratorTranscript(
+                backend=OrchestratorBackend.CODEX_LOCAL.value,
+                command=command,
+                session_id=session_id,
+                config_path=str(config_path),
+                prompt_root=str(prompt_root),
+                prompt_profile=self.config.prompt_profile,
+                routing_probe=routing_probe_mode,
+                role_routes=dict(role_routes or self.config.role_routes),
+                skills=[],
+                backend_command=list(codex_command),
+                query=query,
+                response=response_text,
+                question=question,
+                role=role,
+                selected_route=_effective_route_payload(effective_route),
             )
-            raise
-        transcript = OrchestratorTranscript(
-            backend=OrchestratorBackend.CODEX_LOCAL.value,
-            command=command,
-            session_id=session_id,
-            config_path=str(config_path),
-            prompt_root=str(prompt_root),
-            prompt_profile=self.config.prompt_profile,
-            routing_probe=routing_probe_mode,
-            role_routes=dict(role_routes or self.config.role_routes),
-            skills=[],
-            backend_command=list(codex_command),
-            query=query,
-            response=response_text,
-            question=question,
-            role=role,
-            selected_route=_effective_route_payload(effective_route),
+            self.transcripts.append(transcript)
+            try:
+                response_object = _extract_json_object(response_text)
+            except ValueError as exc:
+                transcript.error = f"Codex-local {role} role did not return a valid JSON payload: {exc}"
+                raise OrchestratorBackendUnavailableError(
+                    f"Codex-local {role} role did not return a valid JSON payload: {exc}"
+                ) from exc
+            transcript.response_object = dict(response_object)
+            return response_object
+        raise OrchestratorBackendUnavailableError(
+            f"Codex-local {role} role exhausted all configured route candidates without a result."
         )
-        self.transcripts.append(transcript)
-        try:
-            response_object = _extract_json_object(response_text)
-        except ValueError as exc:
-            transcript.error = f"Codex-local {role} role did not return a valid JSON payload: {exc}"
-            raise OrchestratorBackendUnavailableError(
-                f"Codex-local {role} role did not return a valid JSON payload: {exc}"
-            ) from exc
-        transcript.response_object = dict(response_object)
-        return response_object
 
     def _run_codex_command(
         self,
@@ -867,6 +881,23 @@ def _codex_route_notes(route: EffectiveModelRoute) -> list[str]:
         f"model={route.model}",
         *list(route.notes),
     ]
+
+
+def _route_with_fallback_note(
+    route: EffectiveModelRoute,
+    prior_route: EffectiveModelRoute,
+) -> EffectiveModelRoute:
+    return EffectiveModelRoute(
+        provider=route.provider,
+        model=route.model,
+        routing_mode=route.routing_mode,
+        temperature=route.temperature,
+        notes=[
+            *route.notes,
+            f"Fell back from {prior_route.provider}/{prior_route.model} after a live route configuration error.",
+        ],
+        fallback_routes=list(route.fallback_routes),
+    )
 
 
 def _effective_route_payload(route: EffectiveModelRoute) -> dict[str, Any]:
@@ -1204,4 +1235,25 @@ def _extract_json_object(text: str) -> dict[str, Any]:
             continue
         if isinstance(payload, dict):
             return payload
-    raise ValueError(f"Could not parse a JSON object from Hermes output: {text[:200]!r}")
+    raise ValueError(f"Could not parse a JSON object from backend output: {text[:200]!r}")
+
+
+def _looks_like_route_configuration_error(message: str) -> bool:
+    lowered = message.lower()
+    if "timed out" in lowered:
+        return False
+    patterns = (
+        "badrequesterror",
+        "authenticationerror",
+        "error code: 400",
+        "error code: 401",
+        "unknown model",
+        "unsupported model",
+        "invalid model",
+        "your api key is invalid",
+        "out of funds",
+        "model not found",
+        "no such provider",
+        "provider unavailable",
+    )
+    return any(pattern in lowered for pattern in patterns)

@@ -19,6 +19,7 @@ from .contracts import (
     CapabilityProbeResult,
     CandidateSolution,
     DeepGvrConfig,
+    OrchestratorBackend,
     ProbeStatus,
     ProofStatus,
     Tier1Report,
@@ -30,9 +31,19 @@ from .contracts import (
 from .domain_context import load_domain_context
 from .formal import FormalVerificationRequest, FormalVerifier, build_formal_verifier
 from .live_runtime import resolve_live_role_timeout_seconds, resolve_live_role_toolsets
+from .orchestrator import (
+    _candidate_response_contract,
+    _candidate_response_schema,
+    _codex_effective_route,
+    _codex_route_notes,
+    _effective_route_payload,
+    _route_with_fallback_note,
+    _verification_response_contract,
+    _verification_response_schema,
+)
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_live_role_query
 from .probes import probe_model_routing
-from .routing import EffectiveModelRoute, build_live_routing_plan
+from .routing import EffectiveModelRoute, build_live_routing_plan, build_native_role_routing_plan
 from .runtime_config import load_runtime_config
 from .tier2_support import tier2_support_case_ids
 from .tier1 import (
@@ -474,6 +485,7 @@ class FixtureAgents:
 @dataclass(slots=True)
 class LiveEvalConfig:
     hermes_binary: str = "hermes"
+    codex_binary: str = "codex"
     prompt_root: str | Path = "prompts"
     prompt_profile: str = DEFAULT_PROMPT_PROFILE
     command_timeout_seconds: int = 120
@@ -495,6 +507,7 @@ class CommandExecutor(Protocol):
 
 @dataclass(slots=True)
 class LiveRoleTranscript:
+    backend: str
     role: str
     provider: str
     model: str
@@ -502,9 +515,19 @@ class LiveRoleTranscript:
     prompt_path: str
     query: str
     response: str
+    selected_route: dict[str, Any] | None = None
+    response_object: dict[str, Any] | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return _serialize(self)
+        payload = _serialize(self)
+        if self.selected_route is None:
+            payload.pop("selected_route", None)
+        if self.response_object is None:
+            payload.pop("response_object", None)
+        if self.error is None:
+            payload.pop("error", None)
+        return payload
 
 
 class HermesPromptRoleRunner:
@@ -539,16 +562,7 @@ class HermesPromptRoleRunner:
             role="generator",
             prompt_file="generator.md",
             route=request.route,
-            response_contract={
-                "hypothesis": "string",
-                "approach": "string",
-                "technical_details": ["string"],
-                "expected_results": ["string"],
-                "assumptions": ["string"],
-                "limitations": ["string"],
-                "references": ["string"],
-                "revision_notes": ["string"],
-            },
+            response_contract=_candidate_response_contract(),
             payload=payload,
         )
         request.route = actual_route
@@ -566,35 +580,7 @@ class HermesPromptRoleRunner:
             role="verifier",
             prompt_file="verifier.md",
             route=request.route,
-            response_contract={
-                "verdict": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
-                "tier1": {
-                    "checks": [{"check": "string", "status": "pass|fail|uncertain", "detail": "string"}],
-                    "overall": "VERIFIED | FLAWS_FOUND | CANNOT_VERIFY",
-                    "flaws": ["string"],
-                    "caveats": ["string"],
-                },
-                "tier2": {
-                    "analysis_requested": "boolean",
-                    "reason": "string",
-                    "analysis_spec": "object | null",
-                    "results": "object | null",
-                    "interpretation": "string | null",
-                },
-                "tier3": [
-                    {
-                        "claim": "string",
-                        "backend": "string",
-                        "proof_status": "requested|pending|proved|disproved|timeout|error|unavailable",
-                        "details": "string",
-                        "lean_code": "string",
-                        "proof_time_seconds": "number | null",
-                    }
-                ],
-                "flaws": ["string"],
-                "caveats": ["string"],
-                "cannot_verify_reason": "string | null",
-            },
+            response_contract=_verification_response_contract(),
             payload=payload,
         )
         request.route = actual_route
@@ -615,16 +601,7 @@ class HermesPromptRoleRunner:
             role="reviser",
             prompt_file="reviser.md",
             route=request.route,
-            response_contract={
-                "hypothesis": "string",
-                "approach": "string",
-                "technical_details": ["string"],
-                "expected_results": ["string"],
-                "assumptions": ["string"],
-                "limitations": ["string"],
-                "references": ["string"],
-                "revision_notes": ["string"],
-            },
+            response_contract=_candidate_response_contract(),
             payload=payload,
         )
         request.route = actual_route
@@ -646,16 +623,7 @@ class HermesPromptRoleRunner:
         for index, base_candidate in enumerate(candidates):
             candidate = base_candidate
             if index > 0 and prior_route is not None:
-                candidate = EffectiveModelRoute(
-                    provider=base_candidate.provider,
-                    model=base_candidate.model,
-                    routing_mode=base_candidate.routing_mode,
-                    temperature=base_candidate.temperature,
-                    notes=[
-                        *base_candidate.notes,
-                        f"Fell back from {prior_route.provider}/{prior_route.model} after a live route configuration error.",
-                    ],
-                )
+                candidate = _route_with_fallback_note(base_candidate, prior_route)
             query = self._build_query(
                 role=role,
                 prompt_text=prompt_text,
@@ -689,6 +657,7 @@ class HermesPromptRoleRunner:
                     ),
                 )
             transcript = LiveRoleTranscript(
+                backend=OrchestratorBackend.HERMES.value,
                 role=role,
                 provider=candidate.provider,
                 model=candidate.model,
@@ -696,6 +665,7 @@ class HermesPromptRoleRunner:
                 prompt_path=_display_path(prompt_path),
                 query=query,
                 response=result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip(),
+                selected_route=_effective_route_payload(candidate),
             )
             self.transcripts.append(transcript)
             if result.returncode == 0:
@@ -706,12 +676,20 @@ class HermesPromptRoleRunner:
                     raise RuntimeError(
                         f"Hermes role {role!r} emitted a live route configuration error: {result.stdout.strip()}"
                     )
+                try:
+                    transcript.response_object = _extract_json_object(result.stdout)
+                except ValueError:
+                    transcript.response_object = None
                 return result.stdout, candidate
             if index + 1 < len(candidates) and _looks_like_live_route_configuration_error(
                 result.stderr.strip() or result.stdout.strip()
             ):
                 prior_route = candidate
                 continue
+            transcript.error = (
+                f"Hermes role {role!r} failed with exit code {result.returncode}: "
+                f"{result.stderr.strip() or result.stdout.strip()}"
+            )
             raise RuntimeError(
                 f"Hermes role {role!r} failed with exit code {result.returncode}: {result.stderr.strip() or result.stdout.strip()}"
             )
@@ -743,6 +721,212 @@ class HermesPromptRoleRunner:
             route_temperature=route_temperature,
             prompt_profile=self.config.prompt_profile,
         )
+
+
+class CodexPromptRoleRunner:
+    def __init__(
+        self,
+        config: LiveEvalConfig,
+        *,
+        prompt_root: Path,
+        executor: CommandExecutor | None = None,
+        cwd: Path | None = None,
+    ) -> None:
+        self.config = config
+        self.prompt_root = prompt_root
+        self.executor = executor
+        self.cwd = cwd or Path.cwd()
+        self.transcripts: list[LiveRoleTranscript] = []
+
+    def generator(self, request: GenerationRequest) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "problem": request.problem,
+            "domain": request.domain,
+            "literature_context": request.literature_context,
+            "prior_verdicts": [item.to_dict() for item in request.prior_verdicts],
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
+            "trigger_flaws": list(request.trigger_flaws),
+        }
+        response, actual_route = self._run_role(
+            role="generator",
+            prompt_file="generator.md",
+            route=request.route,
+            response_contract=_candidate_response_contract(),
+            response_schema=_candidate_response_schema(),
+            payload=payload,
+        )
+        request.route = actual_route
+        return CandidateSolution.from_dict(_extract_json_object(response))
+
+    def verifier(self, request: VerificationRequest) -> VerificationReport:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "analysis_results": request.analysis_results.to_dict() if request.analysis_results else None,
+            "formal_results": [item.to_dict() for item in request.formal_results] if request.formal_results else None,
+        }
+        response, actual_route = self._run_role(
+            role="verifier",
+            prompt_file="verifier.md",
+            route=request.route,
+            response_contract=_verification_response_contract(),
+            response_schema=_verification_response_schema(),
+            payload=payload,
+        )
+        request.route = actual_route
+        return VerificationReport.from_dict(_extract_json_object(response))
+
+    def reviser(self, request: RevisionRequest) -> CandidateSolution:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "candidate": request.candidate.to_dict(),
+            "verification_report": request.verification_report.to_dict(),
+            "branch_id": request.branch_id,
+            "branch_strategy": request.branch_strategy.value,
+            "branch_parent_id": request.branch_parent_id,
+            "branch_rationale": request.branch_rationale,
+        }
+        response, actual_route = self._run_role(
+            role="reviser",
+            prompt_file="reviser.md",
+            route=request.route,
+            response_contract=_candidate_response_contract(),
+            response_schema=_candidate_response_schema(),
+            payload=payload,
+        )
+        request.route = actual_route
+        return CandidateSolution.from_dict(_extract_json_object(response))
+
+    def _run_role(
+        self,
+        *,
+        role: str,
+        prompt_file: str,
+        route: EffectiveModelRoute,
+        response_contract: dict[str, Any],
+        response_schema: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> tuple[str, EffectiveModelRoute]:
+        prompt_path = self._resolve_prompt_path(role, prompt_file)
+        prompt_text = prompt_path.read_text(encoding="utf-8")
+        candidates = [route, *route.fallback_routes]
+        prior_route: EffectiveModelRoute | None = None
+        for index, base_candidate in enumerate(candidates):
+            candidate = _codex_effective_route(base_candidate)
+            if index > 0 and prior_route is not None:
+                candidate = _route_with_fallback_note(candidate, prior_route)
+            query = build_live_role_query(
+                role=role,
+                prompt_text=prompt_text,
+                payload=payload,
+                response_contract=response_contract,
+                route_notes=_codex_route_notes(candidate),
+                route_temperature=candidate.temperature,
+                prompt_profile=self.config.prompt_profile,
+            )
+            command, result, response_text = self._run_codex_command(
+                query=query,
+                response_schema=response_schema,
+                route=candidate,
+                role=role,
+                has_analysis_results=bool(payload.get("analysis_results")),
+                has_formal_results=bool(payload.get("formal_results")),
+            )
+            transcript = LiveRoleTranscript(
+                backend=OrchestratorBackend.CODEX_LOCAL.value,
+                role=role,
+                provider=candidate.provider,
+                model=candidate.model,
+                command=list(command),
+                prompt_path=_display_path(prompt_path),
+                query=query,
+                response=response_text,
+                selected_route=_effective_route_payload(candidate),
+            )
+            self.transcripts.append(transcript)
+            if result.returncode != 0:
+                transcript.error = (
+                    f"Codex role {role!r} failed with exit code {result.returncode}: "
+                    f"{result.stderr.strip() or result.stdout.strip()}"
+                )
+                if index + 1 < len(candidates) and _looks_like_live_route_configuration_error(response_text):
+                    prior_route = candidate
+                    continue
+                raise RuntimeError(transcript.error)
+            try:
+                transcript.response_object = _extract_json_object(response_text)
+            except ValueError as exc:
+                transcript.error = f"Codex role {role!r} did not return a valid JSON payload: {exc}"
+                raise RuntimeError(transcript.error) from exc
+            return response_text, candidate
+        raise RuntimeError(f"Codex role {role!r} exhausted all live route candidates without a result.")
+
+    def _run_codex_command(
+        self,
+        *,
+        query: str,
+        response_schema: dict[str, Any],
+        route: EffectiveModelRoute,
+        role: str,
+        has_analysis_results: bool,
+        has_formal_results: bool,
+    ) -> tuple[list[str], CommandExecutionResult, str]:
+        with TemporaryDirectory(prefix="deep-gvr-live-codex-role-") as tmpdir:
+            temp_root = Path(tmpdir)
+            response_schema_path = temp_root / "role_response.schema.json"
+            output_path = temp_root / "role_response.json"
+            response_schema_path.write_text(json.dumps(response_schema, indent=2), encoding="utf-8")
+            command = [
+                self.config.codex_binary,
+                "exec",
+                "--cd",
+                str(temp_root),
+                "--sandbox",
+                "workspace-write",
+                "--color",
+                "never",
+                "--skip-git-repo-check",
+                "--json",
+                "--output-schema",
+                str(response_schema_path),
+                "--output-last-message",
+                str(output_path),
+            ]
+            if route.provider not in {"", "default", "auto"}:
+                command.extend(["-c", f'model_provider="{route.provider}"'])
+            if route.model not in {"", "configured-by-codex", "provider-default"}:
+                command.extend(["--model", route.model])
+            command.append(query)
+            if self.executor is not None:
+                result = self.executor(command, temp_root)
+            else:
+                result = _default_executor(
+                    command,
+                    temp_root,
+                    resolve_live_role_timeout_seconds(
+                        role,
+                        self.config.command_timeout_seconds,
+                        has_analysis_results=has_analysis_results,
+                        has_formal_results=has_formal_results,
+                    ),
+                )
+            response_text = output_path.read_text(encoding="utf-8").strip() if output_path.exists() else ""
+            if not response_text:
+                response_text = result.stdout if result.returncode == 0 else f"{result.stdout}\n{result.stderr}".strip()
+            return command, result, response_text
+
+    def _resolve_prompt_path(self, role: str, prompt_file: str) -> Path:
+        if self.config.prompt_profile == "compact" and role == "verifier":
+            compact_path = self.prompt_root / f"{Path(prompt_file).stem}_compact.md"
+            if compact_path.exists():
+                return compact_path
+        return self.prompt_root / prompt_file
 
 
 def load_benchmark_suite(
@@ -823,17 +1007,18 @@ def run_benchmark_suite(
         resolved_output_root = (
             Path(output_root) if output_root is not None else Path("eval/results/live") / resolved_run_id
         )
+        runtime_config = load_runtime_config(config_path) if config_path is not None else DeepGvrConfig()
         results = _run_live_suite(
             benchmark_cases,
             routing_probe=probe,
-            base_config=load_runtime_config(config_path) if config_path is not None else DeepGvrConfig(),
+            base_config=runtime_config,
             output_root=resolved_output_root,
             run_id=resolved_run_id,
             live_config=live_config or LiveEvalConfig(),
             executor=executor,
         )
         generated_at = _isoformat(now)
-        runner_backend = "hermes_prompt_harness"
+        runner_backend = _live_runner_backend(runtime_config)
     else:
         raise ValueError(f"Unsupported benchmark mode {mode!r}.")
 
@@ -1050,6 +1235,12 @@ def _run_live_suite(
     return results
 
 
+def _live_runner_backend(config: DeepGvrConfig) -> str:
+    if config.runtime.orchestrator_backend is OrchestratorBackend.CODEX_LOCAL:
+        return "codex_native_role_harness"
+    return "hermes_prompt_harness"
+
+
 def _run_fixture_case(
     case: BenchmarkCase,
     *,
@@ -1146,17 +1337,27 @@ def _run_live_case(
         config.verification.tier3.backend = case.formal_backend
     domain, literature_context = load_domain_context(config)
     session_store = SessionStore(config.evidence.directory)
+    if config.runtime.orchestrator_backend is OrchestratorBackend.CODEX_LOCAL:
+        routing_plan = build_native_role_routing_plan(config, routing_probe=routing_probe)
+        live_runner: HermesPromptRoleRunner | CodexPromptRoleRunner = CodexPromptRoleRunner(
+            live_config,
+            prompt_root=prompt_root,
+            executor=executor,
+            cwd=_repo_root(),
+        )
+    else:
+        routing_plan = build_live_routing_plan(config, routing_probe=routing_probe)
+        live_runner = HermesPromptRoleRunner(
+            live_config,
+            prompt_root=prompt_root,
+            executor=executor,
+            cwd=_repo_root(),
+        )
     tier_runner = Tier1LoopRunner(
         config,
         session_store=session_store,
         routing_probe=routing_probe,
-        routing_plan=build_live_routing_plan(config, routing_probe=routing_probe),
-    )
-    live_runner = HermesPromptRoleRunner(
-        live_config,
-        prompt_root=prompt_root,
-        executor=executor,
-        cwd=_repo_root(),
+        routing_plan=routing_plan,
     )
     session_id = f"{run_id}_{case.id}"
     route_provider = tier_runner.routing_plan.verifier.provider
@@ -1224,7 +1425,7 @@ def _run_live_case(
         if not tiers_matched_expected:
             notes.append(f"Expected tiers {case.expected_tiers}, got {verify_record.tiers_applied}.")
         if verify_record.routing_temperature is not None:
-            notes.append("Hermes CLI does not expose temperature overrides; prompt separation only was applied.")
+            notes.append("The live role harness does not expose temperature overrides; prompt separation only was applied.")
         if literature_context:
             notes.append(f"Injected {len(literature_context)} domain context note(s) into the live run.")
         routing_mode = verify_record.routing_mode.value
@@ -1588,7 +1789,7 @@ def _default_executor(
         return CommandExecutionResult(
             returncode=124,
             stdout=exc.stdout or "",
-            stderr=f"Hermes command timed out after {timeout_text} seconds.",
+            stderr=f"Live role command timed out after {timeout_text} seconds.",
         )
 
 
@@ -1635,7 +1836,7 @@ def _extract_json_object(text: str) -> dict[str, Any]:
             continue
         if isinstance(payload, dict):
             return payload
-    raise ValueError(f"Could not parse a JSON object from Hermes output: {text[:200]!r}")
+    raise ValueError(f"Could not parse a JSON object from backend output: {text[:200]!r}")
 
 
 def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:

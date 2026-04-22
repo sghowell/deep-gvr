@@ -74,36 +74,41 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hermes-binary",
         default="hermes",
-        help="Hermes executable to use for live evaluation.",
+        help="Hermes executable to use when live evaluation selects the Hermes backend or Aristotle transport needs it.",
+    )
+    parser.add_argument(
+        "--codex-binary",
+        default="codex",
+        help="Codex executable to use when live evaluation selects the codex_local backend.",
     )
     parser.add_argument(
         "--prompt-root",
         default="prompts",
-        help="Prompt directory for live Hermes calls.",
+        help="Prompt directory for live role calls.",
     )
     parser.add_argument(
         "--prompt-profile",
         choices=list(PROMPT_PROFILES),
         default=DEFAULT_PROMPT_PROFILE,
-        help="Prompt scaffolding profile for live Hermes calls.",
+        help="Prompt scaffolding profile for live role calls.",
     )
     parser.add_argument(
         "--command-timeout-seconds",
         type=int,
         default=120,
-        help="Base Hermes command timeout for live role calls.",
+        help="Base live command timeout for role calls.",
     )
     parser.add_argument(
         "--toolsets",
         action="append",
         default=[],
-        help="Comma-separated Hermes toolsets for live evaluation. Repeat the flag to add more values.",
+        help="Comma-separated Hermes toolsets for live evaluation. Ignored when the codex_local backend is selected.",
     )
     parser.add_argument(
         "--skills",
         action="append",
         default=[],
-        help="Comma-separated Hermes skills for live evaluation. Repeat the flag to add more values.",
+        help="Comma-separated Hermes skills for live evaluation. Ignored when the codex_local backend is selected.",
     )
     return parser.parse_args()
 
@@ -128,6 +133,7 @@ def main() -> int:
     if args.include_live:
         live_config = LiveEvalConfig(
             hermes_binary=args.hermes_binary,
+            codex_binary=args.codex_binary,
             prompt_root=args.prompt_root,
             prompt_profile=args.prompt_profile,
             command_timeout_seconds=args.command_timeout_seconds,
