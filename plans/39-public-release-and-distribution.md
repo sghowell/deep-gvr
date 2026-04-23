@@ -32,7 +32,7 @@ Start from `main` and implement this slice on `codex/public-release-and-distribu
 - [x] Add GitHub release automation and release checklist artifacts.
 - [x] Align docs and validation with the new public release process.
 - [x] Run full validation.
-- [ ] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
+- [x] Merge locally, revalidate on `main`, push, confirm CI, and delete the feature branch.
 
 ## Surprises & Discoveries
 
@@ -59,6 +59,7 @@ Start from `main` and implement this slice on `codex/public-release-and-distribu
 - Added a hosted docs surface with MkDocs Material and a docs workflow that builds from the public docs set without pulling internal repo docs into the hosted site.
 - Added a tagged GitHub release workflow that validates the repo, checks release metadata, renders release notes, and attaches the checked-in agentskills publication manifest.
 - Updated the human-facing release docs and landing pages so the public release channels, changelog, and docs site are part of the normal public story instead of operator-only knowledge.
+- The first actual public tag and release-history reconciliation now land in `plans/73-first-tagged-release-reconciliation.md`, which updates the `0.1.0` notes to match the fully shipped repo state before the first real tag is pushed.
 
 ## Context and Orientation
 
