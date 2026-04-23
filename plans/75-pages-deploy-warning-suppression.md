@@ -23,11 +23,11 @@ feature branch.
 
 ## Progress
 
-- [ ] Add this plan and index it from `plans/README.md`.
-- [ ] Confirm the remaining warning is still upstream in the latest official
+- [x] Add this plan and index it from `plans/README.md`.
+- [x] Confirm the remaining warning is still upstream in the latest official
       `actions/deploy-pages` line.
-- [ ] Add a narrow workflow-level suppression scoped to the deploy action step.
-- [ ] Update repo checks so the suppression rule stays encoded locally.
+- [x] Add a narrow workflow-level suppression scoped to the deploy action step.
+- [x] Update repo checks so the suppression rule stays encoded locally.
 - [ ] Run the required repo validation commands and a strict hosted-docs build.
 - [ ] Merge locally, revalidate on `main`, push, confirm the Docs workflow log
       is clean, and delete the feature branch.

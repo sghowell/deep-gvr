@@ -436,6 +436,8 @@ def check_release_surfaces(root: Path) -> list[str]:
             errors.append(".github/workflows/docs.yml: missing current Pages artifact upload step")
         if "actions/deploy-pages@v5" not in docs_workflow:
             errors.append(".github/workflows/docs.yml: missing current Pages deploy step")
+        if "NODE_OPTIONS: --no-deprecation" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing scoped Pages deploy deprecation workaround")
         if "github.event_name == 'workflow_dispatch'" in docs_workflow:
             errors.append(
                 ".github/workflows/docs.yml: docs deployment should not be gated to workflow_dispatch now that Pages is enabled"
