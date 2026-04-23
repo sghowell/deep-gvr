@@ -156,6 +156,7 @@ def expected_publication_manifest(root: Path | None = None) -> ReleasePublicatio
             "uv sync --all-extras",
             "bash scripts/install.sh",
             "bash scripts/install_codex.sh",
+            "uv run python scripts/clean_room_install_smoke.py --json",
             "uv run python eval/run_eval.py --subset tier2-support --output /tmp/deep-gvr-tier2-support.json",
             "uv run python scripts/codex_remote_bootstrap.py --json",
             "uv run python scripts/export_codex_automations.py --output-root /tmp/deep-gvr-codex-automations --force",

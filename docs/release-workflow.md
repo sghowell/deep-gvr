@@ -38,6 +38,13 @@ bash scripts/install_codex.sh
 
 If you want an isolated install tree for packaging or smoke testing, set `DEEP_GVR_HOME`, `HERMES_HOME`, and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of the default runtime and operator homes.
 
+To prove the documented Hermes, hybrid Codex, and Codex-native install/preflight
+flows from disposable temp homes, run:
+
+```bash
+uv run python scripts/clean_room_install_smoke.py --json
+```
+
 If you want the Codex-native backend path on a machine that does not need the Hermes surface, use:
 
 ```bash
@@ -86,6 +93,7 @@ bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
 ```bash
 uv run python scripts/release_preflight.py --json
 uv run python scripts/codex_preflight.py --json
+uv run python scripts/clean_room_install_smoke.py --json
 ```
 
 This checks the release bundle, config presence, and checked-in publication assets without assuming a live operator environment.
@@ -169,6 +177,7 @@ The tagged `Release` workflow will:
 
 - validate the repo, release surface, and hosted docs build
 - sync the full validated environment with `uv sync --all-extras`
+- run the dedicated clean-room install/preflight smoke
 - run the dedicated `tier2-support` evaluation subset
 - run the dedicated `tier3-support` evaluation subset
 - verify that the tag matches the repo version

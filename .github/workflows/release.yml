@@ -41,6 +41,9 @@ jobs:
             --hermes-config "$HERMES_HOME/config.yaml" \
             > /tmp/deep-gvr-release-preflight.json
 
+      - name: Clean-room install smoke
+        run: uv run python scripts/clean_room_install_smoke.py --json
+
       - name: Validate release version
         run: uv run python scripts/check_release_version.py --tag "$GITHUB_REF_NAME"
 

@@ -60,6 +60,13 @@ Optional `ssh/devbox` remote-operator export path:
 bash scripts/install_codex.sh --ssh-devbox-root /tmp/deep-gvr-codex-ssh-devbox
 ```
 
+If you want to prove the documented install and structural preflight flows from
+throwaway temp homes instead of your real operator home, run:
+
+```bash
+uv run python scripts/clean_room_install_smoke.py --json
+```
+
 ## Run Preflight
 
 Hermes and direct CLI path:
