@@ -430,10 +430,12 @@ def check_release_surfaces(root: Path) -> list[str]:
     docs_workflow_path = root / ".github" / "workflows" / "docs.yml"
     if docs_workflow_path.exists():
         docs_workflow = docs_workflow_path.read_text(encoding="utf-8")
-        if "actions/upload-pages-artifact@v4" not in docs_workflow:
-            errors.append(".github/workflows/docs.yml: missing Pages artifact upload step")
-        if "actions/deploy-pages@v4" not in docs_workflow:
-            errors.append(".github/workflows/docs.yml: missing Pages deploy step")
+        if "actions/configure-pages@v6" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing current Pages configure step")
+        if "actions/upload-pages-artifact@v5" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing current Pages artifact upload step")
+        if "actions/deploy-pages@v5" not in docs_workflow:
+            errors.append(".github/workflows/docs.yml: missing current Pages deploy step")
         if "github.event_name == 'workflow_dispatch'" in docs_workflow:
             errors.append(
                 ".github/workflows/docs.yml: docs deployment should not be gated to workflow_dispatch now that Pages is enabled"

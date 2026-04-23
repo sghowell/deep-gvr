@@ -23,10 +23,10 @@ feature branch.
 
 ## Progress
 
-- [ ] Add this plan and index it from `plans/README.md`.
-- [ ] Confirm the current official GitHub Pages action versions to use.
-- [ ] Update `.github/workflows/docs.yml` to the current Pages action line.
-- [ ] Update repo checks so the new Pages action versions are enforced.
+- [x] Add this plan and index it from `plans/README.md`.
+- [x] Confirm the current official GitHub Pages action versions to use.
+- [x] Update `.github/workflows/docs.yml` to the current Pages action line.
+- [x] Update repo checks so the new Pages action versions are enforced.
 - [ ] Run the required repo validation commands and a strict hosted-docs build.
 - [ ] Merge locally, revalidate on `main`, push, confirm the docs workflow, and
       delete the feature branch.
@@ -38,6 +38,9 @@ feature branch.
 - `src/deep_gvr/repo_checks.py` currently enforces the older Pages artifact and
   deploy action lines, so the workflow update and the guardrail must land
   together.
+- Official GitHub Marketplace listings now show the current supported Pages
+  line as `actions/configure-pages@v6`,
+  `actions/upload-pages-artifact@v5`, and `actions/deploy-pages@v5`.
 
 ## Decision Log
 
