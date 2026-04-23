@@ -55,15 +55,14 @@ Current Tier 2 facts:
 
 ## Tier 3 Formal Backends
 
-Tier 3 completion is about the shipped backends, Aristotle and MathCode.
-OpenGauss remains an intended backend family member, but it is not part of the
-standard shipped path today.
+Tier 3 completion now covers all three shipped backends: Aristotle, MathCode,
+and OpenGauss.
 
 | Backend | Runtime support | Transport shape | Lifecycle support | Deterministic coverage | Reference probe baseline | Remaining support gap |
 |---|---|---|---|---|---|---|
-| Aristotle | Shipped backend | Hermes MCP primary, direct Aristotle CLI fallback | submission, polling, and checkpointed resume | dedicated `tier3-support` subset plus `formal-proved-repetition-majority` and `formal-unavailable-repetition-scaling` | ready in the reference environment | stronger backend-parity signoff and continued honesty about the Hermes-shaped transport boundary |
-| MathCode | Shipped backend | local CLI | bounded single-shot execution; no shipped submission/poll/resume lifecycle | dedicated `tier3-support` subset plus `formal-mathcode-nat-add-zero` | ready in the reference environment | backend-parity signoff and the separate OpenGauss completion decision in the remaining Tier 3 completion work |
-| OpenGauss | not part of the shipped path | diagnostics only; no integrated transport | none | none | ready for local runtime diagnostics in the reference environment | repo-owned backend selection, transport, operator workflow, and benchmark coverage in the owning OpenGauss backend slice |
+| Aristotle | Shipped backend | Hermes MCP primary, direct Aristotle CLI fallback | submission, polling, and checkpointed resume | dedicated `tier3-support` subset plus `formal-proved-repetition-majority` and `formal-unavailable-repetition-scaling` | ready in the reference environment | continued honesty about the Hermes-shaped transport boundary |
+| MathCode | Shipped backend | local CLI | bounded single-shot execution; no shipped submission/poll/resume lifecycle | dedicated `tier3-support` subset plus `formal-mathcode-nat-add-zero` | ready in the reference environment | keep local operator setup and bounded lifecycle docs aligned |
+| OpenGauss | Shipped backend | local `gauss chat -Q` CLI transport with session-id/transcript capture when available | bounded single-shot execution; no shipped submission/poll/resume lifecycle | dedicated `tier3-support` subset plus `formal-opengauss-nat-add-right-zero` | ready in the reference environment | keep local `gauss` provider/runtime setup and bounded lifecycle docs aligned |
 
 ## Reference Readiness Baseline
 
@@ -76,8 +75,8 @@ The latest reference-environment capability probe on April 22, 2026, after
 - `aristotle_transport`: `ready`
 - `mathcode_transport`: `ready`
 - `opengauss_transport`: `ready`
-- dedicated `tier3-support` evaluation subset: `3/3` passing on the shipped
-  Aristotle and MathCode cases
+- dedicated `tier3-support` evaluation subset: `4/4` passing on the shipped
+  Aristotle, MathCode, and OpenGauss cases
 
 That probe result is a machine snapshot, not a universal product claim. The
 machine you plan to use should always be checked directly.
@@ -105,4 +104,6 @@ For Tier 3, complete support means:
   documented exactly as they behave in probes, preflight, and operator docs
 - Aristotle remains honestly described as Hermes-shaped until that dependency is
   actually retired
-- OpenGauss local runtime readiness is no longer the blocker; complete support now requires the repo-owned backend-selection, transport, operator-flow, and benchmark work in the owning OpenGauss backend slice
+- OpenGauss now ships as a bounded local CLI path; complete support means
+  keeping its local runtime/provider setup, artifact capture, and bounded
+  lifecycle docs aligned with the actual transport contract

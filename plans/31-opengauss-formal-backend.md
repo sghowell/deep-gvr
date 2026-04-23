@@ -2,7 +2,7 @@
 
 ## Purpose / Big Picture
 
-Implement OpenGauss as the interactive formal backend promised by the architecture, alongside Aristotle as the primary default backend. This slice is the phase-2 formal expansion that supports project-scoped or iterative proof work rather than only single-shot Aristotle transport.
+Implement OpenGauss as the additional shipped formal backend promised by the architecture, alongside Aristotle as the primary default backend and MathCode as the other bounded local CLI path. This slice adds a real OpenGauss backend selection, local quiet-query transport, operator flow, and benchmark coverage without pretending OpenGauss has Aristotle-style submission or resume semantics.
 
 ## Branch Strategy
 
@@ -18,9 +18,9 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 - [x] Add the new plan and index it from `plans/README.md`.
 - [x] Diagnose the current local OpenGauss installer failure mode.
-- [ ] Add backend selection and contracts for OpenGauss.
-- [ ] Implement the OpenGauss transport and operator workflow.
-- [ ] Extend docs, tests, and benchmarks for the new formal backend.
+- [x] Add backend selection and contracts for OpenGauss.
+- [x] Implement the OpenGauss transport and operator workflow.
+- [x] Extend docs, tests, and benchmarks for the new formal backend.
 
 ## Surprises & Discoveries
 
@@ -28,6 +28,7 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 - The benchmark suite should include at least one case that benefits from interactive/project-scoped proof work.
 - The upstream install path is no longer the blocker on this machine: the official installer now completes, the published Morph targets resolve, `gauss` is on `PATH`, and `~/.gauss/config.yaml` exists.
 - The remaining ambiguity is narrower and repo-owned: the raw checkout launcher can still fail `./gauss doctor` if the checkout-local Python dependencies are not bootstrapped, but the installed runtime is healthy enough to support real backend integration work.
+- The shipped repo-owned OpenGauss path is a bounded local `gauss chat -Q` CLI transport with optional session-id and transcript capture, not a full Aristotle-style submission/poll/resume lifecycle.
 
 ## Decision Log
 
@@ -39,9 +40,10 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 
 ## Outcomes & Retrospective
 
-- Repo implementation is still pending.
-- The former external blocker has been cleared. As of April 22, 2026, the official installer can produce a working local `gauss` runtime and config again, so this slice is now a planned repo-owned backend integration task rather than a blocked one.
-- Plan 37 remains useful as the diagnostics surface (`uv run python scripts/diagnose_opengauss.py --json`), but slice 71 showed that the diagnostics output must distinguish a healthy installed runtime from a broken raw checkout launcher.
+- OpenGauss is now selectable as a shipped Tier 3 backend through the same Tier 3 contracts used by Aristotle and MathCode.
+- The repo now ships a bounded local OpenGauss CLI transport over `gauss chat -Q`, including provider/setup error mapping plus session-id and transcript-path capture when the CLI emits them.
+- Deterministic benchmark coverage now includes an OpenGauss-backed formal case, and the `tier3-support` subset includes OpenGauss alongside Aristotle and MathCode.
+- Plan 37 remains useful as the diagnostics surface (`uv run python scripts/diagnose_opengauss.py --json`), but it is now operator support for the shipped backend rather than a stand-in for missing integration.
 
 ## Context and Orientation
 
@@ -58,7 +60,7 @@ Start from `main` and implement this slice on `codex/opengauss-formal-backend`. 
 ## Concrete Steps
 
 1. Extend formal backend configuration and contracts to include OpenGauss.
-2. Add the OpenGauss transport boundary and lifecycle integration.
+2. Add the OpenGauss transport boundary and honest bounded lifecycle integration.
 3. Update prompts, docs, and operator setup for OpenGauss-backed proof work.
 4. Add tests and benchmark cases that exercise the new backend.
 
@@ -76,9 +78,8 @@ Targeted validation:
 
 ```bash
 uv run python -m unittest tests.test_formal tests.test_contracts -v
-cd ~/dev/OpenGauss && ./gauss doctor
-cd ~/dev/OpenGauss && ./scripts/install.sh --plain --skip-setup --noninteractive
 uv run python scripts/diagnose_opengauss.py --json
+uv run python eval/run_eval.py --subset tier3-support --output /tmp/deep-gvr-tier3-support-opengauss.json
 ```
 
 Acceptance evidence:
@@ -86,6 +87,7 @@ Acceptance evidence:
 - OpenGauss is selectable as a real Tier 3 backend.
 - Evidence and benchmark artifacts identify which formal backend ran.
 - Operator docs cover both Aristotle and OpenGauss flows accurately.
+- The shipped lifecycle boundary stays honest: OpenGauss is a bounded local CLI path, not a submission/poll/resume transport.
 
 ## Merge, Push, and Cleanup
 
@@ -101,7 +103,7 @@ Acceptance evidence:
 
 - Keep Aristotle as the stable default while OpenGauss integration is being added.
 - Reuse existing Tier 3 artifact shapes where possible.
-- If the external OpenGauss environment is not ready, keep the slice open rather than weakening the target.
+- If the local installed OpenGauss environment is not ready, keep the slice open rather than weakening the target.
 
 ## Interfaces and Dependencies
 

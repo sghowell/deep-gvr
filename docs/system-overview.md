@@ -77,7 +77,9 @@ reference probe baseline.
   with direct CLI fallback
 - MathCode: bounded local CLI-backed proof transport with no shipped
   submission/poll/resume lifecycle
-- OpenGauss: intended backend, not part of the standard release path today
+- OpenGauss: bounded local CLI-backed proof transport with session-id and
+  transcript-path capture when available, but no shipped
+  submission/poll/resume lifecycle
 
 See [Tier 2 and Tier 3 Support Matrix](tier2-tier3-support-matrix.md) for the
 current Tier 3 transport boundary, lifecycle differences, and reference probe
@@ -111,4 +113,3 @@ surface-by-surface result.
 |---|---|
 | Live delegated subagent closure | Neither backend ships repo-owned live delegated subagent closure today. Hermes still tracks the blocked delegated-capability closure slice, and Codex keeps deeper live delegation intentionally outside the runtime contract. |
 | Aristotle transport shape | Aristotle remains a shared Hermes-shaped formal transport with Hermes MCP primary transport plus CLI fallback, but that shape no longer leaves Codex behind Hermes. |
-| OpenGauss backend | OpenGauss is now a planned repo-owned backend implementation gap rather than an external install blocker. It is not part of the shipped backend-parity floor because neither backend exposes it yet. |

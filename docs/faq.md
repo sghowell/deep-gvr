@@ -18,7 +18,7 @@ Tier 3 is used for proof-oriented or formalizable claims, not for every technica
 
 ## What are the shipped Tier 3 backends?
 
-The standard release surface supports Aristotle and MathCode. OpenGauss is part of the intended backend portfolio, but it is not yet a standard release-path backend.
+The standard release surface supports Aristotle, MathCode, and OpenGauss. Aristotle is the submission/poll/resume path; MathCode and OpenGauss are bounded local CLI paths.
 
 ## Is Codex supported?
 
@@ -47,7 +47,7 @@ The main ones are:
 - the selected orchestrator backend (`hermes` or `codex_local`)
 - the configured model provider route
 - optional Tier 2 backend tools and libraries
-- optional Tier 3 backend setup such as Aristotle MCP or a local MathCode checkout
+- optional Tier 3 backend setup such as Aristotle MCP, a local MathCode checkout, or a local configured OpenGauss runtime
 
 ## What happens when deep-gvr cannot verify something?
 

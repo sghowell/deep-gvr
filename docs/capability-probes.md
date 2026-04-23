@@ -43,12 +43,12 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 
 ### OpenGauss transport
 
-- Question: is there a healthy local OpenGauss install path and installed `gauss` runtime to unblock the later backend slice?
-- Default until proven otherwise: assume OpenGauss is blocked until there is an installed `gauss` binary plus `~/.gauss/config.yaml`, and use explicit diagnostics to distinguish that state from raw-checkout or upstream installer failures.
-- Current baseline: in the current reference environment, `scripts/run_capability_probes.py` reports `opengauss_transport` as `ready` because an installed `gauss` binary and `~/.gauss/config.yaml` are both present.
-- Operator path: run `uv run python scripts/diagnose_opengauss.py --json` to capture installed-runtime doctor output first, plus supplementary raw-checkout and Morph-target state in one report.
-- Preferred outcome: a working installed `gauss` runtime exists locally, so the owning OpenGauss backend slice can resume from a known-good operator baseline instead of a speculative installer story.
-- Current state: on this machine the installed runtime is healthy enough for diagnostics, the published Morph targets resolve successfully, and the remaining ambiguity is repo-owned integration work. The raw checkout launcher can still fail separately if its checkout-local Python dependencies are not bootstrapped.
+- Question: can the orchestrator dispatch local OpenGauss proof attempts through the configured installed `gauss` runtime?
+- Default until proven otherwise: assume OpenGauss is unavailable unless there is an installed `gauss` binary plus `~/.gauss/config.yaml`, and use explicit diagnostics to distinguish that state from raw-checkout or upstream installer failures.
+- Current baseline: `scripts/run_capability_probes.py` reports `opengauss_transport` as `ready` in the reference environment, using the Tier 3 runtime config to inspect the configured local OpenGauss root, `gauss` binary, and config path. The probe exposes the shipped boundary explicitly as `transport_shape=bounded_local_cli`, `lifecycle_support=false`, `interactive_session_capture=true`, and `hermes_shaped_transport=false`.
+- Operator path: set `verification.tier3.backend: opengauss`, confirm the configured `gauss` binary and config path are correct, and re-run `scripts/release_preflight.py --operator`. If the runtime blocks, run `uv run python scripts/diagnose_opengauss.py --json` to separate installed-runtime health from raw-checkout issues.
+- Preferred outcome: the orchestrator records a real Tier 3 transport trace and returned proof results from local OpenGauss quiet-query execution, including session identifiers and transcript paths when the CLI emits them.
+- Implemented baseline: the shipped harness now maps OpenGauss quiet-query output into the same `formal_request`, `formal_transport`, and `formal_results` artifact family as Aristotle- and MathCode-backed proof attempts, while keeping the lifecycle boundary honest: no shipped submission, polling, or checkpoint-resume support.
 
 ### Session checkpoint and resume
 
@@ -81,7 +81,7 @@ The remaining open probe defaults are temporary gaps, not accepted end states; e
 - `src/deep_gvr/probes.py` contains the probe logic and default/fallback metadata.
 - `src/deep_gvr/formal.py` contains the Tier 3 transport boundaries and config preflight helpers for Aristotle, MathCode, and OpenGauss readiness inspection.
 - `scripts/setup_mcp.sh` can install and verify the Aristotle MCP stanza for the local Hermes config.
-- `scripts/diagnose_opengauss.py` captures installed-runtime, raw-checkout, and Morph-target OpenGauss diagnostics without pretending the backend is already integrated.
+- `scripts/diagnose_opengauss.py` captures installed-runtime, raw-checkout, and Morph-target OpenGauss diagnostics as operator support for the shipped backend path.
 - `scripts/release_preflight.py` turns the probe results plus config/install checks into a release-grade operator readiness report.
 - `src/deep_gvr/release_surface.py` lifts analysis-adapter readiness into the release preflight report so missing dependencies are visible at install/operator time.
 - `src/deep_gvr/tier1.py` implements the checkpoint artifact and resume-safe control flow.

@@ -12,7 +12,6 @@ Excluded from the parity floor:
 
 - blocked delegated-capability closure that neither backend ships today
 - product-managed Codex live delegation state
-- the planned OpenGauss backend, which neither shipped backend exposes yet
 
 ## Status Meanings
 
@@ -34,7 +33,7 @@ Excluded from the parity floor:
 | Tier 2 backend dispatch | `local`, `modal`, and `ssh` where the selected family supports them | `local`, `modal`, and `ssh` where the selected family supports them | `parity` | The current shipped broad backend dispatch remains QEC-only by design for both backends. |
 | Tier 3 Aristotle path | Shared formal layer with Hermes MCP primary transport and CLI fallback | Same shared formal layer with Hermes MCP primary transport and CLI fallback | `parity` | Aristotle transport is still Hermes-shaped, but it does not leave Codex behind Hermes. |
 | Tier 3 MathCode path | Shared bounded local CLI path | Same shared bounded local CLI path | `parity` | No backend-specific gap. |
-| Tier 3 OpenGauss path | Not shipped yet | Not shipped yet | `shared_open_item` | OpenGauss remains planned runtime work rather than a backend-parity blocker. |
+| Tier 3 OpenGauss path | Shared bounded local `gauss chat -Q` CLI path with session-id/transcript capture when available | Same shared bounded local `gauss chat -Q` CLI path with session-id/transcript capture when available | `parity` | No backend-specific gap; both backends use the same shipped local OpenGauss transport. |
 | Release install and preflight | Hermes install and release preflight remain supported | Codex install and preflight remain supported, and Hermes can still be installed alongside it | `parity` | Each backend keeps its operator path without removing the other. |
 | Remote stronger-machine execution | No repo-owned Hermes-specific remote orchestrator path | Repo-owned Codex SSH/devbox bootstrap plus runtime-backed remote execution | `codex_stronger` | Codex has the stronger remote operator surface today. |
 | Review/QA and exported operator packs | Not part of the Hermes backend contract | Supported Codex-local operator extensions over the same runtime | `codex_stronger` | These are additive Codex surfaces, not parity requirements for Hermes. |
@@ -53,5 +52,4 @@ capable as `hermes`:
 The remaining open architecture work is shared rather than parity-specific:
 
 - delegated-capability closure on the Hermes side
-- OpenGauss backend implementation
 - the separate future `openai_native` backend

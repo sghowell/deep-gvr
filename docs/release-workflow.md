@@ -139,6 +139,13 @@ bash scripts/setup_mcp.sh --install --check
 
 For MathCode, point the config at the local checkout and executable run wrapper, then re-run operator preflight.
 
+For OpenGauss, confirm the configured `gauss` binary and `~/.gauss/config.yaml`
+path are valid, then re-run operator preflight. If preflight still blocks, run:
+
+```bash
+uv run python scripts/diagnose_opengauss.py --json
+```
+
 ## 6. Build the Hosted Docs
 
 ```bash
