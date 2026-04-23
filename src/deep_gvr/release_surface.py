@@ -450,6 +450,7 @@ def collect_release_preflight(
         config_path=str(effective_config_path),
         hermes_config_path=str(effective_hermes_config_path),
         publication_manifest_path=str(manifest_path),
+        next_steps=_collect_preflight_next_steps(checks),
         checks=checks,
     )
 
@@ -522,8 +523,25 @@ def collect_codex_preflight(
         config_path=str(effective_config_path),
         hermes_config_path=str(effective_hermes_config_path),
         publication_manifest_path=str(manifest_path),
+        next_steps=_collect_preflight_next_steps(checks),
         checks=checks,
     )
+
+
+def _collect_preflight_next_steps(checks: list[ReleaseCheck]) -> list[str]:
+    prioritized_statuses = (ReleaseCheckStatus.BLOCKED, ReleaseCheckStatus.ATTENTION)
+    next_steps: list[str] = []
+    seen: set[str] = set()
+    for status in prioritized_statuses:
+        for check in checks:
+            if check.status is not status:
+                continue
+            guidance = check.guidance.strip()
+            if not guidance or guidance in seen:
+                continue
+            next_steps.append(guidance)
+            seen.add(guidance)
+    return next_steps
 
 
 def _check_skill_install(skills_dir: Path) -> ReleaseCheck:

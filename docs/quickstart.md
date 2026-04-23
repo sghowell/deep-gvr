@@ -17,14 +17,37 @@ Optional extras:
 - `uv sync --extra analysis` for the broader scientific analysis families only
 - `uv sync --extra quantum_oss` for the broader OSS quantum families only
 
-## Install the Project Environment
+## Choose an Environment Sync Path
 
 ```bash
 uv sync
+```
+
+Validated full-portfolio path:
+
+```bash
 uv sync --all-extras
 ```
 
-`uv sync` is the minimal path. `uv sync --all-extras` is the recommended path when you want the full shipped Tier 2 portfolio available on the same machine and want to match the repo’s validated CI/release environment.
+Targeted narrower Tier 2 paths:
+
+```bash
+uv sync --extra analysis
+uv sync --extra quantum_oss
+```
+
+Use exactly one of those paths for the environment you actually want. `uv sync`
+is the minimal path. `uv sync --all-extras` is the recommended path when you
+want the full shipped Tier 2 portfolio available on the same machine and want
+to match the repo’s validated CI/release environment.
+
+## Choose an Operator Surface
+
+| Need | Install | First preflight |
+| --- | --- | --- |
+| Hermes slash command or direct CLI only | `bash scripts/install.sh` | `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` |
+| Codex-local only | `bash scripts/install_codex.sh --skip-hermes-install` | `uv run python scripts/codex_preflight.py --operator` |
+| Hermes plus Codex on one machine | `bash scripts/install_codex.sh` | `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` and `uv run python scripts/codex_preflight.py --operator` |
 
 ## Install a Supported Surface
 

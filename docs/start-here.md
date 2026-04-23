@@ -23,6 +23,14 @@ This path is for understanding what `deep-gvr` is, what kind of system it is, an
 
 ## I Want to Run It
 
+Common operator paths:
+
+| Need | Install | First preflight |
+| --- | --- | --- |
+| Hermes slash command or direct CLI only | `bash scripts/install.sh` | `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` |
+| Codex-local only | `bash scripts/install_codex.sh --skip-hermes-install` | `uv run python scripts/codex_preflight.py --operator` |
+| Hermes plus Codex on one machine | `bash scripts/install_codex.sh` | `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml` and `uv run python scripts/codex_preflight.py --operator` |
+
 Use these in order:
 
 - [Codex Local](codex-local.md)

@@ -52,6 +52,7 @@
         "config_path",
         "hermes_config_path",
         "publication_manifest_path",
+        "next_steps",
         "checks"
       ],
       "additionalProperties": false,
@@ -65,6 +66,10 @@
         "config_path": { "type": "string" },
         "hermes_config_path": { "type": "string" },
         "publication_manifest_path": { "type": "string" },
+        "next_steps": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "checks": {
           "type": "array",
           "items": {

@@ -32,17 +32,38 @@ Optional extras:
 
 ## Install the Codex Surface
 
-From the repository root:
+Pick one environment sync path from the repository root:
 
 ```bash
 uv sync
+```
+
+```bash
 uv sync --all-extras
+```
+
+```bash
+uv sync --extra analysis
+uv sync --extra quantum_oss
+```
+
+`uv sync` is the minimal local path. `uv sync --all-extras` is the recommended
+path when you want the full shipped Tier 2 portfolio available on the Codex
+machine and want to match the repo’s validated CI/release environment. Use the
+targeted extra sync paths only when you intentionally want a narrower local Tier
+2 environment.
+
+Then install the Codex surface you actually want:
+
+Codex plus Hermes on one machine:
+
+```bash
 bash scripts/install_codex.sh
 ```
 
-`uv sync` is the minimal local path. `uv sync --all-extras` is the recommended path when you want the full shipped Tier 2 portfolio available on the Codex machine and want to match the repo’s validated CI/release environment.
-
-This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr` and, by default, also refreshes the Hermes skill/runtime surface so both backend paths remain available on the same machine.
+This installs the Codex-local `deep-gvr` skill into `~/.codex/skills/deep-gvr`
+and, by default, also refreshes the Hermes skill/runtime surface so both
+backend paths remain available on the same machine.
 
 If you only want the Codex-native backend path and do not need the Hermes surface on that machine:
 

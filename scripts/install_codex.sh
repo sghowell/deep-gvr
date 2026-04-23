@@ -264,7 +264,7 @@ else
 fi
 echo "Next steps:"
 echo "  1. Review ${repo_root}/docs/codex-local.md for the Codex-local operator flow."
-echo "  2. Run 'uv sync --all-extras' if you want the full shipped Tier 2 portfolio and docs/dev tooling on this machine."
+echo "  2. Choose one environment sync path: 'uv sync' for the minimal local path, 'uv sync --all-extras' for the full validated portfolio, or a narrower extra sync if you only want part of Tier 2."
 echo "  3. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --json' to inspect the Codex-local surface."
 echo "  4. Run 'uv run python ${repo_root}/scripts/codex_preflight.py --operator' before live Codex operator use."
 echo "  5. If you want the packaged plugin bundle as well, review ${repo_root}/docs/codex-plugin.md."

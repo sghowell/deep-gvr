@@ -70,6 +70,9 @@
     "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
     "hermes_config_path": "~/.hermes/config.yaml",
     "publication_manifest_path": "release/agentskills.publication.json",
+    "next_steps": [
+      "Run uv run python scripts/codex_preflight.py --ssh-devbox --operator after the remote install and config sync complete."
+    ],
     "checks": [
       {
         "name": "codex_cli",

@@ -25,13 +25,13 @@ green, and delete the feature branch.
 
 - [x] Add this plan and index it from `plans/README.md`.
 - [x] Inspect the current public operator docs and preflight/report surfaces.
-- [ ] Make the environment sync and install choices explicit in the public docs.
-- [ ] Add a concise operator-surface chooser for Hermes, Codex-local, and
+- [x] Make the environment sync and install choices explicit in the public docs.
+- [x] Add a concise operator-surface chooser for Hermes, Codex-local, and
       hybrid/local-release use.
-- [ ] Extend the release and Codex preflight reports with a short top-level
+- [x] Extend the release and Codex preflight reports with a short top-level
       next-step list and surface it in the human-readable script output.
-- [ ] Update tests, schemas, and templates for the report contract change.
-- [ ] Run the required repo validation commands and a strict hosted-docs build.
+- [x] Update tests, schemas, and templates for the report contract change.
+- [x] Run the required repo validation commands and a strict hosted-docs build.
 - [ ] Merge locally, revalidate on `main`, push, confirm remote CI and Docs,
       and delete the feature branch.
 
@@ -47,6 +47,9 @@ green, and delete the feature branch.
   `docs/quickstart.md`, `docs/codex-local.md`, and `docs/release-workflow.md`)
   all participate in the operator story, so this slice should keep them aligned
   instead of patching only one page.
+- The existing report contract was the right place to add operator-summary
+  guidance. The check-level `guidance` strings were already good enough; the
+  main missing piece was a short top-level summary derived from them.
 
 ## Decision Log
 
@@ -68,6 +71,9 @@ green, and delete the feature branch.
   Codex-local, and mixed/local release use.
 - `release_preflight.py` and `codex_preflight.py` will produce a shorter,
   operator-usable action summary without losing the detailed per-check payload.
+- The install scripts will now echo the same environment-choice framing as the
+  public docs instead of implying that the full-portfolio sync is the only
+  meaningful next step.
 
 ## Context and Orientation
 

@@ -23,6 +23,11 @@ def _print_human_report(report: dict[str, object]) -> None:
     print(f"  config_path: {report['config_path']}")
     print(f"  hermes_config_path: {report['hermes_config_path']}")
     print(f"  publication_manifest_path: {report['publication_manifest_path']}")
+    next_steps = report.get("next_steps")
+    if isinstance(next_steps, list) and next_steps:
+        print("Next steps:")
+        for index, step in enumerate(next_steps, start=1):
+            print(f"  {index}. {step}")
     for check in report["checks"]:
         if not isinstance(check, dict):
             continue

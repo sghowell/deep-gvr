@@ -28,13 +28,20 @@ The release checklist lives at [release/release-checklist.md](https://github.com
 
 ## 2. Install the Supported Local Surfaces
 
+This workflow assumes the full validated release environment, not the minimal
+quickstart path. For release validation and tagged publication work, use the
+full-portfolio sync and install both shipped local operator surfaces on the
+same machine:
+
 ```bash
 uv sync --all-extras
 bash scripts/install.sh
 bash scripts/install_codex.sh
 ```
 
-`uv sync --all-extras` is the validated full-portfolio path for the shipped Tier 2 families plus docs/dev tooling. Use lighter `uv sync` commands only when you intentionally want a narrower local surface.
+`uv sync --all-extras` is the validated full-portfolio path for the shipped
+Tier 2 families plus docs/dev tooling. Use lighter `uv sync` commands only in
+the quickstart/operator path, not for release validation.
 
 If you want an isolated install tree for packaging or smoke testing, set `DEEP_GVR_HOME`, `HERMES_HOME`, and `CODEX_HOME` first. The install and preflight helpers will use those trees instead of the default runtime and operator homes.
 
@@ -123,6 +130,10 @@ This verifies the installed skill bundle plus the live runtime path:
 - selected Tier 2 backend readiness for the configured default family
 - native remote Codex execution availability when `runtime.orchestrator_backend=codex_local`
 - selected Tier 3 backend readiness
+
+The preflight reports also emit a short top-level `next_steps` summary so
+operators can see the highest-value follow-up actions before reading the full
+per-check payload.
 
 Important Tier 2 boundary:
 

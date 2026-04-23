@@ -1368,7 +1368,8 @@ class ReleasePreflightReport:
     config_path: str
     hermes_config_path: str
     publication_manifest_path: str
-    checks: list[ReleaseCheck]
+    next_steps: list[str] = field(default_factory=list)
+    checks: list[ReleaseCheck] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ReleasePreflightReport":
@@ -1382,6 +1383,7 @@ class ReleasePreflightReport:
             config_path=data["config_path"],
             hermes_config_path=data["hermes_config_path"],
             publication_manifest_path=data["publication_manifest_path"],
+            next_steps=list(data.get("next_steps", [])),
             checks=[ReleaseCheck.from_dict(item) for item in data.get("checks", [])],
         )
 

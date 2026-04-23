@@ -8,6 +8,10 @@
   "config_path": "${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml",
   "hermes_config_path": "~/.hermes/config.yaml",
   "publication_manifest_path": "release/agentskills.publication.json",
+  "next_steps": [
+    "Install Hermes Agent and ensure the hermes binary is on PATH before operator use.",
+    "Export the expected provider API key before using the configured route on the selected backend."
+  ],
   "checks": [
     {
       "name": "runtime_config",

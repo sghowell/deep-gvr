@@ -583,6 +583,7 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn('"release_surface_ready": true', completed.stdout)
             self.assertIn('"operator_ready": false', completed.stdout)
+            self.assertIn('"next_steps"', completed.stdout)
 
     def test_codex_preflight_reports_structural_surface_after_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -633,6 +634,7 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn('"release_surface_ready": true', completed.stdout)
             self.assertIn('"operator_ready": false', completed.stdout)
+            self.assertIn('"next_steps"', completed.stdout)
 
     def test_collect_codex_preflight_reports_ready_mathcode_transport_when_configured(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -933,6 +935,7 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertIn("not required", checks["skill_install"].summary)
         self.assertEqual(checks["hermes_cli"].status.value, "ready")
         self.assertIn("not required", checks["hermes_cli"].summary)
+        self.assertEqual(report.next_steps, [])
 
     def test_collect_release_preflight_uses_codex_backend_requirements_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1072,6 +1075,102 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 1)
             self.assertIn('"name": "provider_credentials"', completed.stdout)
             self.assertIn('"status": "blocked"', completed.stdout)
+            self.assertIn('"next_steps"', completed.stdout)
+            self.assertIn("Export the expected provider API key", completed.stdout)
+
+    def test_release_preflight_human_output_includes_next_steps_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_dir = Path(tmpdir) / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            hermes_path = bin_dir / "hermes"
+            hermes_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            hermes_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh"), "--target", str(target_dir)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "release_preflight.py"),
+                    "--operator",
+                    "--skills-dir",
+                    str(target_dir),
+                    "--config",
+                    str(Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"),
+                    "--hermes-config",
+                    str(Path(tmpdir) / ".hermes" / "config.yaml"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn("Next steps:", completed.stdout)
+            self.assertIn("Export the expected provider API key", completed.stdout)
+
+    def test_codex_preflight_human_output_includes_next_steps_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "codex-home"
+            codex_target_dir = codex_home / "skills"
+            hermes_target_dir = Path(tmpdir) / ".hermes" / "skills"
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            for binary_name in ("codex", "hermes"):
+                binary_path = bin_dir / binary_name
+                binary_path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                binary_path.chmod(0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+            install = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts" / "codex_preflight.py"),
+                    "--operator",
+                    "--codex-skills-dir",
+                    str(codex_target_dir),
+                    "--hermes-skills-dir",
+                    str(hermes_target_dir),
+                    "--config",
+                    str(Path(tmpdir) / ".hermes" / "deep-gvr" / "config.yaml"),
+                    "--hermes-config",
+                    str(Path(tmpdir) / ".hermes" / "config.yaml"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn("Next steps:", completed.stdout)
+            self.assertIn("Export the expected provider API key", completed.stdout)
 
     def test_publication_manifest_matches_repo_metadata(self) -> None:
         self.assertEqual(publication_manifest_errors(ROOT), [])

@@ -66,17 +66,37 @@ A successful run typically:
 
 `deep-gvr` is built for Python 3.12 and [`uv`](https://github.com/astral-sh/uv).
 
+Pick one environment sync path first:
+
 ```bash
 uv sync
+```
+
+```bash
 uv sync --all-extras
+```
+
+```bash
+uv sync --extra analysis
+uv sync --extra quantum_oss
+```
+
+`uv sync` is the minimal local path. `uv sync --all-extras` is the validated
+full-portfolio path for the shipped Tier 2 families plus docs/dev tooling. If
+you only want a narrower Tier 2 subset, use the targeted extra sync paths
+instead of the full-portfolio sync.
+
+Then install the surface or surfaces you actually want.
+
+Hermes slash-command and direct CLI path:
+
+```bash
 bash scripts/install.sh
 uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml
 uv run deep-gvr run "Explain why the surface code is understood to have a threshold."
 ```
 
-`uv sync` is the minimal local path. `uv sync --all-extras` is the validated full-portfolio path for the shipped Tier 2 families plus docs/dev tooling. If you only want a narrower Tier 2 subset, you can still use targeted extras such as `uv sync --extra analysis` or `uv sync --extra quantum_oss`.
-
-If you want the Codex-local surface as well:
+Codex-local path, with the Hermes surface kept available on the same machine:
 
 ```bash
 bash scripts/install_codex.sh

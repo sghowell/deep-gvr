@@ -90,7 +90,7 @@ fi
 echo "Installed deep-gvr at ${install_path} using ${install_mode} mode."
 echo "Next steps:"
 echo "  1. Review ${install_path}/README.md for quickstart, CLI, and evaluation commands."
-echo "  2. Run 'uv sync --all-extras' if you want the full shipped Tier 2 portfolio and docs/dev tooling on this machine."
+echo "  2. Choose one environment sync path: 'uv sync' for the minimal local path, 'uv sync --all-extras' for the full validated portfolio, or a narrower extra sync if you only want part of Tier 2."
 echo "  3. Run 'uv run python ${install_path}/scripts/release_preflight.py --json' to inspect the installed release surface."
 echo "  4. Run 'uv run python ${install_path}/scripts/release_preflight.py --operator --config ${config_path}' before live operator use."
 echo "  5. Run ${install_path}/scripts/setup_mcp.sh --install --check if you plan to use Tier 3."
