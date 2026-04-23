@@ -80,3 +80,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [76-clean-room-install-and-preflight-smoke.md](76-clean-room-install-and-preflight-smoke.md)
 - [77-hosted-docs-nav-polish.md](77-hosted-docs-nav-polish.md)
 - [78-post-release-operator-surface-polish.md](78-post-release-operator-surface-polish.md)
+- [79-tier3-source-of-truth-alignment.md](79-tier3-source-of-truth-alignment.md)
