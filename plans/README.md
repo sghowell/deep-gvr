@@ -79,3 +79,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [75-pages-deploy-warning-suppression.md](75-pages-deploy-warning-suppression.md)
 - [76-clean-room-install-and-preflight-smoke.md](76-clean-room-install-and-preflight-smoke.md)
 - [77-hosted-docs-nav-polish.md](77-hosted-docs-nav-polish.md)
+- [78-post-release-operator-surface-polish.md](78-post-release-operator-surface-polish.md)
