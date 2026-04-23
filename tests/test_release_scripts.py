@@ -179,6 +179,31 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertTrue((hermes_home / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertTrue((hermes_home / "deep-gvr" / "config.yaml").exists())
 
+    def test_install_script_prefers_deep_gvr_home_for_runtime_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            hermes_home = Path(tmpdir) / "custom-hermes-home"
+            runtime_home = Path(tmpdir) / "custom-runtime-home"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["HERMES_HOME"] = str(hermes_home)
+            env["DEEP_GVR_HOME"] = str(runtime_home)
+            completed = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install.sh")],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((hermes_home / "skills" / "deep-gvr" / "SKILL.md").exists())
+            config_path = runtime_home / "config.yaml"
+            self.assertTrue(config_path.exists())
+            self.assertFalse((hermes_home / "deep-gvr" / "config.yaml").exists())
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["runtime"]["orchestrator_backend"], "hermes")
+            self.assertEqual(payload["evidence"]["directory"], str(runtime_home / "sessions"))
+
     def test_install_codex_script_installs_codex_skill_and_underlying_hermes_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             codex_home = Path(tmpdir) / "custom-codex-home"
@@ -215,6 +240,31 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
             self.assertFalse((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
+
+    def test_install_codex_script_skip_hermes_install_materializes_codex_local_runtime_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / "custom-codex-home"
+            runtime_home = Path(tmpdir) / "custom-runtime-home"
+            env = dict(os.environ)
+            env["HOME"] = tmpdir
+            env["CODEX_HOME"] = str(codex_home)
+            env["DEEP_GVR_HOME"] = str(runtime_home)
+            completed = subprocess.run(
+                ["bash", str(ROOT / "scripts" / "install_codex.sh"), "--skip-hermes-install"],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue((codex_home / "skills" / "deep-gvr" / "SKILL.md").exists())
+            self.assertFalse((Path(tmpdir) / ".hermes" / "skills" / "deep-gvr" / "SKILL.md").exists())
+            config_path = runtime_home / "config.yaml"
+            self.assertTrue(config_path.exists())
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["runtime"]["orchestrator_backend"], "codex_local")
+            self.assertEqual(payload["evidence"]["directory"], str(runtime_home / "sessions"))
 
     def test_install_codex_script_exports_plugin_marketplace_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

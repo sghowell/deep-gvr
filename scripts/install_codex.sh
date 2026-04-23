@@ -26,12 +26,15 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 codex_home="${CODEX_HOME:-${HOME}/.codex}"
 hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
+runtime_home="${DEEP_GVR_HOME:-${hermes_home}/deep-gvr}"
 target_dir="${codex_home}/skills"
 codex_skill_source="${repo_root}/codex_skill"
 codex_plugin_source="${repo_root}/plugins/deep-gvr"
 codex_plugin_marketplace_source="${repo_root}/.agents/plugins/marketplace.json"
 hermes_install_path="${hermes_home}/skills/deep-gvr"
-hermes_config_path="${hermes_home}/deep-gvr/config.yaml"
+runtime_config_path="${runtime_home}/config.yaml"
+config_template="${repo_root}/templates/config.template.yaml"
+config_materializer="${repo_root}/scripts/materialize_runtime_config.py"
 install_mode="symlink"
 force="false"
 skip_hermes_install="false"
@@ -219,12 +222,20 @@ if [[ "${skip_hermes_install}" != "true" ]]; then
   elif [[ ! -e "${hermes_install_path}" && ! -L "${hermes_install_path}" ]]; then
     bash "${repo_root}/scripts/install.sh"
     hermes_install_state="refreshed"
-  elif [[ ! -f "${hermes_config_path}" ]]; then
+  elif [[ ! -f "${runtime_config_path}" ]]; then
     bash "${repo_root}/scripts/install.sh" --force
     hermes_install_state="refreshed"
   else
     echo "Leaving existing Hermes install at ${hermes_install_path} in place."
   fi
+elif [[ ! -f "${runtime_config_path}" ]]; then
+  python3 "${config_materializer}" \
+    --template "${config_template}" \
+    --output "${runtime_config_path}" \
+    --orchestrator-backend codex_local >/dev/null
+  echo "Created default Codex-native config at ${runtime_config_path}."
+else
+  echo "Leaving existing runtime config at ${runtime_config_path} in place."
 fi
 
 echo "Installed deep-gvr Codex skill at ${install_path} using ${install_mode} mode."

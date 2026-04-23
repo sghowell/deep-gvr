@@ -20,9 +20,11 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
 target_dir="${hermes_home}/skills"
-config_dir="${hermes_home}/deep-gvr"
+runtime_home="${DEEP_GVR_HOME:-${hermes_home}/deep-gvr}"
+config_dir="${runtime_home}"
 config_path="${config_dir}/config.yaml"
 config_template="${repo_root}/templates/config.template.yaml"
+config_materializer="${repo_root}/scripts/materialize_runtime_config.py"
 install_mode="symlink"
 force="false"
 
@@ -76,7 +78,10 @@ fi
 
 mkdir -p "${config_dir}"
 if [[ ! -f "${config_path}" ]]; then
-  cp "${config_template}" "${config_path}"
+  python3 "${config_materializer}" \
+    --template "${config_template}" \
+    --output "${config_path}" \
+    --orchestrator-backend hermes >/dev/null
   echo "Created default config at ${config_path}."
 else
   echo "Leaving existing config at ${config_path} in place."
