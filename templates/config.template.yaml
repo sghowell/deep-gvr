@@ -26,6 +26,10 @@ verification:
     mathcode:
       root: ~/dev/mathcode
       run_script: ~/dev/mathcode/run
+    opengauss:
+      root: ~/dev/OpenGauss
+      gauss_binary: gauss
+      gauss_config_path: ~/.gauss/config.yaml
 models:
   orchestrator:
     provider: default

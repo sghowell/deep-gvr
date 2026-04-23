@@ -75,6 +75,16 @@
                 "root": { "type": "string" },
                 "run_script": { "type": "string" }
               }
+            },
+            "opengauss": {
+              "type": "object",
+              "required": ["root", "gauss_binary", "gauss_config_path"],
+              "additionalProperties": false,
+              "properties": {
+                "root": { "type": "string" },
+                "gauss_binary": { "type": "string" },
+                "gauss_config_path": { "type": "string" }
+              }
             }
           }
         }

@@ -67,6 +67,21 @@ class ContractRoundTripTests(unittest.TestCase):
         self.assertEqual(model.verification.tier3.mathcode.run_script, "~/custom-mathcode/run")
         self.assertEqual(model.to_dict(), payload)
 
+    def test_config_round_trip_preserves_opengauss_settings(self) -> None:
+        payload = self._load_json("templates/config.template.json")
+        payload["verification"]["tier3"]["backend"] = "opengauss"
+        payload["verification"]["tier3"]["opengauss"]["root"] = "~/custom-OpenGauss"
+        payload["verification"]["tier3"]["opengauss"]["gauss_binary"] = "~/bin/gauss"
+        payload["verification"]["tier3"]["opengauss"]["gauss_config_path"] = "~/.config/gauss/config.yaml"
+
+        model = DeepGvrConfig.from_dict(payload)
+
+        self.assertEqual(model.verification.tier3.backend, "opengauss")
+        self.assertEqual(model.verification.tier3.opengauss.root, "~/custom-OpenGauss")
+        self.assertEqual(model.verification.tier3.opengauss.gauss_binary, "~/bin/gauss")
+        self.assertEqual(model.verification.tier3.opengauss.gauss_config_path, "~/.config/gauss/config.yaml")
+        self.assertEqual(model.to_dict(), payload)
+
     def test_config_accepts_missing_runtime_block_for_backward_compatibility(self) -> None:
         payload = self._load_json("templates/config.template.json")
         del payload["runtime"]

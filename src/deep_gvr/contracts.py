@@ -158,11 +158,19 @@ class MathCodeConfig:
 
 
 @dataclass(slots=True)
+class OpenGaussConfig:
+    root: str = "~/dev/OpenGauss"
+    gauss_binary: str = "gauss"
+    gauss_config_path: str = "~/.gauss/config.yaml"
+
+
+@dataclass(slots=True)
 class Tier3Config:
     enabled: bool = False
     backend: str = "aristotle"
     timeout_seconds: int = 300
     mathcode: MathCodeConfig = field(default_factory=MathCodeConfig)
+    opengauss: OpenGaussConfig = field(default_factory=OpenGaussConfig)
 
 
 @dataclass(slots=True)
@@ -248,6 +256,14 @@ class DeepGvrConfig:
                     mathcode=MathCodeConfig(
                         root=verification["tier3"].get("mathcode", {}).get("root", "~/dev/mathcode"),
                         run_script=verification["tier3"].get("mathcode", {}).get("run_script", "~/dev/mathcode/run"),
+                    ),
+                    opengauss=OpenGaussConfig(
+                        root=verification["tier3"].get("opengauss", {}).get("root", "~/dev/OpenGauss"),
+                        gauss_binary=verification["tier3"].get("opengauss", {}).get("gauss_binary", "gauss"),
+                        gauss_config_path=verification["tier3"].get("opengauss", {}).get(
+                            "gauss_config_path",
+                            "~/.gauss/config.yaml",
+                        ),
                     ),
                 ),
             ),
