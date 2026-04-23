@@ -358,6 +358,7 @@ class EvaluationTests(unittest.TestCase):
                 "formal-proved-repetition-majority",
                 "formal-unavailable-repetition-scaling",
                 "formal-mathcode-nat-add-zero",
+                "formal-opengauss-nat-add-right-zero",
             ],
         )
 
@@ -430,6 +431,7 @@ class EvaluationTests(unittest.TestCase):
                 "formal-proved-repetition-majority",
                 "formal-unavailable-repetition-scaling",
                 "formal-mathcode-nat-add-zero",
+                "formal-opengauss-nat-add-right-zero",
             ),
         )
         self.assertIn("zx-verified-qasm-rewrite", subsets["quantum-oss"])
@@ -608,6 +610,19 @@ class EvaluationTests(unittest.TestCase):
             ROOT / "eval" / "known_problems.json",
             routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
             case_ids=["formal-mathcode-nat-add-zero"],
+        )
+
+        self.assertEqual(report.summary.total_cases, 1)
+        case = report.cases[0]
+        self.assertTrue(case.passed)
+        self.assertEqual(case.actual_verdict, VerificationVerdict.VERIFIED)
+        self.assertEqual(case.actual_tiers, [1, 3])
+
+    def test_run_benchmark_suite_handles_opengauss_formal_case(self) -> None:
+        report = run_benchmark_suite(
+            ROOT / "eval" / "known_problems.json",
+            routing_probe=benchmark_routing_probe(ProbeStatus.FALLBACK),
+            case_ids=["formal-opengauss-nat-add-right-zero"],
         )
 
         self.assertEqual(report.summary.total_cases, 1)

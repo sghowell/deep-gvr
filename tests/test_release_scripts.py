@@ -1085,7 +1085,7 @@ class ReleaseScriptTests(unittest.TestCase):
         self.assertEqual(tier3_check.details["transport_shape"], "bounded_local_cli")
         self.assertIn("bounded local CLI path", tier3_check.guidance)
 
-    def test_release_preflight_blocks_opengauss_backend_with_diagnostics_guidance(self) -> None:
+    def test_release_preflight_blocks_opengauss_backend_when_runtime_is_not_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
             payload = yaml.safe_load((ROOT / "templates" / "config.template.yaml").read_text(encoding="utf-8"))
@@ -1093,18 +1093,45 @@ class ReleaseScriptTests(unittest.TestCase):
             payload["verification"]["tier3"]["backend"] = "opengauss"
             config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
-            report = collect_release_preflight(
-                config_path=config_path,
-                skills_dir=Path(tmpdir) / "skills",
-                hermes_config_path=Path(tmpdir) / "hermes-config.yaml",
-            )
+            with patch("deep_gvr.release_surface.probe_opengauss_transport") as probe_mock:
+                probe_mock.return_value = CapabilityProbeResult(
+                    name="opengauss_transport",
+                    status=ProbeStatus.BLOCKED,
+                    summary="OpenGauss local runtime is not ready.",
+                    preferred_outcome="",
+                    fallback="",
+                    details={
+                        "opengauss_root": "/tmp/OpenGauss",
+                        "opengauss_root_exists": False,
+                        "install_script": "/tmp/OpenGauss/scripts/install.sh",
+                        "install_script_exists": False,
+                        "local_launcher": "/tmp/OpenGauss/gauss",
+                        "local_launcher_exists": False,
+                        "runner_venv": "/tmp/OpenGauss/.opengauss-installer-venv",
+                        "runner_venv_exists": False,
+                        "gauss_binary": "gauss",
+                        "gauss_available": False,
+                        "gauss_config_path": "/tmp/.gauss/config.yaml",
+                        "gauss_config_exists": False,
+                        "transport_shape": "bounded_local_cli",
+                        "lifecycle_support": False,
+                        "hermes_shaped_transport": False,
+                        "interactive_session_capture": True,
+                        "cli_fallback_supported": False,
+                    },
+                )
+                report = collect_release_preflight(
+                    config_path=config_path,
+                    skills_dir=Path(tmpdir) / "skills",
+                    hermes_config_path=Path(tmpdir) / "hermes-config.yaml",
+                )
 
         tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
         self.assertEqual(tier3_check.status.value, "blocked")
-        self.assertIn("opengauss", tier3_check.summary)
+        self.assertIn("OpenGauss", tier3_check.summary)
         self.assertIn("diagnose_opengauss.py", tier3_check.guidance)
 
-    def test_release_preflight_treats_ready_opengauss_runtime_as_repo_owned_gap(self) -> None:
+    def test_release_preflight_uses_opengauss_transport_when_selected(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
             payload = yaml.safe_load((ROOT / "templates" / "config.template.yaml").read_text(encoding="utf-8"))
@@ -1116,7 +1143,7 @@ class ReleaseScriptTests(unittest.TestCase):
                 probe_mock.return_value = CapabilityProbeResult(
                     name="opengauss_transport",
                     status=ProbeStatus.READY,
-                    summary="Installed OpenGauss runtime and config are present for local interactive-proof diagnostics.",
+                    summary="Installed OpenGauss runtime and config are present for local Tier 3 proof dispatch on the bounded CLI path.",
                     preferred_outcome="",
                     fallback="",
                     details={
@@ -1132,6 +1159,11 @@ class ReleaseScriptTests(unittest.TestCase):
                         "gauss_available": True,
                         "gauss_config_path": "/tmp/.gauss/config.yaml",
                         "gauss_config_exists": True,
+                        "transport_shape": "bounded_local_cli",
+                        "lifecycle_support": False,
+                        "hermes_shaped_transport": False,
+                        "interactive_session_capture": True,
+                        "cli_fallback_supported": False,
                     },
                 )
                 report = collect_release_preflight(
@@ -1141,10 +1173,12 @@ class ReleaseScriptTests(unittest.TestCase):
                 )
 
         tier3_check = next(check for check in report.checks if check.name == "tier3_transport")
-        self.assertEqual(tier3_check.status.value, "blocked")
-        self.assertTrue(tier3_check.details["local_runtime_ready"])
-        self.assertIn("not yet implemented on the shipped harness path", tier3_check.summary)
-        self.assertIn("repo-owned backend-selection and transport work", tier3_check.guidance)
+        self.assertEqual(tier3_check.status.value, "ready")
+        self.assertEqual(tier3_check.details["transport_shape"], "bounded_local_cli")
+        self.assertFalse(tier3_check.details["lifecycle_support"])
+        self.assertTrue(tier3_check.details["interactive_session_capture"])
+        self.assertIn("OpenGauss", tier3_check.summary)
+        self.assertIn("session identifiers and transcript paths", tier3_check.guidance)
 
     def test_opengauss_diagnostics_script_reports_ready_for_fake_install(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -290,8 +290,11 @@ def _backend_writable_roots(
             roots.append(Path(config.verification.tier3.mathcode.root).expanduser())
             roots.append(Path(config.verification.tier3.mathcode.run_script).expanduser().parent)
         if config.verification.tier3.backend == "opengauss":
-            roots.append(Path(os.getenv("GAUSS_HOME", "~/.gauss")).expanduser())
-            roots.append(Path("~/dev/OpenGauss").expanduser())
+            roots.append(Path(config.verification.tier3.opengauss.root).expanduser())
+            roots.append(Path(config.verification.tier3.opengauss.gauss_config_path).expanduser().parent)
+            gauss_binary = Path(config.verification.tier3.opengauss.gauss_binary).expanduser()
+            if gauss_binary.is_absolute() or "/" in config.verification.tier3.opengauss.gauss_binary:
+                roots.append(gauss_binary.parent)
     unique_roots: list[str] = []
     for root in roots:
         normalized = str(root.resolve())

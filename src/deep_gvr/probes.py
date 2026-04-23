@@ -158,20 +158,16 @@ def probe_mathcode_transport(runtime_config: DeepGvrConfig | None = None) -> Cap
     )
 
 
-def probe_opengauss_transport(
-    *,
-    opengauss_root: str | Path | None = None,
-    gauss_binary: str | Path = "gauss",
-    gauss_config_path: str | Path | None = None,
-) -> CapabilityProbeResult:
+def probe_opengauss_transport(runtime_config: DeepGvrConfig | None = None) -> CapabilityProbeResult:
+    config = runtime_config or DeepGvrConfig()
     transport = inspect_opengauss_transport(
-        opengauss_root=opengauss_root,
-        gauss_binary=gauss_binary,
-        gauss_config_path=gauss_config_path,
+        opengauss_root=config.verification.tier3.opengauss.root,
+        gauss_binary=config.verification.tier3.opengauss.gauss_binary,
+        gauss_config_path=config.verification.tier3.opengauss.gauss_config_path,
     )
     if transport.ready:
         status = ProbeStatus.READY
-        summary = "Installed OpenGauss runtime and config are present for local interactive-proof diagnostics."
+        summary = "Installed OpenGauss runtime and config are present for local Tier 3 proof dispatch on the bounded CLI path."
     else:
         status = ProbeStatus.BLOCKED
         summary = (
@@ -183,8 +179,8 @@ def probe_opengauss_transport(
         name="opengauss_transport",
         status=status,
         summary=summary,
-        preferred_outcome="Have a working local gauss runtime and config available before enabling OpenGauss-backed Tier 3 work.",
-        fallback="Use scripts/diagnose_opengauss.py and another supported Tier 3 backend until the local runtime is ready and plan 31 lands.",
+        preferred_outcome="Allow the orchestrator to dispatch Tier 3 proof attempts through the local OpenGauss CLI.",
+        fallback="Use scripts/diagnose_opengauss.py and another supported Tier 3 backend until the local runtime is ready.",
         details={
             "opengauss_root": transport.opengauss_root,
             "opengauss_root_exists": transport.opengauss_root_exists,
@@ -198,6 +194,11 @@ def probe_opengauss_transport(
             "gauss_available": transport.gauss_available,
             "gauss_config_path": transport.gauss_config_path,
             "gauss_config_exists": transport.gauss_config_exists,
+            "transport_shape": "bounded_local_cli",
+            "lifecycle_support": False,
+            "hermes_shaped_transport": False,
+            "interactive_session_capture": True,
+            "cli_fallback_supported": False,
         },
     )
 

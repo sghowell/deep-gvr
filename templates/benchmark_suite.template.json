@@ -39,5 +39,14 @@
     "formal_backend": "mathcode",
     "expected_verdict": "VERIFIED",
     "expected_tiers": [1, 3]
+  },
+  {
+    "id": "formal-opengauss-nat-add-right-zero",
+    "category": "formalizable",
+    "prompt": "Formalize and prove that for every natural number n, n + 0 = n.",
+    "scenario": "formal_opengauss_nat_add_right_zero",
+    "formal_backend": "opengauss",
+    "expected_verdict": "VERIFIED",
+    "expected_tiers": [1, 3]
   }
 ]

@@ -95,6 +95,7 @@ _TIER3_SUPPORT_CASES: tuple[str, ...] = (
     "formal-proved-repetition-majority",
     "formal-unavailable-repetition-scaling",
     "formal-mathcode-nat-add-zero",
+    "formal-opengauss-nat-add-right-zero",
 )
 _QUANTUM_OSS_CASES: tuple[str, ...] = (
     "simulation-verified-distance5",
@@ -112,7 +113,14 @@ _BENCHMARK_SUBSETS: dict[str, tuple[str, ...]] = {
     "tier2-support": _TIER2_SUPPORT_CASES,
     "tier3-support": _TIER3_SUPPORT_CASES,
     "quantum-oss": _QUANTUM_OSS_CASES,
-    "analysis-full": _CORE_SCIENCE_CASES + _QUANTUM_OSS_CASES + ("formal-unavailable-repetition-scaling", "formal-mathcode-nat-add-zero", "orchestration-fanout-threshold"),
+    "analysis-full": _CORE_SCIENCE_CASES
+    + _QUANTUM_OSS_CASES
+    + (
+        "formal-unavailable-repetition-scaling",
+        "formal-mathcode-nat-add-zero",
+        "formal-opengauss-nat-add-right-zero",
+        "orchestration-fanout-threshold",
+    ),
     "live-analytical-breadth": _LIVE_ANALYTICAL_BREADTH_CASES,
     "live-escalation-breadth": _LIVE_ESCALATION_BREADTH_CASES,
     "live-expansion": _LIVE_EXPANSION_CASES,
@@ -2078,6 +2086,16 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
                     list(request.formal_results),
                     "The MathCode-backed formal result confirms the natural-number identity.",
                 )
+            case "formal_opengauss_nat_add_right_zero":
+                if request.formal_results is None:
+                    return _formal_request_report(
+                        "For every natural number n, n + 0 = n.",
+                        backend=case.formal_backend or "opengauss",
+                    )
+                return _verified_with_tier3(
+                    list(request.formal_results),
+                    "The OpenGauss-backed formal result confirms the right-zero natural-number identity.",
+                )
             case "orchestration_fanout_threshold":
                 if (
                     "threshold-theorem inference" in request.candidate.hypothesis
@@ -2243,6 +2261,17 @@ def _fixture_agents(case: BenchmarkCase) -> FixtureAgents:
                     proof_time_seconds=0.8,
                 )
             ]
+        if case.scenario == "formal_opengauss_nat_add_right_zero":
+            return [
+                Tier3ClaimResult(
+                    claim=request.claims[0].claim,
+                    backend=request.backend,
+                    proof_status=ProofStatus.PROVED,
+                    details="The benchmark fixture marks the OpenGauss theorem as proved.",
+                    lean_code="theorem nat_add_right_zero (n : Nat) : n + 0 = n := by simp",
+                    proof_time_seconds=1.0,
+                )
+            ]
         raise ValueError(f"Unexpected formal verifier call for {case.scenario!r}.")
 
     return FixtureAgents(
@@ -2296,6 +2325,8 @@ def _hypothesis_for_case(case: BenchmarkCase) -> str:
             return "The repetition-code logical error rate scales as O(p^((d+1)/2))."
         case "formal_mathcode_nat_add_zero":
             return "For every natural number n, 0 + n = n."
+        case "formal_opengauss_nat_add_right_zero":
+            return "For every natural number n, n + 0 = n."
         case "orchestration_fanout_threshold":
             return "The surface-code threshold claim follows from a generic unsupported threshold-theorem inference."
         case _:

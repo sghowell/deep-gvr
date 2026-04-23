@@ -17,6 +17,7 @@ from deep_gvr.formal import (
     AristotleTransportStatus,
     MathCodeFormalVerifier,
     MathCodeTransportStatus,
+    OpenGaussFormalVerifier,
     OpenGaussTransportStatus,
     CommandExecutionResult,
     FormalVerificationRequest,
@@ -569,6 +570,146 @@ class MathCodeFormalVerifierTests(unittest.TestCase):
             )
 
         self.assertIsInstance(verifier, MathCodeFormalVerifier)
+
+
+class OpenGaussFormalVerifierTests(unittest.TestCase):
+    def test_missing_gauss_binary_returns_unavailable(self) -> None:
+        request = _request(backend="opengauss")
+        result_set = OpenGaussFormalVerifier(
+            opengauss_root="/tmp/does-not-exist-opengauss",
+            gauss_binary="/tmp/does-not-exist-opengauss/gauss",
+            gauss_config_path="/tmp/does-not-exist-opengauss/config.yaml",
+        )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.UNAVAILABLE)
+        self.assertIn("does not exist", result_set.results[0].details)
+        self.assertEqual(result_set.transport_artifact["status"], "unavailable")
+
+    def test_executor_success_is_returned(self) -> None:
+        request = _request(backend="opengauss")
+
+        def executor(incoming: FormalVerificationRequest) -> list[Tier3ClaimResult]:
+            self.assertEqual(incoming.backend, "opengauss")
+            return [
+                Tier3ClaimResult(
+                    claim=incoming.claims[0].claim,
+                    backend="opengauss",
+                    proof_status=ProofStatus.PROVED,
+                    details="OpenGauss completed successfully.",
+                    lean_code="theorem nat_add_right_zero (n : Nat) : n + 0 = n := by simp",
+                    proof_time_seconds=1.0,
+                )
+            ]
+
+        result_set = OpenGaussFormalVerifier(executor=executor)(request)
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertEqual(result_set.results[0].proof_time_seconds, 1.0)
+
+    def test_transport_parses_quiet_query_output_and_session_info(self) -> None:
+        request = _request(backend="opengauss")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            opengauss_root = _write_opengauss_root(tmpdir)
+            gauss_home = Path(tmpdir) / ".gauss"
+            transcript_dir = gauss_home / "sessions"
+            transcript_dir.mkdir(parents=True, exist_ok=True)
+            transcript_path = transcript_dir / "gauss_session_123.jsonl"
+            transcript_path.write_text("{\"role\":\"assistant\",\"content\":\"ok\"}\n", encoding="utf-8")
+            config_path = gauss_home / "config.yaml"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text("model:\n  default: openai-codex\n", encoding="utf-8")
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            gauss_binary = bin_dir / "gauss"
+            gauss_binary.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            gauss_binary.chmod(0o755)
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                self.assertEqual(cwd, Path(__file__).resolve().parents[1])
+                self.assertEqual(command[:4], [str(gauss_binary), "chat", "-Q", "--query"])
+                payload = {
+                    "results": [
+                        {
+                            "claim": request.claims[0].claim,
+                            "proof_status": "proved",
+                            "details": "OpenGauss completed the proof.",
+                            "lean_code": "theorem nat_add_right_zero (n : Nat) : n + 0 = n := by simp",
+                            "proof_time_seconds": 1.4,
+                        }
+                    ]
+                }
+                return CommandExecutionResult(
+                    returncode=0,
+                    stdout=f"{json.dumps(payload)}\n\nsession_id: gauss_session_123\n",
+                    stderr="",
+                )
+
+            with patch.dict(os.environ, {"GAUSS_HOME": str(gauss_home)}):
+                result_set = OpenGaussFormalVerifier(
+                    command_executor=command_executor,
+                    opengauss_root=opengauss_root,
+                    gauss_binary=gauss_binary,
+                    gauss_config_path=config_path,
+                )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.PROVED)
+        self.assertEqual(result_set.results[0].proof_time_seconds, 1.4)
+        self.assertEqual(result_set.transport_artifact["transport"], "opengauss_cli")
+        self.assertEqual(result_set.transport_artifact["session_id"], "gauss_session_123")
+        self.assertTrue(result_set.transport_artifact["transcript_exists"])
+
+    def test_transport_maps_provider_setup_error_to_unavailable(self) -> None:
+        request = _request(backend="opengauss")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            opengauss_root = _write_opengauss_root(tmpdir)
+            gauss_home = Path(tmpdir) / ".gauss"
+            config_path = gauss_home / "config.yaml"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text("model:\n  default: openai-codex\n", encoding="utf-8")
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            gauss_binary = bin_dir / "gauss"
+            gauss_binary.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            gauss_binary.chmod(0o755)
+
+            def command_executor(command: list[str], cwd: Path) -> CommandExecutionResult:
+                del command, cwd
+                return CommandExecutionResult(
+                    returncode=1,
+                    stdout="",
+                    stderr="Gauss query mode needs a configured provider.\n\n  Run:  gauss setup\n",
+                )
+
+            result_set = OpenGaussFormalVerifier(
+                command_executor=command_executor,
+                opengauss_root=opengauss_root,
+                gauss_binary=gauss_binary,
+                gauss_config_path=config_path,
+            )(request)
+
+        self.assertEqual(result_set.results[0].proof_status, ProofStatus.UNAVAILABLE)
+        self.assertEqual(result_set.transport_artifact["status"], "provider_unavailable")
+
+    def test_build_formal_verifier_selects_opengauss_runner(self) -> None:
+        verifier = build_formal_verifier(
+            type(
+                "Tier3Stub",
+                (),
+                {
+                    "backend": "opengauss",
+                    "opengauss": type(
+                        "OpenGaussStub",
+                        (),
+                        {
+                            "root": "~/dev/OpenGauss",
+                            "gauss_binary": "gauss",
+                            "gauss_config_path": "~/.gauss/config.yaml",
+                        },
+                    )(),
+                },
+            )()
+        )
+
+        self.assertIsInstance(verifier, OpenGaussFormalVerifier)
 
 
 class MathCodeTransportInspectionTests(unittest.TestCase):

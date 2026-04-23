@@ -182,15 +182,18 @@ class ProbeTests(unittest.TestCase):
             config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text("model:\n  default: test\n", encoding="utf-8")
 
-            probe = probe_opengauss_transport(
-                opengauss_root=opengauss_root,
-                gauss_binary=gauss_binary,
-                gauss_config_path=config_path,
-            )
+            config = DeepGvrConfig()
+            config.verification.tier3.backend = "opengauss"
+            config.verification.tier3.opengauss.root = str(opengauss_root)
+            config.verification.tier3.opengauss.gauss_binary = str(gauss_binary)
+            config.verification.tier3.opengauss.gauss_config_path = str(config_path)
+            probe = probe_opengauss_transport(config)
 
         self.assertEqual(probe.status, ProbeStatus.READY)
         self.assertTrue(probe.details["gauss_available"])
         self.assertTrue(probe.details["gauss_config_exists"])
+        self.assertEqual(probe.details["transport_shape"], "bounded_local_cli")
+        self.assertFalse(probe.details["lifecycle_support"])
 
     def test_backend_dispatch_probe_reports_qec_only_scope(self) -> None:
         with (

@@ -1086,25 +1086,22 @@ def _check_tier3_transport(runtime_config: DeepGvrConfig | None, hermes_config_p
             guidance="Install or fix the local MathCode checkout and verify AUTOLEAN, lean-workspace, and the run script path before enabling Tier 3 live use; MathCode remains a bounded local CLI path even when ready.",
         )
     if tier3.backend == "opengauss":
-        probe = probe_opengauss_transport()
+        probe = probe_opengauss_transport(runtime_config)
         local_runtime_ready = probe.status.value == "ready"
-        summary = (
-            "The configured Tier 3 backend (opengauss) is not yet implemented on the shipped harness path, "
-            "although the local gauss runtime appears ready."
-            if local_runtime_ready
-            else "The configured Tier 3 backend (opengauss) is not implemented on the shipped harness path and the local gauss runtime is not yet ready."
-        )
-        guidance = (
-            "Run uv run python scripts/diagnose_opengauss.py --json to capture installed-runtime, raw-checkout, and Morph-target state, then continue plan 31 for the remaining repo-owned backend-selection and transport work; until then keep Tier 3 on Aristotle or MathCode."
-            if local_runtime_ready
-            else "Run uv run python scripts/diagnose_opengauss.py --json to separate installed-runtime, raw-checkout, and Morph-target failures, then keep Tier 3 on Aristotle or MathCode until the local runtime is healthy and plan 31 lands."
-        )
+        if local_runtime_ready:
+            return ReleaseCheck(
+                name="tier3_transport",
+                status=ReleaseCheckStatus.READY,
+                summary="The configured Tier 3 transport is ready for local OpenGauss proof dispatch on the shipped bounded CLI path.",
+                details=probe.details,
+                guidance="Tier 3 proof attempts will use local OpenGauss quiet-query execution on the shipped bounded CLI path, with session identifiers and transcript paths captured in transport artifacts when available; OpenGauss does not ship a submission, polling, or checkpoint-resume lifecycle.",
+            )
         return ReleaseCheck(
             name="tier3_transport",
             status=ReleaseCheckStatus.BLOCKED,
-            summary=summary,
+            summary="Tier 3 is enabled, but the configured OpenGauss transport is not ready in this environment.",
             details={**probe.details, "local_runtime_ready": local_runtime_ready},
-            guidance=guidance,
+            guidance="Run uv run python scripts/diagnose_opengauss.py --json to separate installed-runtime, raw-checkout, and Morph-target failures, then keep Tier 3 on Aristotle or MathCode until the local OpenGauss runtime is healthy.",
         )
     if tier3.backend != "aristotle":
         return ReleaseCheck(

@@ -14,7 +14,15 @@ from typing import Any, Callable, Protocol
 
 import yaml
 
-from .contracts import FormalProofHandle, FormalProofLifecycle, MathCodeConfig, ProofStatus, Tier3ClaimResult, Tier3Config
+from .contracts import (
+    FormalProofHandle,
+    FormalProofLifecycle,
+    MathCodeConfig,
+    OpenGaussConfig,
+    ProofStatus,
+    Tier3ClaimResult,
+    Tier3Config,
+)
 from .prompt_profiles import DEFAULT_PROMPT_PROFILE, build_formal_query
 
 
@@ -112,6 +120,7 @@ class FormalVerifier(Protocol):
 
 _ARISTOTLE_PROJECT_ID_RE = re.compile(r"Project created:\s*([0-9a-fA-F-]+)")
 _ARISTOTLE_TARBALL_RE = re.compile(r"Project saved to\s+([^\s]+\.tar\.gz)")
+_GAUSS_SESSION_ID_RE = re.compile(r"session_id:\s*([0-9A-Za-z_-]+)")
 
 
 def _repo_root() -> Path:
@@ -1290,6 +1299,290 @@ class MathCodeFormalVerifier:
         )
 
 
+class OpenGaussFormalVerifier:
+    def __init__(
+        self,
+        executor: Callable[[FormalVerificationRequest], FormalVerificationResultSet | list[Tier3ClaimResult]] | None = None,
+        *,
+        command_executor: CommandExecutor | None = None,
+        opengauss_root: str | Path | None = None,
+        gauss_binary: str | Path = "gauss",
+        gauss_config_path: str | Path | None = None,
+        prompt_root: str | Path = "prompts",
+        cwd: str | Path | None = None,
+        command_timeout_seconds: int | None = None,
+        provider: str = "default",
+        model: str = "",
+        toolsets: list[str] | None = None,
+        prompt_profile: str = DEFAULT_PROMPT_PROFILE,
+    ) -> None:
+        self.executor = executor
+        self.command_executor = command_executor
+        self.opengauss_root = opengauss_root
+        self.gauss_binary = gauss_binary
+        self.gauss_config_path = gauss_config_path
+        self.prompt_root = Path(prompt_root)
+        self.cwd = Path(cwd) if cwd is not None else _repo_root()
+        self.command_timeout_seconds = command_timeout_seconds
+        self.provider = provider
+        self.model = model
+        self.toolsets = list(toolsets or [])
+        self.prompt_profile = prompt_profile
+
+    def __call__(self, request: FormalVerificationRequest) -> FormalVerificationResultSet:
+        if request.backend != "opengauss":
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=f"Unsupported formal backend {request.backend!r} for the OpenGauss runner.",
+                proof_time_seconds=0.0,
+                artifact_status="unsupported_backend",
+            )
+
+        if self.executor is not None:
+            try:
+                outcome = self.executor(request)
+                if isinstance(outcome, FormalVerificationResultSet):
+                    return outcome
+                return FormalVerificationResultSet(
+                    results=list(outcome),
+                    pending=any(item.proof_status is ProofStatus.PENDING for item in outcome),
+                )
+            except TimeoutError:
+                return self._result_set(
+                    request,
+                    status=ProofStatus.TIMEOUT,
+                    details="OpenGauss formal verification timed out before a proof result was available.",
+                    proof_time_seconds=float(request.timeout_seconds),
+                    artifact_status="timeout",
+                )
+            except Exception as exc:  # pragma: no cover - defensive runtime boundary
+                return self._result_set(
+                    request,
+                    status=ProofStatus.ERROR,
+                    details=f"OpenGauss formal verification failed: {type(exc).__name__}: {exc}",
+                    proof_time_seconds=0.0,
+                    artifact_status="error",
+                )
+
+        transport = inspect_opengauss_transport(
+            opengauss_root=self.opengauss_root,
+            gauss_binary=self.gauss_binary,
+            gauss_config_path=self.gauss_config_path,
+        )
+        unavailable_details = self._transport_unavailable_details(transport)
+        if unavailable_details is not None:
+            return self._result_set(
+                request,
+                status=ProofStatus.UNAVAILABLE,
+                details=unavailable_details,
+                proof_time_seconds=0.0,
+                artifact_status="unavailable",
+                transport=transport,
+            )
+
+        prompt_path = self._resolve_prompt_path() / "formalizer.md"
+        prompt_text = prompt_path.read_text(encoding="utf-8")
+        query = self._build_query(request, prompt_text=prompt_text, transport=transport)
+        command = [
+            transport.gauss_binary,
+            "chat",
+            "-Q",
+            "--query",
+            query,
+        ]
+        if self.provider not in {"", "default", "auto"}:
+            command.extend(["--provider", self.provider])
+        if self.model not in {"", "configured-by-gauss", "provider-default"}:
+            command.extend(["--model", self.model])
+        if self.toolsets:
+            command.extend(["--toolsets", ",".join(self.toolsets)])
+
+        executor = self.command_executor or (
+            lambda current_command, current_cwd: _default_executor(
+                current_command,
+                current_cwd,
+                self.command_timeout_seconds if self.command_timeout_seconds is not None else request.timeout_seconds,
+                command_label="OpenGauss command",
+            )
+        )
+        command_result = executor(command, self.cwd)
+        transport_artifact: dict[str, Any] = {
+            "transport": "opengauss_cli",
+            "status": "completed",
+            "backend": request.backend,
+            "opengauss_root": transport.opengauss_root,
+            "gauss_binary": transport.gauss_binary,
+            "gauss_config_path": transport.gauss_config_path,
+            "prompt_path": str(prompt_path),
+            "command": list(command),
+            "query": query,
+            "response": command_result.stdout if command_result.returncode == 0 else f"{command_result.stdout}\n{command_result.stderr}".strip(),
+        }
+        session_id = _parse_gauss_session_id(command_result.stdout)
+        if session_id:
+            transport_artifact["session_id"] = session_id
+            transcript_path = default_gauss_home() / "sessions" / f"{session_id}.jsonl"
+            transport_artifact["transcript_path"] = str(transcript_path)
+            transport_artifact["transcript_exists"] = transcript_path.exists()
+
+        if command_result.returncode != 0:
+            error_text = command_result.stderr.strip() or command_result.stdout.strip() or "unknown error"
+            if command_result.returncode == 124 or "timed out" in command_result.stderr.lower():
+                transport_artifact["status"] = "timeout"
+                return self._result_set(
+                    request,
+                    status=ProofStatus.TIMEOUT,
+                    details=command_result.stderr.strip() or "OpenGauss formal verification timed out.",
+                    proof_time_seconds=float(request.timeout_seconds),
+                    artifact_status="timeout",
+                    transport=transport,
+                    transport_artifact=transport_artifact,
+                )
+            if self._looks_like_provider_setup_error(error_text):
+                transport_artifact["status"] = "provider_unavailable"
+                return self._result_set(
+                    request,
+                    status=ProofStatus.UNAVAILABLE,
+                    details=error_text,
+                    proof_time_seconds=0.0,
+                    artifact_status="provider_unavailable",
+                    transport=transport,
+                    transport_artifact=transport_artifact,
+                )
+            transport_artifact["status"] = "error"
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=f"OpenGauss formal verification failed through the local CLI: {error_text}",
+                proof_time_seconds=0.0,
+                artifact_status="error",
+                transport=transport,
+                transport_artifact=transport_artifact,
+            )
+
+        try:
+            payload = _extract_json_object(command_result.stdout)
+            raw_results = payload.get("results", [])
+            if not isinstance(raw_results, list):
+                raise ValueError("OpenGauss formal transport did not return a 'results' array.")
+            results = _normalize_formal_results(
+                request,
+                raw_results,
+                missing_result_detail="OpenGauss transport did not return a result for this claim.",
+            )
+        except Exception as exc:  # pragma: no cover - defensive runtime boundary
+            transport_artifact["status"] = "parse_error"
+            return self._result_set(
+                request,
+                status=ProofStatus.ERROR,
+                details=f"OpenGauss formal verification returned an unreadable payload: {type(exc).__name__}: {exc}",
+                proof_time_seconds=0.0,
+                artifact_status="parse_error",
+                transport=transport,
+                transport_artifact=transport_artifact,
+            )
+
+        return FormalVerificationResultSet(results=results, transport_artifact=transport_artifact)
+
+    def _resolve_prompt_path(self) -> Path:
+        if self.prompt_root.is_absolute():
+            return self.prompt_root
+        return _repo_root() / self.prompt_root
+
+    def _build_query(
+        self,
+        request: FormalVerificationRequest,
+        *,
+        prompt_text: str,
+        transport: OpenGaussTransportStatus,
+    ) -> str:
+        payload = {
+            "session_id": request.session_id,
+            "iteration": request.iteration,
+            "backend": request.backend,
+            "timeout_seconds": request.timeout_seconds,
+            "claims": [item.to_dict() for item in request.claims],
+        }
+        transport_lines = [
+            "- Selected backend: OpenGauss local CLI",
+            f"- OpenGauss root: {transport.opengauss_root}",
+            f"- OpenGauss config path: {transport.gauss_config_path}",
+            "- Quiet query mode appends a parseable `session_id:` line after the final response.",
+            "- Return only structured JSON that matches the contract.",
+            "- If OpenGauss cannot complete the proof attempt, return unavailable or error rather than inventing proof success.",
+        ]
+        return build_formal_query(
+            prompt_text=prompt_text,
+            payload=payload,
+            transport_lines=transport_lines,
+            prompt_profile=self.prompt_profile,
+        )
+
+    def _transport_unavailable_details(self, transport: OpenGaussTransportStatus) -> str | None:
+        if not transport.opengauss_root_exists:
+            return (
+                f"OpenGauss root {transport.opengauss_root} does not exist; local OpenGauss formal verification is unavailable."
+            )
+        if not transport.gauss_available:
+            return (
+                f"OpenGauss binary {transport.gauss_binary} is not available on PATH; local OpenGauss formal verification is unavailable."
+            )
+        if not transport.gauss_config_exists:
+            return (
+                f"OpenGauss config {transport.gauss_config_path} does not exist; run gauss setup before using the local OpenGauss formal backend."
+            )
+        return None
+
+    def _looks_like_provider_setup_error(self, message: str) -> bool:
+        lowered = message.lower()
+        patterns = (
+            "needs a configured provider",
+            "run:  gauss setup",
+            "run 'gauss setup'",
+            "run gauss setup",
+            "no api key",
+            "not logged in",
+            "auth provider",
+        )
+        return any(pattern in lowered for pattern in patterns)
+
+    def _result_set(
+        self,
+        request: FormalVerificationRequest,
+        *,
+        status: ProofStatus,
+        details: str,
+        proof_time_seconds: float | None,
+        artifact_status: str,
+        transport: OpenGaussTransportStatus | None = None,
+        transport_artifact: dict[str, Any] | None = None,
+    ) -> FormalVerificationResultSet:
+        artifact = dict(transport_artifact or {})
+        artifact.setdefault("transport", "opengauss_cli" if transport is not None else "injected_executor")
+        artifact.setdefault("status", artifact_status)
+        artifact.setdefault("backend", request.backend)
+        if transport is not None:
+            artifact.setdefault("opengauss_root", transport.opengauss_root)
+            artifact.setdefault("gauss_binary", transport.gauss_binary)
+            artifact.setdefault("gauss_config_path", transport.gauss_config_path)
+        return FormalVerificationResultSet(
+            results=[
+                Tier3ClaimResult(
+                    claim=claim.claim,
+                    backend=request.backend,
+                    proof_status=status,
+                    details=details,
+                    lean_code=claim.lean_code,
+                    proof_time_seconds=proof_time_seconds,
+                )
+                for claim in request.claims
+            ],
+            transport_artifact=artifact,
+            pending=status is ProofStatus.PENDING,
+        )
+
+
 def build_formal_verifier(
     tier3_config: Tier3Config,
     *,
@@ -1338,6 +1631,24 @@ def build_formal_verifier(
             command_timeout_seconds=command_timeout_seconds,
             prompt_profile=prompt_profile,
         )
+    if tier3_config.backend == "opengauss":
+        opengauss_config = (
+            tier3_config.opengauss if isinstance(tier3_config.opengauss, OpenGaussConfig) else OpenGaussConfig()
+        )
+        return OpenGaussFormalVerifier(
+            executor=executor,
+            command_executor=command_executor,
+            opengauss_root=opengauss_config.root,
+            gauss_binary=opengauss_config.gauss_binary,
+            gauss_config_path=opengauss_config.gauss_config_path,
+            prompt_root=prompt_root,
+            cwd=cwd,
+            command_timeout_seconds=command_timeout_seconds,
+            provider=provider,
+            model=model,
+            toolsets=toolsets,
+            prompt_profile=prompt_profile,
+        )
     raise ValueError(f"Unsupported formal backend {tier3_config.backend!r}.")
 
 
@@ -1378,7 +1689,14 @@ def _extract_json_object(text: str) -> dict[str, Any]:
             continue
         if isinstance(payload, dict):
             return payload
-    raise ValueError(f"Could not parse a JSON object from Hermes output: {text[:200]!r}")
+    raise ValueError(f"Could not parse a JSON object from backend output: {text[:200]!r}")
+
+
+def _parse_gauss_session_id(text: str) -> str | None:
+    match = _GAUSS_SESSION_ID_RE.search(text)
+    if match is None:
+        return None
+    return match.group(1)
 
 
 def _extract_structured_payload(text: str) -> dict[str, Any]:
