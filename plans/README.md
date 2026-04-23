@@ -75,3 +75,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [71-tier3-completion-and-opengauss-unblock.md](71-tier3-completion-and-opengauss-unblock.md)
 - [72-codex-hermes-backend-parity.md](72-codex-hermes-backend-parity.md)
 - [73-first-tagged-release-reconciliation.md](73-first-tagged-release-reconciliation.md)
+- [74-pages-workflow-warning-cleanup.md](74-pages-workflow-warning-cleanup.md)
