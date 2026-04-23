@@ -150,6 +150,10 @@ PUBLIC_DOC_LINK_REQUIREMENTS = {
         "release-workflow.md",
         "deep-gvr-architecture.md",
     ],
+    "docs/codex-plugin.md": [
+        "plugin-privacy.md",
+        "plugin-terms.md",
+    ],
 }
 
 PUBLIC_DOC_INTERNAL_LINK_TARGETS = {
@@ -180,6 +184,7 @@ def run_all_checks() -> list[str]:
     messages: list[str] = []
     messages.extend(check_markdown_links(root))
     messages.extend(check_public_docs_surface(root))
+    messages.extend(check_hosted_docs_nav(root))
     messages.extend(check_plan_files(root))
     messages.extend(check_workflow_docs(root))
     messages.extend(check_prompt_files(root))
@@ -248,6 +253,60 @@ def check_markdown_links(root: Path) -> list[str]:
             if not resolved.exists():
                 errors.append(f"{path.relative_to(root)}: broken link target {target}")
     return errors
+
+
+def check_hosted_docs_nav(root: Path) -> list[str]:
+    errors: list[str] = []
+    mkdocs_path = root / "mkdocs.yml"
+    if not mkdocs_path.exists():
+        return errors
+
+    payload = yaml.safe_load(mkdocs_path.read_text(encoding="utf-8")) or {}
+    docs_dir_name = str(payload.get("docs_dir", "docs"))
+    docs_dir = root / docs_dir_name
+    if not docs_dir.exists():
+        errors.append(f"mkdocs.yml: configured docs_dir {docs_dir_name!r} does not exist")
+        return errors
+
+    nav_targets = set(_mkdocs_nav_targets(payload.get("nav", [])))
+    exclude_docs_raw = payload.get("exclude_docs", "")
+    exclude_docs = {
+        line.strip()
+        for line in str(exclude_docs_raw).splitlines()
+        if line.strip()
+    }
+
+    for path in docs_dir.rglob("*.md"):
+        relative = path.relative_to(docs_dir).as_posix()
+        if relative in exclude_docs:
+            continue
+        if relative not in nav_targets:
+            errors.append(
+                f"mkdocs.yml: docs page {relative!r} is not included in nav or exclude_docs"
+            )
+
+    for target in nav_targets:
+        if not (docs_dir / target).exists():
+            errors.append(f"mkdocs.yml: nav target {target!r} does not exist under docs_dir")
+    return errors
+
+
+def _mkdocs_nav_targets(node: object) -> list[str]:
+    if isinstance(node, str):
+        if node.endswith(".md") and not node.startswith(("http://", "https://")):
+            return [node]
+        return []
+    if isinstance(node, list):
+        targets: list[str] = []
+        for item in node:
+            targets.extend(_mkdocs_nav_targets(item))
+        return targets
+    if isinstance(node, dict):
+        targets: list[str] = []
+        for value in node.values():
+            targets.extend(_mkdocs_nav_targets(value))
+        return targets
+    return []
 
 
 def check_plan_files(root: Path) -> list[str]:

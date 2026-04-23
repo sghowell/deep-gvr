@@ -53,6 +53,14 @@ The repo remains the source of truth. The exported root is only a convenience co
 
 Codex plugin availability inside the product depends on current Codex client and workspace support. OpenAI’s [March 26, 2026 plugin launch notes](https://help.openai.com/en/articles/11391654) describe plugins as curated bundles for reusable Codex workflows and note that plugin availability follows workspace app controls.
 
+## Policy Pages
+
+The hosted docs also publish the plugin policy pages that the checked-in plugin
+manifest points at:
+
+- [Plugin Privacy](plugin-privacy.md)
+- [Plugin Terms](plugin-terms.md)
+
 ## Relationship to Codex Local
 
 If you just want to run `deep-gvr` from Codex local today, the direct operator path is still:
