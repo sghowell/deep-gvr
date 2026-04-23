@@ -84,7 +84,7 @@ delete the feature branch.
 - Current operator docs: `docs/release-workflow.md`, `docs/quickstart.md`
 - Existing tests: `tests/test_release_scripts.py`
 
-## Plan Of Work
+## Plan of Work
 
 1. Add and index this plan.
 2. Introduce a small runtime-config materializer that can stamp the checked-in
@@ -137,7 +137,7 @@ delete the feature branch.
    so the clean-room smoke is part of the documented and checked release
    surface.
 
-## Validation And Acceptance
+## Validation and Acceptance
 
 Required validation:
 
@@ -160,7 +160,7 @@ Acceptance evidence:
   and Codex-native install/preflight flows in disposable temp homes.
 - CI and release validation both run the clean-room smoke.
 
-## Merge, Push, And Cleanup
+## Merge, Push, and Cleanup
 
 - Stage and commit the plan/index update first with
   `plan clean-room install smoke`.
@@ -177,7 +177,7 @@ Acceptance evidence:
 - Delete the local feature branch, and delete the remote feature branch too if
   one was created.
 
-## Idempotence And Recovery
+## Idempotence and Recovery
 
 - Re-running the install helpers in a clean room should keep creating the same
   runtime-home-aware config payload.
@@ -187,7 +187,7 @@ Acceptance evidence:
   install/preflight regression rather than requiring a preconfigured local
   machine to reproduce.
 
-## Interfaces And Dependencies
+## Interfaces and Dependencies
 
 - Depends on a local `python3` interpreter for install-time config
   materialization; it does not depend on `uv` or third-party Python packages
