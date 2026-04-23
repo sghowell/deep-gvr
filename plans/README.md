@@ -77,3 +77,4 @@ These files are the initial implementation backlog. Each plan is self-contained 
 - [73-first-tagged-release-reconciliation.md](73-first-tagged-release-reconciliation.md)
 - [74-pages-workflow-warning-cleanup.md](74-pages-workflow-warning-cleanup.md)
 - [75-pages-deploy-warning-suppression.md](75-pages-deploy-warning-suppression.md)
+- [76-clean-room-install-and-preflight-smoke.md](76-clean-room-install-and-preflight-smoke.md)
