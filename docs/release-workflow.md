@@ -20,8 +20,8 @@ Before cutting a public tag:
 Use the machine checks directly:
 
 ```bash
-uv run python scripts/check_release_version.py --tag v0.1.0
-uv run python scripts/render_release_notes.py --version 0.1.0
+uv run python scripts/check_release_version.py --tag v<version>
+uv run python scripts/render_release_notes.py --version <version>
 ```
 
 The release checklist lives at [release/release-checklist.md](https://github.com/sghowell/deep-gvr/blob/main/release/release-checklist.md).
@@ -161,8 +161,8 @@ The repo includes a `Docs` workflow that builds and deploys automatically on eve
 Create and push the release tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v<version>
+git push origin v<version>
 ```
 
 The tagged `Release` workflow will:

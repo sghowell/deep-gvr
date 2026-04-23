@@ -23,8 +23,11 @@ Use this checklist when cutting a public `deep-gvr` release.
 - Run `uv run python scripts/release_preflight.py --json`
 - Run `uv run python scripts/release_preflight.py --operator --config ${DEEP_GVR_HOME:-${HERMES_HOME:-~/.hermes}/deep-gvr}/config.yaml`
 - Run `uv run python scripts/check_release_version.py --tag v<version>`
+- Run `uv run python eval/run_eval.py --subset tier2-support --output /tmp/deep-gvr-tier2-support.json`
+- Run `uv run python eval/run_eval.py --subset tier3-support --output /tmp/deep-gvr-tier3-support.json`
 - Run `uv run mkdocs build --strict`
 - If you intend to enable `auto_improve`, run `uv run python scripts/evaluate_auto_improve.py --output /tmp/deep-gvr-auto-improve/report.json` first and review the report before editing `release/agentskills.publication.json`
+- If you intend to ship OpenGauss as part of the operator story on the release machine, run `uv run python scripts/diagnose_opengauss.py --json`
 
 ## Publication
 
