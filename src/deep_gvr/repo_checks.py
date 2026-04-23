@@ -88,6 +88,83 @@ REQUIRED_RETIREMENT_REFERENCES = {
     ],
 }
 
+REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS = {
+    "SKILL.md": [
+        "Tier 3 proof surface that supports Aristotle lifecycle transport plus the local MathCode and OpenGauss CLI backends",
+        "MathCode and OpenGauss are available as bounded local CLI backends",
+    ],
+    "docs/concepts.md": [
+        "supports Aristotle, MathCode, and OpenGauss",
+    ],
+    "docs/system-overview.md": [
+        "proof-oriented verification through Aristotle, MathCode, or OpenGauss",
+    ],
+    "docs/examples.md": [
+        "Aristotle, MathCode, or OpenGauss handles",
+    ],
+    "docs/plugin-privacy.md": [
+        "Aristotle, MathCode, or OpenGauss",
+    ],
+    "docs/architecture-status.md": [
+        "OpenGauss is supported as an additional bounded local CLI formal backend alongside Aristotle and MathCode",
+        "The shipped Tier 3 backends, Aristotle, MathCode, and OpenGauss",
+    ],
+    "docs/tier2-tier3-support-matrix.md": [
+        "Tier 3 completion now covers all three shipped backends: Aristotle, MathCode, and OpenGauss",
+        "Aristotle, MathCode, and OpenGauss all have explicit shipped-backend validation",
+    ],
+    "plans/31-opengauss-formal-backend.md": [
+        "OpenGauss is now selectable as a shipped Tier 3 backend",
+    ],
+    "plans/67-tier2-tier3-completion-roadmap.md": [
+        "Aristotle, MathCode, and OpenGauss are shipped Tier 3 backends",
+        "- [x] Execute `plans/72-codex-hermes-backend-parity.md`",
+    ],
+    "plans/71-tier3-completion-and-opengauss-unblock.md": [
+        "deep-gvr now ships bounded local OpenGauss CLI transport",
+        "Aristotle, MathCode, and OpenGauss as shipped backends with distinct lifecycle contracts",
+    ],
+}
+
+STALE_TIER3_SOURCE_OF_TRUTH_PHRASES = {
+    "SKILL.md": [
+        "actual OpenGauss backend remains externally blocked",
+        "actual backend remains blocked externally until plan 31 can resume",
+        "OpenGauss backend remains externally blocked",
+    ],
+    "docs/concepts.md": [
+        "supports Aristotle and MathCode.",
+    ],
+    "docs/system-overview.md": [
+        "verification through Aristotle or MathCode",
+    ],
+    "docs/examples.md": [
+        "Aristotle or MathCode handles",
+    ],
+    "docs/plugin-privacy.md": [
+        "such as Aristotle or MathCode",
+    ],
+    "docs/architecture-status.md": [
+        "The shipped Tier 3 backends, Aristotle and MathCode",
+    ],
+    "docs/tier2-tier3-support-matrix.md": [
+        "Tier 3 completion now covers Aristotle and MathCode",
+    ],
+    "plans/67-tier2-tier3-completion-roadmap.md": [
+        "only one family is fully ready",
+        "shipped Tier 3 path remains Aristotle plus MathCode",
+        "OpenGauss as a separate planned backend-integration target",
+        "still-unimplemented repo backend",
+    ],
+    "plans/71-tier3-completion-and-opengauss-unblock.md": [
+        "OpenGauss as an explicit planned integration target",
+        "remaining gap is the unimplemented deep-gvr backend-selection",
+        "OpenGauss is reduced to a precise current repo-owned integration gap",
+        "still-open architecture target in `plans/31-opengauss-formal-backend.md`",
+        "do not imply OpenGauss is part of the shipped path until a working runtime and repo-owned integration exist",
+    ],
+}
+
 PUBLIC_DOCS = [
     "README.md",
     "docs/index.md",
@@ -191,6 +268,7 @@ def run_all_checks() -> list[str]:
     messages.extend(check_schemas_and_templates(root))
     messages.extend(check_release_surfaces(root))
     messages.extend(check_architecture_completion_tracking(root))
+    messages.extend(check_tier3_source_of_truth(root))
     messages.extend(check_architecture_boundaries(root))
     return messages
 
@@ -528,6 +606,30 @@ def check_architecture_completion_tracking(root: Path) -> list[str]:
             if snippet not in body:
                 errors.append(f"{relative_path}: missing retirement-slice reference {snippet!r}")
     return errors
+
+
+def check_tier3_source_of_truth(root: Path) -> list[str]:
+    errors: list[str] = []
+    required_paths = set(REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS) | set(
+        STALE_TIER3_SOURCE_OF_TRUTH_PHRASES
+    )
+    for relative in sorted(required_paths):
+        path = root / relative
+        if not path.exists():
+            errors.append(f"{relative}: required Tier 3 source-of-truth file is missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        for snippet in REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS.get(relative, []):
+            if not _contains_normalized(text, snippet):
+                errors.append(f"{relative}: missing Tier 3 source-of-truth snippet {snippet!r}")
+        for phrase in STALE_TIER3_SOURCE_OF_TRUTH_PHRASES.get(relative, []):
+            if _contains_normalized(text, phrase):
+                errors.append(f"{relative}: stale Tier 3 source-of-truth phrase {phrase!r}")
+    return errors
+
+
+def _contains_normalized(text: str, snippet: str) -> bool:
+    return " ".join(snippet.split()) in " ".join(text.split())
 
 
 def _check_open_architecture_table(text: str) -> list[str]:

@@ -44,7 +44,7 @@ Tier 2 exists because some claims are not meaningfully settled by prose alone.
 
 Tier 3 is used when the claim is formalizable enough to justify proof-oriented machinery.
 
-The shipped release surface supports Aristotle and MathCode. A Tier 3 result can prove, disprove, time out, or fail explicitly. In all of those cases, the system is expected to record what happened rather than blur it into a generic response.
+The shipped release surface supports Aristotle, MathCode, and OpenGauss. Aristotle is the submission, polling, and resume path; MathCode and OpenGauss are bounded local CLI paths. A Tier 3 result can prove, disprove, time out, or fail explicitly. In all of those cases, the system is expected to record what happened rather than blur it into a generic response.
 
 ## Evidence and Checkpoints
 

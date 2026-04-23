@@ -16,7 +16,7 @@ When you use the plugin through the supported local runtime, `deep-gvr` writes l
 
 - the model provider selected by your runtime config and orchestrator backend
 - optional Tier 2 remote backends such as Modal or SSH
-- optional Tier 3 formal backends such as Aristotle or MathCode, if you enable them
+- optional Tier 3 formal backends such as Aristotle, MathCode, or OpenGauss, if you enable them
 
 The plugin itself does not introduce an additional cloud service or telemetry layer beyond those configured runtime dependencies.
 

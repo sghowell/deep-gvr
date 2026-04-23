@@ -38,7 +38,7 @@ Core runtime locations:
 - Verifier: challenges the candidate and decides whether deeper tiers are necessary
 - Reviser: fixes concrete flaws rather than freewheeling into a fresh answer
 - Tier 2 analysis layer: adapter-driven computational checks
-- Tier 3 formal layer: proof-oriented verification through Aristotle or MathCode
+- Tier 3 formal layer: proof-oriented verification through Aristotle, MathCode, or OpenGauss
 
 ## Verification Model
 

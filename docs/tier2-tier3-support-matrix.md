@@ -99,8 +99,8 @@ For Tier 2, complete support means:
 
 For Tier 3, complete support means:
 
-- Aristotle and MathCode both have explicit repeated shipped-backend validation
-- the Aristotle lifecycle path and the MathCode bounded local path are both
+- Aristotle, MathCode, and OpenGauss all have explicit shipped-backend validation
+- the Aristotle lifecycle path and the MathCode/OpenGauss bounded local paths are
   documented exactly as they behave in probes, preflight, and operator docs
 - Aristotle remains honestly described as Hermes-shaped until that dependency is
   actually retired

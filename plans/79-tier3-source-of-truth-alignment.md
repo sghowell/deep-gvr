@@ -23,16 +23,21 @@ the feature branch when it is no longer needed.
 ## Progress
 
 - [x] Add this plan and index it from `plans/README.md`.
-- [ ] Align `SKILL.md`, public docs, architecture status, and roadmap plans with
+- [x] Align `SKILL.md`, public docs, architecture status, and roadmap plans with
       the shipped Tier 3 backend set.
-- [ ] Add semantic repo-check coverage for the canonical Tier 3 shipped-backend
+- [x] Add semantic repo-check coverage for the canonical Tier 3 shipped-backend
       contract.
 - [ ] Run validation, merge locally, revalidate on `main`, push, confirm CI and
       Docs, and delete the feature branch.
 
 ## Surprises & Discoveries
 
-- Pending implementation.
+- The stale source-of-truth state was concentrated in a few human-facing docs
+  and plan ledgers, while the runtime, probes, support matrix, and plan 31 had
+  already moved to the shipped OpenGauss state.
+- The repo still needs to allow unrelated architecture gaps such as delegated
+  subagent closure to use `blocked_external`, so the new repo check is
+  path-scoped to Tier 3 support claims instead of banning that status globally.
 
 ## Decision Log
 
@@ -46,7 +51,14 @@ the feature branch when it is no longer needed.
 
 ## Outcomes & Retrospective
 
-- Pending implementation.
+- `SKILL.md`, public concept/overview/example/privacy docs, architecture
+  status, and the Tier 2 / Tier 3 support matrix now identify Aristotle,
+  MathCode, and OpenGauss as the shipped Tier 3 backend set.
+- Plans 67 and 71 now record plan 31 OpenGauss integration and plan 72
+  Codex-Hermes parity as completed state instead of future work.
+- `check_tier3_source_of_truth()` now requires the canonical Tier 3 support
+  snippets and rejects the stale OpenGauss-blocked phrasing that triggered this
+  slice.
 
 ## Context and Orientation
 

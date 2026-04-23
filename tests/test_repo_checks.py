@@ -6,7 +6,13 @@ from pathlib import Path
 
 from tests import _path_setup  # noqa: F401
 
-from deep_gvr.repo_checks import check_hosted_docs_nav, check_markdown_links, run_all_checks
+from deep_gvr.repo_checks import (
+    REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS,
+    check_hosted_docs_nav,
+    check_markdown_links,
+    check_tier3_source_of_truth,
+    run_all_checks,
+)
 
 
 class RepoChecksTests(unittest.TestCase):
@@ -69,6 +75,31 @@ class RepoChecksTests(unittest.TestCase):
             )
 
             self.assertEqual(check_hosted_docs_nav(root), [])
+
+    def test_tier3_source_of_truth_check_rejects_stale_backend_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for relative, snippets in REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("\n".join(snippets) + "\n", encoding="utf-8")
+
+            self.assertEqual(check_tier3_source_of_truth(root), [])
+
+            stale_skill = root / "SKILL.md"
+            stale_skill.write_text(
+                "\n".join(REQUIRED_TIER3_SOURCE_OF_TRUTH_SNIPPETS["SKILL.md"])
+                + "\nactual backend remains blocked externally until plan 31 can resume\n",
+                encoding="utf-8",
+            )
+
+            errors = check_tier3_source_of_truth(root)
+
+            self.assertIn(
+                "SKILL.md: stale Tier 3 source-of-truth phrase "
+                "'actual backend remains blocked externally until plan 31 can resume'",
+                errors,
+            )
 
 
 if __name__ == "__main__":

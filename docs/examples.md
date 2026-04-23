@@ -68,7 +68,7 @@ Typical path:
 
 - Tier 1 checks the proof sketch for coherence
 - Tier 3 is triggered because the core claim is formalizable
-- Aristotle or MathCode handles the proof-oriented backend work
+- Aristotle, MathCode, or OpenGauss handles the proof-oriented backend work
 
 Expected artifacts:
 
